@@ -1,5 +1,6 @@
 import * as Phaser from 'phaser';
 import lab01 from '../../../content/levels/lab-01.json';
+import labCollision from '../../../content/levels/lab-collision.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { parseLevel, parseRuntimeTuning } from '../../content';
 import { vec2 } from '../../core';
@@ -14,7 +15,9 @@ async function start(): Promise<void> {
   // The handwriting font must be ready before Phaser rasterizes HUD text.
   await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
 
-  const level = parseLevel(lab01);
+  // ?level=lab-collision loads the GMR-24 collision stress lab (default: lab-01).
+  const levelName = new URLSearchParams(window.location.search).get('level');
+  const level = parseLevel(levelName === 'lab-collision' ? labCollision : lab01);
   const intents = new IntentQueue();
   let scene: GameScene | null = null;
   const mapper = new DesktopInputMapper(
