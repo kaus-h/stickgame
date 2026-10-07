@@ -1,16 +1,22 @@
 import { defineConfig, devices } from '@playwright/test';
 
+const ci = !!process.env.CI;
+
 export default defineConfig({
   testDir: 'tests/e2e',
   fullyParallel: true,
-  reporter: 'list',
+  forbidOnly: ci,
+  retries: ci ? 1 : 0,
+  // CI keeps an HTML report (uploaded as an artifact on failure) next to the console list.
+  reporter: ci ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://localhost:5173',
+    trace: 'retain-on-failure',
   },
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:5173',
-    reuseExistingServer: true,
+    reuseExistingServer: !ci,
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
