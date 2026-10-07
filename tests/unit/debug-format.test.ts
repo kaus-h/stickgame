@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import lab01 from '../../../content/levels/lab-01.json';
-import runtimeJson from '../../../content/tuning/runtime.json';
-import { parseLevel, parseRuntimeTuning } from '../../content';
-import { vec2 } from '../../core';
-import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
-import { Simulation, type SimEvent } from '../../sim';
-import type { RuntimeStats } from '../frame';
-import { EventLog, formatEvent, formatOverlay } from './format';
+import lab01 from '../../content/levels/lab-01.json';
+import runtimeJson from '../../content/tuning/runtime.json';
+import { parseLevel, parseRuntimeTuning } from '../../src/content';
+import { vec2 } from '../../src/core';
+import { KinematicPhysicsAdapter } from '../../src/physics/backends/kinematic/KinematicPhysicsAdapter';
+import { Simulation, type SimEvent } from '../../src/sim';
+import type { RuntimeStats } from '../../src/render/frame';
+import { EventLog, formatEvent, formatOverlay } from '../../src/render/debug/format';
 
 const stats: RuntimeStats = {
   simHz: 60,
