@@ -27,6 +27,13 @@ const SKIN = 1e-4;
 const MAX_SLIDES = 4;
 const GROUND_NORMAL_Y = -0.7;
 const GROUND_PROBE = 0.01;
+/**
+ * Rope/solid conflict policy (GMR-24, docs/collision-policy.md): collision always wins. A body that
+ * a solid keeps outside its rope circle by more than this stays where the solid puts it (the rope
+ * is simply violated) and is pulled back only along free surface, by the collision-aware
+ * projection. The pendulum step is only valid on the circle, so it is not used while violated.
+ */
+const ROPE_VIOLATION = 0.01;
 
 interface Body {
   def: BodyDef;
@@ -239,13 +246,15 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     this.depenetrate(b, touched, index);
 
     const rope = this.ropeFor(index);
-    if (rope && this.swingStep(b, rope, h, touched, index)) return;
+    const x0 = b.x;
+    const y0 = b.y;
+    if (rope && this.swingStep(b, rope, h, touched, index, x0, y0)) return;
 
     // Free flight (or a slack rope).
     b.vx += this.gx * h;
     b.vy += this.gy * h;
     this.sweep(b, b.vx * h, b.vy * h, true, touched, index);
-    if (rope) this.enforceRopeLimit(b, rope, touched, index);
+    if (rope) this.enforceRopeLimit(b, rope, touched, index, x0, y0, h);
   }
 
   /**
@@ -253,13 +262,22 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
    * (symplectic Euler), so swing energy oscillates instead of drifting. Returns false when the rope
    * is slack or would not be in tension, in which case the body flies freely this substep.
    */
-  private swingStep(b: Body, rope: Rope, h: number, touched: Set<number>, index: number): boolean {
+  private swingStep(
+    b: Body,
+    rope: Rope,
+    h: number,
+    touched: Set<number>,
+    index: number,
+    x0: number,
+    y0: number,
+  ): boolean {
     const [ax, ay, avx, avy] = this.ropeAnchorKinematics(rope);
     const L = rope.length;
     const rx = b.x - ax;
     const ry = b.y - ay;
     const d = dlen(rx, ry);
     if (d < 1e-9 || d < L - 1e-6) return false;
+    if (d > L + ROPE_VIOLATION) return false; // a solid holds the body outside the circle
 
     const nx = rx / d;
     const ny = ry / d;
@@ -289,11 +307,23 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     b.vx = avx + (-nx * s + tx * c) * w * L;
     b.vy = avy + (-ny * s + ty * c) * w * L;
     this.sweep(b, ax + nnx * L - b.x, ay + nny * L - b.y, true, touched, index);
+    // A solid blocked the swing and left the body outside the circle: let the rope slide it back
+    // along the surface (collision-aware) and drop the outward velocity, as a taut rope would.
+    if (dlen(b.x - ax, b.y - ay) > L + 1e-6)
+      this.enforceRopeLimit(b, rope, touched, index, x0, y0, h);
     return true;
   }
 
   /** After free flight, pull the body back onto the rope circle if it went past it (taut snap). */
-  private enforceRopeLimit(b: Body, rope: Rope, touched: Set<number>, index: number): void {
+  private enforceRopeLimit(
+    b: Body,
+    rope: Rope,
+    touched: Set<number>,
+    index: number,
+    x0: number,
+    y0: number,
+    h: number,
+  ): void {
     const [ax, ay, avx, avy] = this.ropeAnchorKinematics(rope);
     const dx = b.x - ax;
     const dy = b.y - ay;
@@ -301,6 +331,14 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     if (dist <= rope.length || dist < 1e-9) return;
     const s = rope.length / dist;
     this.sweep(b, ax + dx * s - b.x, ay + dy * s - b.y, false, touched, index);
+    if (dlen(b.x - ax, b.y - ay) > rope.length + 1e-6) {
+      // A solid keeps the body outside the rope circle (collision wins): the rope has overridden
+      // part of the free motion, so the velocity becomes the motion that actually happened.
+      // Otherwise gravity would pile phantom speed onto a body the rope holds in place.
+      b.vx = (b.x - x0) / h;
+      b.vy = (b.y - y0) / h;
+      return;
+    }
     const nx = dx / dist;
     const ny = dy / dist;
     const vr = (b.vx - avx) * nx + (b.vy - avy) * ny;
@@ -502,7 +540,11 @@ function sweepCircleSegment(
       side = -side;
     }
     const approach = dx * nx + dy * ny;
-    if (approach < 0 && side >= r - 1e-9) {
+    if (approach < 0 && side < r - 1e-9) {
+      // Already overlapping the face (squeezed in a crevice) and moving deeper: block at once.
+      const u = ((px - ax) * ex + (py - ay) * ey) / (len * len);
+      if (u >= 0 && u <= 1) best = { t: 0, nx, ny };
+    } else if (approach < 0 && side >= r - 1e-9) {
       const t = (r - side) / approach;
       if (t >= 0 && t <= 1) {
         const cx = px + dx * t - ax;
@@ -523,7 +565,15 @@ function sweepCircleSegment(
     const a = dx * dx + dy * dy;
     const bq = 2 * (fx * dx + fy * dy);
     const c = fx * fx + fy * fy - r * r;
-    if (a < 1e-18 || c < 0 || bq >= 0) continue;
+    if (a < 1e-18 || bq >= 0) continue;
+    if (c < 0) {
+      // Already overlapping this end cap (squeezed between two surfaces) and moving deeper: block
+      // at once instead of letting the body sink further.
+      if (best && best.t <= 0) continue;
+      const hl = dlen(fx, fy);
+      if (hl > 1e-12) best = { t: 0, nx: fx / hl, ny: fy / hl };
+      continue;
+    }
     const disc = bq * bq - 4 * a * c;
     if (disc < 0) continue;
     const t = (-bq - Math.sqrt(disc)) / (2 * a);
