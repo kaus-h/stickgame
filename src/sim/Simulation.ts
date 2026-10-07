@@ -317,7 +317,9 @@ export class Simulation {
       if (!this.jumpHeld) vy *= p.jumpCut; // tapped and released within the same tick
     }
 
-    if (vy > 0) vy += this.tuning.gravity * (p.fallGravityScale - 1) * dt;
+    // Snappy falls are a platforming aid. On a locked rope (even slack) they would add energy that
+    // the momentum-keeping catch then turns into swing, so the pendulum gets plain gravity.
+    if (vy > 0 && !this.rope?.locked) vy += this.tuning.gravity * (p.fallGravityScale - 1) * dt;
     vy = Math.min(vy, p.maxFallSpeed);
     this.physics.setBodyVelocity(this.body, vec2(vx, vy));
   }
