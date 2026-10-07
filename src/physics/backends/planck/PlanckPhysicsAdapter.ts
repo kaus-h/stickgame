@@ -121,6 +121,7 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
     return vec2(p.x, p.y);
   }
 
+  /** catchRetention is not supported by the Planck fallback (GMR-32 notes); catches are inelastic. */
   attachRope(bodyId: number, anchor: RopeAnchor, length: number): number {
     const { body } = this.record(bodyId);
     const id = this.nextRope++;

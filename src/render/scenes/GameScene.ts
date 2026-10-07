@@ -462,7 +462,7 @@ export class GameScene extends Phaser.Scene {
             `tick ${String(stats.tick)} attempt ${String(stats.attemptTick)} resets ${String(stats.resets)} deaths ${String(current.deaths)}`,
             `pos ${p.position.x.toFixed(2)}, ${p.position.y.toFixed(2)}  vel ${p.velocity.x.toFixed(2)}, ${p.velocity.y.toFixed(2)}  ${p.mode}`,
             current.rope
-              ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
+              ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.locked ? 'locked' : 'paying out'} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
               : 'rope —',
             targetLine(current.target),
             `bodies ${String(stats.bodies)} joints ${String(stats.joints)}  [\`] toggle`,

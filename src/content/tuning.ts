@@ -63,6 +63,7 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
         selectRadius: num(rope, 'selectRadius', R, 0),
         steerAccel: num(rope, 'steerAccel', R, 0),
         steerEnergyHeight: num(rope, 'steerEnergyHeight', R, 0),
+        catchRetention: num(rope, 'catchRetention', R, 0),
       },
     },
   };

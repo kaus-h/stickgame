@@ -18,8 +18,13 @@ export interface RopeSnapshot {
   readonly anchor: number;
   /** Mechanical impact point in world space this tick (moves with a moving anchor). */
   readonly point: Vec2;
-  /** Rope length fixed at connection time: the swing radius. */
+  /**
+   * Swing radius. Locked ropes: the distance when the length locked (connection if airborne,
+   * take-off if attached on the ground). Unlocked: the current distance, which is paying out.
+   */
   readonly length: number;
+  /** Length fixed (airborne). False while grounded: the rope pays out up to maxLength. */
+  readonly locked: boolean;
   /** True when the player is on the rope circle; false when the rope hangs slack. */
   readonly taut: boolean;
   /** Tick the rope connected on. */
@@ -58,6 +63,7 @@ export type SimEvent =
       readonly anchor: number;
       readonly length: number;
     }
+  | { readonly type: 'ropeLock'; readonly tick: number; readonly length: number }
   | { readonly type: 'ropeRelease'; readonly tick: number; readonly velocity: Vec2 }
   | {
       readonly type: 'ropeInvalid';
@@ -104,9 +110,12 @@ export class Simulation {
     id: number;
     anchor: number;
     offset: Vec2;
+    /** Swing radius once locked; while unlocked the physics rope is a max-length leash. */
     length: number;
+    /** Locked = length fixed. Attaching in the air locks at once; on the ground, at take-off. */
+    locked: boolean;
     tick: number;
-    /** Swing energy per unit mass at connection (steering may add a capped amount). */
+    /** Swing energy per unit mass when the length locked (steering may add a capped amount). */
     energy: number;
   } | null = null;
   /** Rope presses and releases in input order, applied once anchors are placed for the tick. */
@@ -165,7 +174,7 @@ export class Simulation {
       player: {
         position: s.position,
         velocity: s.velocity,
-        mode: this.rope ? 'tethered' : s.grounded ? 'grounded' : 'air',
+        mode: s.grounded ? 'grounded' : this.rope ? 'tethered' : 'air',
         facing: this.facing,
       },
       rope: this.rope ? this.ropeSnapshot(s.position, anchors) : null,
@@ -250,7 +259,7 @@ export class Simulation {
     const dt = SIM_DT;
     const target = this.axis * p.runSpeed;
 
-    const swinging = this.rope !== null && !s.grounded;
+    const swinging = this.rope?.locked === true && !s.grounded;
     if (swinging) {
       // On the rope, gravity and the shot drive the swing; input only steers a little.
       const v = this.steer(s.position, vec2(vx, vy));
@@ -316,22 +325,14 @@ export class Simulation {
         });
         continue;
       }
-      const id = this.physics.attachRope(
-        this.body,
-        {
-          kind: 'kinematic',
-          anchor: this.anchorIds[target.anchor] as number,
-          offset: target.offset,
-        },
-        target.distance,
-      );
       this.rope = {
-        id,
+        id: -1,
         anchor: target.anchor,
         offset: target.offset,
         length: target.distance,
+        locked: false,
         tick: this.tickCount,
-        energy: this.energy(s.position, s.velocity),
+        energy: 0,
       };
       this.events.push({
         type: 'ropeAttach',
@@ -339,6 +340,58 @@ export class Simulation {
         anchor: target.anchor,
         length: target.distance,
       });
+      if (s.grounded) this.leash();
+      else this.lock(target.distance);
+    }
+  }
+
+  /**
+   * Owner decision 2026-10-07 (doc 04 amendment): while grounded the rope pays out freely up to
+   * maxLength, so running carries the player under or past the anchor; the length locks to the
+   * distance at the moment the player becomes airborne.
+   */
+  private leash(): void {
+    const rope = this.rope;
+    if (!rope) return;
+    if (rope.id >= 0) this.physics.detachRope(rope.id);
+    rope.id = this.physics.attachRope(this.body, this.ropeAnchor(rope), this.tuning.rope.maxLength);
+    rope.locked = false;
+  }
+
+  /** Fix the swing radius. Run and jump momentum carries into the swing at the taut catch. */
+  private lock(distance: number): void {
+    const rope = this.rope;
+    if (!rope) return;
+    const r = this.tuning.rope;
+    const length = Math.min(r.maxLength, Math.max(r.minLength, distance));
+    if (rope.id >= 0) this.physics.detachRope(rope.id);
+    rope.id = this.physics.attachRope(this.body, this.ropeAnchor(rope), length, {
+      catchRetention: r.catchRetention,
+    });
+    rope.length = length;
+    rope.locked = true;
+    const s = this.physics.bodyState(this.body);
+    rope.energy = this.energy(s.position, s.velocity);
+    this.events.push({ type: 'ropeLock', tick: this.tickCount, length });
+  }
+
+  private ropeAnchor(rope: { anchor: number; offset: Vec2 }) {
+    return {
+      kind: 'kinematic' as const,
+      anchor: this.anchorIds[rope.anchor] as number,
+      offset: rope.offset,
+    };
+  }
+
+  /** After each step: lock on take-off, return to a leash on landing. */
+  private updateRopeLock(grounded: boolean, position: Vec2): void {
+    const rope = this.rope;
+    if (!rope) return;
+    if (!rope.locked && !grounded) {
+      const p = this.ropePoint(rope.anchor, rope.offset);
+      this.lock(Math.sqrt((position.x - p.x) ** 2 + (position.y - p.y) ** 2));
+    } else if (rope.locked && grounded) {
+      this.leash();
     }
   }
 
@@ -361,7 +414,7 @@ export class Simulation {
    */
   private steer(p: Vec2, v: Vec2): Vec2 {
     const rope = this.rope;
-    if (!rope || this.axis === 0) return v;
+    if (!rope?.locked || this.axis === 0) return v;
     const pivot = this.ropePoint(rope.anchor, rope.offset);
     const rx = p.x - pivot.x;
     const ry = p.y - pivot.y;
@@ -381,6 +434,13 @@ export class Simulation {
     return this.energy(p, next) <= cap || this.energy(p, next) <= this.energy(p, v) ? next : v;
   }
 
+  private ropeTaut(p: Vec2): boolean {
+    const rope = this.rope;
+    if (!rope?.locked) return false;
+    const a = this.ropePoint(rope.anchor, rope.offset);
+    return Math.sqrt((p.x - a.x) ** 2 + (p.y - a.y) ** 2) >= rope.length - 1e-3;
+  }
+
   private ropePoint(anchor: number, offset: Vec2): Vec2 {
     const a = this.physics.anchorPosition(this.anchorIds[anchor] as number);
     return vec2(a.x + offset.x, a.y + offset.y);
@@ -393,18 +453,21 @@ export class Simulation {
     const point = vec2(a.x + rope.offset.x, a.y + rope.offset.y);
     const dx = player.x - point.x;
     const dy = player.y - point.y;
+    const dist = Math.sqrt(dx * dx + dy * dy);
     return {
       anchor: rope.anchor,
       point,
-      length: rope.length,
-      taut: Math.sqrt(dx * dx + dy * dy) >= rope.length - 1e-3,
+      length: rope.locked ? rope.length : Math.min(dist, this.tuning.rope.maxLength),
+      locked: rope.locked,
+      taut: rope.locked ? dist >= rope.length - 1e-3 : dist >= this.tuning.rope.maxLength - 1e-3,
       attachedTick: rope.tick,
     };
   }
 
   private cutJump(): void {
     const s = this.physics.bodyState(this.body);
-    if (s.velocity.y < 0 && !this.rope) {
+    // Variable jump height still works on a slack rope; a taut rope owns the motion.
+    if (s.velocity.y < 0 && !this.ropeTaut(s.position)) {
       this.physics.setBodyVelocity(
         this.body,
         vec2(s.velocity.x, s.velocity.y * this.tuning.player.jumpCut),
@@ -436,6 +499,7 @@ export class Simulation {
       this.events.push({ type: 'land', tick: this.tickCount, speed: Math.abs(s.velocity.y) });
     }
     this.wasGrounded = s.grounded;
+    this.updateRopeLock(s.grounded, s.position);
 
     if (this.physics.drainContacts().some((c) => c.kind === 'hazard')) {
       this.die('hazard', s.position);

@@ -8,6 +8,7 @@ test('boots without console errors and renders a canvas', async ({ page }) => {
   page.on('pageerror', (err) => errors.push(err.message));
 
   await page.goto('/');
-  await expect(page.locator('#game canvas')).toBeVisible();
+  // Cold Vite starts transform Phaser and fetch the handwriting font before the canvas exists.
+  await expect(page.locator('#game canvas')).toBeVisible({ timeout: 20_000 });
   expect(errors).toEqual([]);
 });

@@ -11,6 +11,7 @@ const rope: RopeTuning = {
   selectRadius: 1.1,
   steerAccel: 6,
   steerEnergyHeight: 0.6,
+  catchRetention: 1,
 };
 type Ray = (from: Vec2, to: Vec2) => RayHit | null;
 const noHit: Ray = () => null;
