@@ -45,7 +45,7 @@ Every comparison is per-tick hash equality, 601 hashes per run.
 | Encode, decode, replay                                  | bit-identical           |
 | Node vs Chromium, Firefox, WebKit (e2e)                 | bit-identical           |
 
-Final hashes: main `0c1a8f16`, moving anchor `1f5b90d7`. Not yet measured: native iOS/Android
+Final hashes at da84320 (before the rope-lock review fixes; they change by design whenever sim rules change): main `0c1a8f16`, moving anchor `1f5b90d7`. Not yet measured: native iOS/Android
 WebViews, other CPU architectures (Apple silicon vs x86), and long runs (minutes).
 
 ## Recommendation for GMR-35 ghosts
