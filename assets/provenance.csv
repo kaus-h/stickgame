@@ -1,1 +1,2 @@
 asset_path,source,prompt_id,generated_on,human_edits,reviewer,notes
+fonts/Caveat (Google Fonts, loaded at runtime from fonts.googleapis.com),https://fonts.google.com/specimen/Caveat,n/a (not generated),2026-10-07,none,claude,SIL Open Font License 1.1; HUD handwriting; self-host before native/offline builds

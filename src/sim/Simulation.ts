@@ -45,8 +45,28 @@ export interface SimSnapshot {
   readonly anchors: readonly Vec2[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
+  /** The most recent death (survives the reset it caused). */
+  readonly lastDeath: DeathRecord | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
   readonly target: TargetResolution | null;
+}
+
+/**
+ * Machine-readable failure context (GMR-23): enough for telemetry, the death marker and later
+ * "what went wrong" feedback (last rope, speed, which hazard). Persists in the snapshot after the
+ * instant reset so feedback can draw it during the next attempt.
+ */
+export interface DeathRecord {
+  readonly tick: number;
+  readonly cause: DeathCause;
+  readonly at: Vec2;
+  readonly velocity: Vec2;
+  /** Level id of the hazard solid touched, for cause "hazard". */
+  readonly solid: string | null;
+  /** Ticks into the attempt when it ended. */
+  readonly attemptTicks: number;
+  /** The rope at the moment of death, if tethered. */
+  readonly rope: { readonly anchor: number; readonly point: Vec2; readonly length: number } | null;
 }
 
 export type DeathCause = 'hazard' | 'out-of-bounds';
@@ -55,7 +75,7 @@ export type SimEvent =
   | { readonly type: 'reset'; readonly tick: number }
   | { readonly type: 'jump'; readonly tick: number }
   | { readonly type: 'land'; readonly tick: number; readonly speed: number }
-  | { readonly type: 'death'; readonly tick: number; readonly cause: DeathCause; readonly at: Vec2 }
+  | ({ readonly type: 'death' } & DeathRecord)
   | { readonly type: 'exit'; readonly tick: number; readonly attemptTicks: number }
   | {
       readonly type: 'ropeAttach';
@@ -97,6 +117,9 @@ export class Simulation {
 
   private readonly body: number;
   private readonly anchorIds: number[];
+  /** Level solid id for each physics segment (levelSegments keeps solid order). */
+  private readonly segmentSolid: string[];
+  private lastDeath: DeathRecord | null = null;
 
   // Controller state (reset each attempt).
   private axis = 0;
@@ -128,6 +151,7 @@ export class Simulation {
   ) {
     physics.setGravity(vec2(0, tuning.gravity));
     physics.setGeometry(levelSegments(level));
+    this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({
       position: level.spawn,
       velocity: vec2(0, 0),
@@ -180,6 +204,7 @@ export class Simulation {
       rope: this.rope ? this.ropeSnapshot(s.position, anchors) : null,
       anchors,
       aim: this.aim,
+      lastDeath: this.lastDeath,
       target: this.target(s.position, anchors),
     };
   }
@@ -259,7 +284,8 @@ export class Simulation {
     const dt = SIM_DT;
     const target = this.axis * p.runSpeed;
 
-    const swinging = this.rope?.locked === true && !s.grounded;
+    // A taut locked rope owns the motion; a slack one leaves the normal air controller in charge.
+    const swinging = !s.grounded && this.ropeTaut(s.position);
     if (swinging) {
       // On the rope, gravity and the shot drive the swing; input only steers a little.
       const v = this.steer(s.position, vec2(vx, vy));
@@ -348,7 +374,7 @@ export class Simulation {
   /**
    * Owner decision 2026-10-07 (doc 04 amendment): while grounded the rope pays out freely up to
    * maxLength, so running carries the player under or past the anchor; the length locks to the
-   * distance at the moment the player becomes airborne.
+   * distance at the moment the player becomes airborne. Only used before the first lock.
    */
   private leash(): void {
     const rope = this.rope;
@@ -358,12 +384,14 @@ export class Simulation {
     rope.locked = false;
   }
 
-  /** Fix the swing radius. Run and jump momentum carries into the swing at the taut catch. */
-  private lock(distance: number): void {
+  /**
+   * Fix the swing radius to exactly the measured distance (never clamped: canon says the rope
+   * is the distance). Run and jump momentum carries into the swing at the taut catch.
+   */
+  private lock(length: number): void {
     const rope = this.rope;
     if (!rope) return;
     const r = this.tuning.rope;
-    const length = Math.min(r.maxLength, Math.max(r.minLength, distance));
     if (rope.id >= 0) this.physics.detachRope(rope.id);
     rope.id = this.physics.attachRope(this.body, this.ropeAnchor(rope), length, {
       catchRetention: r.catchRetention,
@@ -383,16 +411,19 @@ export class Simulation {
     };
   }
 
-  /** After each step: lock on take-off, return to a leash on landing. */
+  /**
+   * After each step: a paying-out rope locks on the first airborne tick. Once locked it stays
+   * locked until release, including across landings, so a shot cannot be re-measured afterwards
+   * (no rope shortening/extension, doc 12). If the player leaves the ground closer than minLength,
+   * the rope keeps paying out and locks on the first airborne tick at or beyond minLength, at the
+   * distance measured then.
+   */
   private updateRopeLock(grounded: boolean, position: Vec2): void {
     const rope = this.rope;
-    if (!rope) return;
-    if (!rope.locked && !grounded) {
-      const p = this.ropePoint(rope.anchor, rope.offset);
-      this.lock(Math.sqrt((position.x - p.x) ** 2 + (position.y - p.y) ** 2));
-    } else if (rope.locked && grounded) {
-      this.leash();
-    }
+    if (!rope || rope.locked || grounded) return;
+    const p = this.ropePoint(rope.anchor, rope.offset);
+    const distance = Math.sqrt((position.x - p.x) ** 2 + (position.y - p.y) ** 2);
+    if (distance >= this.tuning.rope.minLength) this.lock(distance);
   }
 
   private detach(): void {
@@ -495,18 +526,25 @@ export class Simulation {
 
   private afterPhysics(): void {
     const s = this.physics.bodyState(this.body);
+    const contacts = this.physics.drainContacts();
     if (s.grounded && !this.wasGrounded) {
-      this.events.push({ type: 'land', tick: this.tickCount, speed: Math.abs(s.velocity.y) });
+      // The solver has already removed the impact velocity; contacts carry the closing speed.
+      const speed = contacts.reduce(
+        (max, c) => (c.normal.y < -0.7 ? Math.max(max, c.speed) : max),
+        0,
+      );
+      this.events.push({ type: 'land', tick: this.tickCount, speed });
     }
     this.wasGrounded = s.grounded;
     this.updateRopeLock(s.grounded, s.position);
 
-    if (this.physics.drainContacts().some((c) => c.kind === 'hazard')) {
-      this.die('hazard', s.position);
+    const hazard = contacts.find((c) => c.kind === 'hazard');
+    if (hazard) {
+      this.die('hazard', s.position, s.velocity, this.segmentSolid[hazard.segment] ?? null);
       return;
     }
     if (s.position.y > this.level.killY) {
-      this.die('out-of-bounds', s.position);
+      this.die('out-of-bounds', s.position, s.velocity, null);
       return;
     }
 
@@ -524,9 +562,25 @@ export class Simulation {
   }
 
   /** Death is instant: no delay or UI may sit between death and retry (doc 13). */
-  private die(cause: DeathCause, at: Vec2): void {
+  private die(cause: DeathCause, at: Vec2, velocity: Vec2, solid: string | null): void {
     this.deathCount++;
-    this.events.push({ type: 'death', tick: this.tickCount, cause, at });
+    const rope = this.rope;
+    this.lastDeath = {
+      tick: this.tickCount,
+      cause,
+      at,
+      velocity,
+      solid,
+      attemptTicks: this.attemptTicks,
+      rope: rope
+        ? {
+            anchor: rope.anchor,
+            point: this.ropePoint(rope.anchor, rope.offset),
+            length: rope.length,
+          }
+        : null,
+    };
+    this.events.push({ type: 'death', ...this.lastDeath });
     this.reset();
   }
 }

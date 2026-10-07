@@ -241,6 +241,8 @@ export function runPhysicsConformance(
       const after = world.stats();
       expect(after).toEqual(baseline);
       expect(world.bodyState(body).position).toEqual(vec2(0, 0));
+      // Back at its airborne creation point: stale ground contacts must not survive the reset.
+      expect(world.bodyState(body).grounded).toBe(false);
     });
 
     it('catchRetention turns outward speed into swing at a taut catch', () => {
