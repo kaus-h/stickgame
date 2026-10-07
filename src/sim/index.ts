@@ -7,6 +7,7 @@ export type { AnchorDef, LevelDef, SolidDef } from './level';
 export { hashSnapshot } from './hash';
 export { Simulation } from './Simulation';
 export type {
+  ContactSnapshot,
   DeathCause,
   DeathRecord,
   PlayerMode,
