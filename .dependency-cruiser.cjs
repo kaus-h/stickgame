@@ -36,8 +36,10 @@ module.exports = {
     },
     {
       name: 'sim-not-physics-backends',
+      comment:
+        'Unit tests may wire a concrete backend (usually the null one); production sim code may not.',
       severity: 'error',
-      from: { path: layer('sim') },
+      from: { path: layer('sim'), pathNot: '\\.test\\.ts$' },
       to: { path: '^src/physics/backends/' },
     },
     {

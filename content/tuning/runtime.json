@@ -1,0 +1,16 @@
+{
+  "clock": {
+    "maxStepsPerFrame": 5,
+    "maxFrameDelta": 0.25
+  },
+  "sim": {
+    "gravity": 25,
+    "physicsSubsteps": 4,
+    "probe": {
+      "start": { "x": 2, "y": 2 },
+      "velocity": { "x": 6, "y": 0 },
+      "bounds": { "minX": 1, "maxX": 14, "floorY": 8 },
+      "restitution": 0.92
+    }
+  }
+}
