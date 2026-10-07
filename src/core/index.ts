@@ -4,3 +4,4 @@ export * from './intents';
 export * from './rng';
 export * from './units';
 export * from './vec2';
+export * from './dmath';
