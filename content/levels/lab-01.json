@@ -2,7 +2,7 @@
   "version": 1,
   "id": "lab-01",
   "name": "Movement and Rope Lab",
-  "spawn": [3, 7],
+  "spawn": [3, 7.65],
   "bounds": { "minX": -1, "minY": -8, "maxX": 63, "maxY": 13 },
   "killY": 14,
   "solids": [

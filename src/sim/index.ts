@@ -8,6 +8,7 @@ export { hashSnapshot } from './hash';
 export { Simulation } from './Simulation';
 export type {
   DeathCause,
+  DeathRecord,
   PlayerMode,
   PlayerSnapshot,
   RopeInvalidReason,
