@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m, vec2, type Vec2 } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
+import { DebugOverlay } from '../debug/DebugOverlay';
 import { dashedInk, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
@@ -34,6 +35,8 @@ export interface GameSceneOptions {
   readonly source: FrameSource;
   /** Subscribe to simulation events (feedback effects only; never gameplay). */
   readonly onEvents: (listener: (events: readonly SimEvent[]) => void) => () => void;
+  /** Build the development overlay (dev builds or ?debug). Production presentation omits it. */
+  readonly debug?: boolean;
 }
 
 /**
@@ -45,8 +48,7 @@ export class GameScene extends Phaser.Scene {
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
-  private debug!: Phaser.GameObjects.Text;
-  private showDebug = false;
+  private overlay: DebugOverlay | null = null;
   private splats: Splat[] = [];
   private unsubscribe: (() => void) | null = null;
   private camX = 0;
@@ -84,20 +86,9 @@ export class GameScene extends Phaser.Scene {
       .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
-    this.debug = this.add
-      .text(12, 0, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#16161a',
-        backgroundColor: '#f3efe6cc',
-      })
-      .setScrollFactor(0)
-      .setVisible(false);
-    this.input.keyboard?.on('keydown-BACKTICK', () => {
-      this.showDebug = !this.showDebug;
-      this.debug.setVisible(this.showDebug);
-    });
+    if (this.opts.debug) this.overlay = new DebugOverlay(this);
     this.unsubscribe = this.opts.onEvents((events) => {
+      this.overlay?.onEvents(events);
       for (const e of events) {
         if (e.type === 'death')
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
@@ -449,7 +440,8 @@ export class GameScene extends Phaser.Scene {
 
   // --- HUD (drawn on the page, fixed to the screen) ---------------------------------------------
 
-  private drawHud({ current, stats }: RenderFrame): void {
+  private drawHud(frame: RenderFrame): void {
+    const { current } = frame;
     const w = this.scale.width;
     const g = this.hud;
     g.clear();
@@ -474,34 +466,6 @@ export class GameScene extends Phaser.Scene {
       .setText(`${String(mm).padStart(2, '0')}:${ss.toFixed(2).padStart(5, '0')}`);
     this.title.setPosition(w / 2, 14);
 
-    if (this.showDebug) {
-      const p = current.player;
-      this.debug
-        .setPosition(12, this.scale.height - 190)
-        .setText(
-          [
-            `sim ${String(stats.simHz)} Hz | steps/frame ${String(stats.stepsLastFrame)} | alpha ${stats.alpha.toFixed(2)}`,
-            `frame ${stats.frameMsAvg.toFixed(1)} ms avg / ${stats.frameMsMax.toFixed(1)} max | sim ${stats.simStepMsAvg.toFixed(3)} ms`,
-            `tick ${String(stats.tick)} attempt ${String(stats.attemptTick)} resets ${String(stats.resets)} deaths ${String(current.deaths)}`,
-            `pos ${p.position.x.toFixed(2)}, ${p.position.y.toFixed(2)}  vel ${p.velocity.x.toFixed(2)}, ${p.velocity.y.toFixed(2)}  ${p.mode}`,
-            current.rope
-              ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.locked ? 'locked' : 'paying out'} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
-              : 'rope —',
-            targetLine(current.target),
-            current.lastDeath
-              ? `last death ${current.lastDeath.cause}${current.lastDeath.solid ? ` (${current.lastDeath.solid})` : ''} at ${current.lastDeath.at.x.toFixed(2)}, ${current.lastDeath.at.y.toFixed(2)} speed ${Math.hypot(current.lastDeath.velocity.x, current.lastDeath.velocity.y).toFixed(1)}${current.lastDeath.rope ? ' tethered' : ''}`
-              : 'last death —',
-            `bodies ${String(stats.bodies)} joints ${String(stats.joints)}  [\`] toggle`,
-          ].join('\n'),
-        );
-    }
+    this.overlay?.draw(frame);
   }
-}
-
-function targetLine(t: SimSnapshot['target']): string {
-  if (!t) return 'target —';
-  const where = t.impact ? ` impact ${t.impact.x.toFixed(2)}, ${t.impact.y.toFixed(2)}` : '';
-  const dist = t.distance === null ? '' : ` dist ${t.distance.toFixed(3)} m`;
-  const anchor = t.anchor === null ? '' : ` anchor ${String(t.anchor)}`;
-  return `target ${t.valid ? 'valid' : t.reason}${anchor}${where}${dist}`;
 }
