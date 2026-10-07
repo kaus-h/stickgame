@@ -187,9 +187,44 @@ export class GameScene extends Phaser.Scene {
       const dx = a.path.to.x - a.position.x;
       const dy = a.path.to.y - a.position.y;
       const len = Math.hypot(dx, dy);
+      if (len < 1e-6) continue;
       g.fillStyle(PENCIL, 0.7);
       for (let d = 0; d <= len; d += 0.35)
         g.fillCircle(m(a.position.x + (dx * d) / len), m(a.position.y + (dy * d) / len), 1.6);
+      // Ink stop bars where the anchor turns round, and pencil chevrons just inside each end
+      // pointing at it, so the extent and the back-and-forth read before the anchor gets there.
+      const ux = dx / len;
+      const uy = dy / len;
+      const ends: [Vec2, number][] = [
+        [a.position, -1],
+        [a.path.to, 1],
+      ];
+      ends.forEach(([e, dir], k) => {
+        const bar = 0.32;
+        strokeInk(
+          g,
+          [
+            { x: m(e.x - uy * bar), y: m(e.y + ux * bar) },
+            { x: m(e.x + uy * bar), y: m(e.y - ux * bar) },
+          ],
+          2.2,
+          INK,
+          0.9,
+          k + 11,
+        );
+        const tip = { x: e.x - ux * dir * 0.45, y: e.y - uy * dir * 0.45 };
+        const back = 0.22;
+        const wing = 0.16;
+        g.lineStyle(1.8, PENCIL, 0.9);
+        for (const side of [-1, 1]) {
+          g.lineBetween(
+            m(tip.x),
+            m(tip.y),
+            m(tip.x - ux * dir * back - uy * wing * side),
+            m(tip.y - uy * dir * back + ux * wing * side),
+          );
+        }
+      });
     }
 
     solids.forEach((s, i) => {
@@ -254,6 +289,8 @@ export class GameScene extends Phaser.Scene {
       const targeted = current.target?.valid === true && current.target.anchor === i;
       if (active || targeted) this.highlighter(g, p, i);
       this.drawAnchor(g, p, i);
+      const v = current.anchorVelocities[i];
+      if (v) this.drawAnchorHeading(g, p, v, i);
     });
 
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
@@ -351,6 +388,32 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(INK, 1);
     g.fillRect(p.x - m(0.08), p.y - r - m(0.2), m(0.16), m(0.14));
     g.lineStyle(2.4, INK, 1).lineBetween(p.x, p.y - r - m(0.08), p.x, p.y - r);
+  }
+
+  /**
+   * Moving anchors carry a small ink arrow off the ring in the direction they travel now, growing
+   * with speed and vanishing at the turn, so the player can read where the pivot will be.
+   */
+  private drawAnchorHeading(g: Phaser.GameObjects.Graphics, p: Pt, v: Vec2, i: number): void {
+    const speed = Math.hypot(v.x, v.y);
+    if (speed < 0.3) return;
+    const ux = v.x / speed;
+    const uy = v.y / speed;
+    const r = m(this.opts.level.anchors[i]?.radius ?? 0.4);
+    const start = { x: p.x + ux * (r + m(0.12)), y: p.y + uy * (r + m(0.12)) };
+    const len = m(0.15 + 0.06 * speed);
+    const tip = { x: start.x + ux * len, y: start.y + uy * len };
+    const head = m(0.14);
+    g.lineStyle(2.2, INK, 0.85);
+    g.lineBetween(start.x, start.y, tip.x, tip.y);
+    for (const side of [-1, 1]) {
+      g.lineBetween(
+        tip.x,
+        tip.y,
+        tip.x - ux * head - uy * head * 0.7 * side,
+        tip.y - uy * head + ux * head * 0.7 * side,
+      );
+    }
   }
 
   private handPoint(player: Pt, anchor: Pt): Pt {
@@ -477,7 +540,7 @@ export class GameScene extends Phaser.Scene {
     if (this.showDebug) {
       const p = current.player;
       this.debug
-        .setPosition(12, this.scale.height - 190)
+        .setPosition(12, this.scale.height - 212)
         .setText(
           [
             `sim ${String(stats.simHz)} Hz | steps/frame ${String(stats.stepsLastFrame)} | alpha ${stats.alpha.toFixed(2)}`,
@@ -488,6 +551,7 @@ export class GameScene extends Phaser.Scene {
               ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.locked ? 'locked' : 'paying out'} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
               : 'rope —',
             targetLine(current.target),
+            anchorLine(current),
             current.lastDeath
               ? `last death ${current.lastDeath.cause}${current.lastDeath.solid ? ` (${current.lastDeath.solid})` : ''} at ${current.lastDeath.at.x.toFixed(2)}, ${current.lastDeath.at.y.toFixed(2)} speed ${Math.hypot(current.lastDeath.velocity.x, current.lastDeath.velocity.y).toFixed(1)}${current.lastDeath.rope ? ' tethered' : ''}`
               : 'last death —',
@@ -504,4 +568,14 @@ function targetLine(t: SimSnapshot['target']): string {
   const dist = t.distance === null ? '' : ` dist ${t.distance.toFixed(3)} m`;
   const anchor = t.anchor === null ? '' : ` anchor ${String(t.anchor)}`;
   return `target ${t.valid ? 'valid' : t.reason}${anchor}${where}${dist}`;
+}
+
+/** Path state of the anchor in play (rope, else target), for GMR-26 moving-anchor debugging. */
+function anchorLine(s: SimSnapshot): string {
+  const i = s.rope?.anchor ?? s.target?.anchor ?? null;
+  if (i === null) return 'anchor —';
+  const a = s.anchors[i];
+  const v = s.anchorVelocities[i];
+  if (!a || !v) return 'anchor —';
+  return `anchor ${String(i)} at ${a.x.toFixed(2)}, ${a.y.toFixed(2)} v ${v.x.toFixed(2)}, ${v.y.toFixed(2)} (${Math.hypot(v.x, v.y).toFixed(2)} m/s)`;
 }

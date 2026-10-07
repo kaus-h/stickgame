@@ -11,14 +11,23 @@ export interface SolidDef {
 /**
  * A rope anchor: a ring whose disc is the impact geometry. Where the aim lands on the disc is the
  * mechanical impact point (doc 04: selection tolerance is separate from the impact point).
- * With `path`, it moves back and forth between `position` and `path.to`.
+ * With `path`, it moves back and forth between `position` and `path.to` (see anchorPath.ts).
  */
 export interface AnchorDef {
   readonly id: string;
   readonly position: Vec2;
   /** Impact disc radius, m. */
   readonly radius: number;
-  readonly path?: { readonly to: Vec2; readonly period: number };
+  readonly path?: AnchorPathDef;
+}
+
+/** Smooth ping-pong path. Limits on peak speed and acceleration: docs/moving-anchors.md. */
+export interface AnchorPathDef {
+  readonly to: Vec2;
+  /** Full there-and-back cycle, s. */
+  readonly period: number;
+  /** Start offset in the cycle, 0..1 (default 0 = at `position`, at rest). */
+  readonly phase?: number;
 }
 
 export interface LevelDef {

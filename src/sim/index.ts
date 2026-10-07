@@ -3,7 +3,9 @@
 export { levelSegments } from './level';
 export { resolveTarget } from './targeting';
 export type { TargetAnchor, TargetResolution } from './targeting';
-export type { AnchorDef, LevelDef, SolidDef } from './level';
+export type { AnchorDef, AnchorPathDef, LevelDef, SolidDef } from './level';
+export { anchorPathState } from './anchorPath';
+export type { AnchorPathState } from './anchorPath';
 export { hashSnapshot } from './hash';
 export { Simulation } from './Simulation';
 export type {
