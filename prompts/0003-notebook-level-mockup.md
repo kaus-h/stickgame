@@ -2,7 +2,7 @@
 
 - Date: 2026-10-07
 - Tool: ChatGPT image generation (StickGame project, chat "Generate Game Art Sheet")
-- Verdict: **Direction approved in principle (pending owner review).** The notebook medium reads instantly. Problems: the anchor hangs from a gallows (now banned in doc 07 §14); background landscape slightly too contrasty.
+- Verdict: **Direction approved; superseded by 0004.** The notebook medium reads instantly. Problems: too much blue ink (owner: black ink must be primary), the anchor hangs from a gallows (now banned in doc 07 §14), background landscape too contrasty.
 
 ## Prompt
 
