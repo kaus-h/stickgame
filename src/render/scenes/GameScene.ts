@@ -245,7 +245,7 @@ export class GameScene extends Phaser.Scene {
       const prev = previous.anchors[i] ?? a;
       const p = lerpV(prev, a, t);
       const active = current.rope?.anchor === i;
-      const targeted = current.aimAnchor === i;
+      const targeted = current.target?.valid === true && current.target.anchor === i;
       if (active || targeted) this.highlighter(g, p, i);
       this.drawAnchor(g, p, i);
     });
@@ -261,11 +261,21 @@ export class GameScene extends Phaser.Scene {
 
     this.drawPlayer(g, player, current, frame);
 
-    // Aim reticle.
+    // Aim reticle: pencil when nothing is selected, ink when a rope press would connect, red pen
+    // when an anchor is selected but the shot is invalid. The impact point gets a small cross.
+    const target = current.target;
+    if (target?.impact) {
+      const ip = { x: m(target.impact.x), y: m(target.impact.y) };
+      const c = m(0.1);
+      g.lineStyle(2, target.valid ? INK : RED_PEN, 0.95);
+      g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
+      g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
+    }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
       const r = m(0.18);
-      g.lineStyle(1.6, current.aimAnchor !== null ? INK : PENCIL, 0.9);
+      const tone = !target || target.anchor === null ? PENCIL : target.valid ? INK : RED_PEN;
+      g.lineStyle(1.6, tone, 0.9);
       g.strokeCircle(a.x, a.y, r);
       g.lineBetween(a.x - r * 1.6, a.y, a.x - r * 0.6, a.y);
       g.lineBetween(a.x + r * 0.6, a.y, a.x + r * 1.6, a.y);
@@ -438,7 +448,7 @@ export class GameScene extends Phaser.Scene {
     if (this.showDebug) {
       const p = current.player;
       this.debug
-        .setPosition(12, this.scale.height - 150)
+        .setPosition(12, this.scale.height - 170)
         .setText(
           [
             `sim ${String(stats.simHz)} Hz | steps/frame ${String(stats.stepsLastFrame)} | alpha ${stats.alpha.toFixed(2)}`,
@@ -448,9 +458,18 @@ export class GameScene extends Phaser.Scene {
             current.rope
               ? `rope anchor ${String(current.rope.anchor)} length ${current.rope.length.toFixed(3)} m`
               : 'rope —',
+            targetLine(current.target),
             `bodies ${String(stats.bodies)} joints ${String(stats.joints)}  [\`] toggle`,
           ].join('\n'),
         );
     }
   }
+}
+
+function targetLine(t: SimSnapshot['target']): string {
+  if (!t) return 'target —';
+  const where = t.impact ? ` impact ${t.impact.x.toFixed(2)}, ${t.impact.y.toFixed(2)}` : '';
+  const dist = t.distance === null ? '' : ` dist ${t.distance.toFixed(3)} m`;
+  const anchor = t.anchor === null ? '' : ` anchor ${String(t.anchor)}`;
+  return `target ${t.valid ? 'valid' : t.reason}${anchor}${where}${dist}`;
 }

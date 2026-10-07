@@ -8,10 +8,16 @@ export interface SolidDef {
   readonly points: readonly Vec2[];
 }
 
-/** A rope anchor. With `path`, it moves back and forth between `position` and `path.to`. */
+/**
+ * A rope anchor: a ring whose disc is the impact geometry. Where the aim lands on the disc is the
+ * mechanical impact point (doc 04: selection tolerance is separate from the impact point).
+ * With `path`, it moves back and forth between `position` and `path.to`.
+ */
 export interface AnchorDef {
   readonly id: string;
   readonly position: Vec2;
+  /** Impact disc radius, m. */
+  readonly radius: number;
   readonly path?: { readonly to: Vec2; readonly period: number };
 }
 
