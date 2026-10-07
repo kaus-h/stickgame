@@ -4,13 +4,27 @@
     "maxFrameDelta": 0.25
   },
   "sim": {
-    "gravity": 25,
+    "gravity": 30,
     "physicsSubsteps": 4,
-    "probe": {
-      "start": { "x": 2, "y": 2 },
-      "velocity": { "x": 6, "y": 0 },
-      "bounds": { "minX": 1, "maxX": 14, "floorY": 8 },
-      "restitution": 0.92
+    "player": {
+      "radius": 0.35,
+      "runSpeed": 7.5,
+      "groundAccel": 80,
+      "groundDecel": 100,
+      "airAccel": 40,
+      "airMaxSpeed": 7.5,
+      "jumpSpeed": 12.5,
+      "jumpCut": 0.45,
+      "fallGravityScale": 1.6,
+      "maxFallSpeed": 26,
+      "coyoteTicks": 6,
+      "jumpBufferTicks": 7
+    },
+    "rope": {
+      "minLength": 0.8,
+      "maxLength": 11,
+      "selectRadius": 1.1,
+      "steerAccel": 6
     }
   }
 }
