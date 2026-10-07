@@ -1,0 +1,17 @@
+node_modules/
+dist/
+coverage/
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+*.log
+.DS_Store
+Thumbs.db
+.env
+.env.*
+!.env.example
+.vite/
+native/ios/App/Pods/
+native/android/.gradle/
+native/android/app/build/
