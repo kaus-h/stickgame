@@ -256,6 +256,28 @@ export class GameScene extends Phaser.Scene {
       this.drawAnchor(g, p, i);
     });
 
+    // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
+    // that rope, so the next attempt can adjust (doc 08 candidate feedback; never blocks retry).
+    const last = current.lastDeath;
+    if (last) {
+      const at = { x: m(last.at.x), y: m(last.at.y) };
+      if (last.rope) {
+        dashedInk(
+          g,
+          { x: m(last.rope.point.x), y: m(last.rope.point.y) },
+          at,
+          m(0.12),
+          m(0.2),
+          1.2,
+          PENCIL,
+        );
+      }
+      const c = m(0.16);
+      g.lineStyle(2, RED_PEN, 0.45);
+      g.lineBetween(at.x - c, at.y - c, at.x + c, at.y + c);
+      g.lineBetween(at.x - c, at.y + c, at.x + c, at.y - c);
+    }
+
     // Rope: a dashed pen line from the hand to the impact point.
     const player = lerpV(previous.player.position, current.player.position, t);
     if (current.rope) {
@@ -454,7 +476,7 @@ export class GameScene extends Phaser.Scene {
     if (this.showDebug) {
       const p = current.player;
       this.debug
-        .setPosition(12, this.scale.height - 170)
+        .setPosition(12, this.scale.height - 190)
         .setText(
           [
             `sim ${String(stats.simHz)} Hz | steps/frame ${String(stats.stepsLastFrame)} | alpha ${stats.alpha.toFixed(2)}`,
@@ -465,6 +487,9 @@ export class GameScene extends Phaser.Scene {
               ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.locked ? 'locked' : 'paying out'} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
               : 'rope —',
             targetLine(current.target),
+            current.lastDeath
+              ? `last death ${current.lastDeath.cause}${current.lastDeath.solid ? ` (${current.lastDeath.solid})` : ''} at ${current.lastDeath.at.x.toFixed(2)}, ${current.lastDeath.at.y.toFixed(2)} speed ${Math.hypot(current.lastDeath.velocity.x, current.lastDeath.velocity.y).toFixed(1)}${current.lastDeath.rope ? ' tethered' : ''}`
+              : 'last death —',
             `bodies ${String(stats.bodies)} joints ${String(stats.joints)}  [\`] toggle`,
           ].join('\n'),
         );

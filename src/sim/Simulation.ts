@@ -45,8 +45,28 @@ export interface SimSnapshot {
   readonly anchors: readonly Vec2[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
+  /** The most recent death (survives the reset it caused). */
+  readonly lastDeath: DeathRecord | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
   readonly target: TargetResolution | null;
+}
+
+/**
+ * Machine-readable failure context (GMR-23): enough for telemetry, the death marker and later
+ * "what went wrong" feedback (last rope, speed, which hazard). Persists in the snapshot after the
+ * instant reset so feedback can draw it during the next attempt.
+ */
+export interface DeathRecord {
+  readonly tick: number;
+  readonly cause: DeathCause;
+  readonly at: Vec2;
+  readonly velocity: Vec2;
+  /** Level id of the hazard solid touched, for cause "hazard". */
+  readonly solid: string | null;
+  /** Ticks into the attempt when it ended. */
+  readonly attemptTicks: number;
+  /** The rope at the moment of death, if tethered. */
+  readonly rope: { readonly anchor: number; readonly point: Vec2; readonly length: number } | null;
 }
 
 export type DeathCause = 'hazard' | 'out-of-bounds';
@@ -55,7 +75,7 @@ export type SimEvent =
   | { readonly type: 'reset'; readonly tick: number }
   | { readonly type: 'jump'; readonly tick: number }
   | { readonly type: 'land'; readonly tick: number; readonly speed: number }
-  | { readonly type: 'death'; readonly tick: number; readonly cause: DeathCause; readonly at: Vec2 }
+  | ({ readonly type: 'death' } & DeathRecord)
   | { readonly type: 'exit'; readonly tick: number; readonly attemptTicks: number }
   | {
       readonly type: 'ropeAttach';
@@ -97,6 +117,9 @@ export class Simulation {
 
   private readonly body: number;
   private readonly anchorIds: number[];
+  /** Level solid id for each physics segment (levelSegments keeps solid order). */
+  private readonly segmentSolid: string[];
+  private lastDeath: DeathRecord | null = null;
 
   // Controller state (reset each attempt).
   private axis = 0;
@@ -128,6 +151,7 @@ export class Simulation {
   ) {
     physics.setGravity(vec2(0, tuning.gravity));
     physics.setGeometry(levelSegments(level));
+    this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({
       position: level.spawn,
       velocity: vec2(0, 0),
@@ -180,6 +204,7 @@ export class Simulation {
       rope: this.rope ? this.ropeSnapshot(s.position, anchors) : null,
       anchors,
       aim: this.aim,
+      lastDeath: this.lastDeath,
       target: this.target(s.position, anchors),
     };
   }
@@ -501,12 +526,13 @@ export class Simulation {
     this.wasGrounded = s.grounded;
     this.updateRopeLock(s.grounded, s.position);
 
-    if (this.physics.drainContacts().some((c) => c.kind === 'hazard')) {
-      this.die('hazard', s.position);
+    const hazard = this.physics.drainContacts().find((c) => c.kind === 'hazard');
+    if (hazard) {
+      this.die('hazard', s.position, s.velocity, this.segmentSolid[hazard.segment] ?? null);
       return;
     }
     if (s.position.y > this.level.killY) {
-      this.die('out-of-bounds', s.position);
+      this.die('out-of-bounds', s.position, s.velocity, null);
       return;
     }
 
@@ -524,9 +550,25 @@ export class Simulation {
   }
 
   /** Death is instant: no delay or UI may sit between death and retry (doc 13). */
-  private die(cause: DeathCause, at: Vec2): void {
+  private die(cause: DeathCause, at: Vec2, velocity: Vec2, solid: string | null): void {
     this.deathCount++;
-    this.events.push({ type: 'death', tick: this.tickCount, cause, at });
+    const rope = this.rope;
+    this.lastDeath = {
+      tick: this.tickCount,
+      cause,
+      at,
+      velocity,
+      solid,
+      attemptTicks: this.attemptTicks,
+      rope: rope
+        ? {
+            anchor: rope.anchor,
+            point: this.ropePoint(rope.anchor, rope.offset),
+            length: rope.length,
+          }
+        : null,
+    };
+    this.events.push({ type: 'death', ...this.lastDeath });
     this.reset();
   }
 }

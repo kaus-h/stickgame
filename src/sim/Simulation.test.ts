@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { vec2, type Intent } from '../core';
 import { KinematicPhysicsAdapter } from '../physics/backends/kinematic/KinematicPhysicsAdapter';
 import type { LevelDef } from './level';
+import type { SimEvent } from './Simulation';
 import { Simulation } from './Simulation';
 import type { SimTuning } from './tuning';
 
@@ -490,5 +491,117 @@ describe('tether', () => {
     const offset = (first.rope?.point.x ?? 0) - (first.anchors[0]?.x ?? 0);
     expect(offset).toBeCloseTo(0.2, 2);
     expect((later.rope?.point.x ?? 0) - (later.anchors[0]?.x ?? 0)).toBeCloseTo(offset, 12);
+  });
+});
+
+describe('death and reset loop', () => {
+  /** Ledge, an anchor over a lava pit, a thorn hazard on the far side. */
+  const deadly: LevelDef = {
+    ...level,
+    spawn: vec2(1, 7.65), // resting on the floor (radius 0.35)
+    killY: 20,
+    solids: [
+      box('ledge', 0, 8, 4, 2),
+      // High enough that a full swing from the ledge dips into it.
+      box('lava', -10, 9.6, 60, 1, 'hazard'),
+    ],
+    anchors: [
+      { id: 'hook', position: vec2(9, 2), radius: 0.4 },
+      { id: 'slider', position: vec2(6, 0), radius: 0.4, path: { to: vec2(12, 0), period: 2 } },
+    ],
+  };
+
+  it('death while tethered records the hazard, speed and rope, then clears the rope', () => {
+    const sim = make(deadly);
+    sim.step([
+      { type: 'ropeAim', target: vec2(9, 2) },
+      { type: 'move', axis: 1 },
+    ]);
+    run(sim, 20);
+    sim.step([{ type: 'ropePress' }]);
+    sim.step([{ type: 'jumpPress' }]);
+    // Hold on with a long rope: the swing dips into the lava.
+    let death: SimEvent | undefined;
+    for (let i = 0; i < 400 && !death; i++) {
+      sim.step([]);
+      death = sim.drainEvents().find((e) => e.type === 'death');
+    }
+    expect(death).toMatchObject({ cause: 'hazard', solid: 'lava' });
+    const last = sim.snapshot().lastDeath;
+    expect(last?.rope?.anchor).toBe(0);
+    expect(last?.rope?.length).toBeGreaterThan(0.8);
+    expect(Math.hypot(last?.velocity.x ?? 0, last?.velocity.y ?? 0)).toBeGreaterThan(1);
+    expect(sim.snapshot().rope).toBeNull();
+    expect(sim.stats().physics.joints).toBe(0);
+  });
+
+  it('out-of-bounds death is machine-readable with no hazard id', () => {
+    const open: LevelDef = { ...deadly, solids: [box('ledge', 0, 8, 4, 2)] };
+    const sim = make(open);
+    sim.step([{ type: 'move', axis: 1 }]);
+    run(sim, 300);
+    expect(sim.snapshot().lastDeath).toMatchObject({
+      cause: 'out-of-bounds',
+      solid: null,
+      rope: null,
+    });
+  });
+
+  it('control returns on the very next tick after death', () => {
+    const sim = make(deadly);
+    sim.step([{ type: 'move', axis: 1 }]);
+    let ticks = 0;
+    while (sim.snapshot().deaths === 0 && ticks++ < 600) sim.step([]);
+    expect(sim.snapshot().attemptTick).toBe(0);
+    sim.drainEvents();
+    sim.step([{ type: 'jumpPress' }]);
+    expect(sim.drainEvents().some((e) => e.type === 'jump')).toBe(true);
+  });
+
+  it('restores player, anchors and moving anchors to the authored state across 500 deaths', () => {
+    const fresh = make(deadly);
+    fresh.step([]);
+    const authored = fresh.snapshot();
+    const sim = make(deadly);
+    const script = (i: number): Intent[][] => [
+      [
+        { type: 'ropeAim', target: vec2(9, 2) },
+        { type: 'move', axis: 1 },
+      ],
+      [{ type: 'ropePress' }],
+      [{ type: 'jumpPress' }],
+      i % 2 ? [{ type: 'ropeRelease' }] : [],
+    ];
+    for (let i = 0; i < 500; i++) {
+      const steps = script(i);
+      let died = false;
+      for (let t = 0; t < 600 && !died; t++) {
+        sim.step(steps[t] ?? []);
+        died = sim.drainEvents().some((e) => e.type === 'death');
+      }
+      expect(died).toBe(true);
+      // Checked on the death tick itself: nothing of the attempt survives the reset.
+      expect(sim.snapshot().rope).toBeNull();
+      expect(sim.stats().physics.joints).toBe(0);
+      expect(sim.snapshot().attemptTick).toBe(0);
+    }
+    // First tick of a new attempt matches a fresh simulation's first tick exactly.
+    sim.step([{ type: 'move', axis: 0 }]);
+    const after = sim.snapshot();
+    expect(after.player.position).toEqual(authored.player.position);
+    expect(after.player.velocity).toEqual(authored.player.velocity);
+    expect(after.anchors).toEqual(authored.anchors);
+    expect(sim.stats().entities).toBe(fresh.stats().entities);
+  });
+
+  it('a reset costs well under a millisecond', () => {
+    const sim = make(deadly);
+    run(sim, 10);
+    const n = 2000;
+    const start = performance.now();
+    for (let i = 0; i < n; i++) sim.reset();
+    const perReset = (performance.now() - start) / n;
+    console.info(`reset cost: ${(perReset * 1000).toFixed(2)} µs`);
+    expect(perReset).toBeLessThan(0.1);
   });
 });
