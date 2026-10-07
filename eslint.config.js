@@ -11,14 +11,14 @@ export default tseslint.config(
       globals: { ...globals.browser },
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.cjs'],
+          allowDefaultProject: ['*.js', '*.cjs', 'scripts/*/*.mjs'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
     },
   },
   {
-    files: ['**/*.js', '**/*.cjs'],
+    files: ['**/*.js', '**/*.cjs', '**/*.mjs'],
     ...tseslint.configs.disableTypeChecked,
     languageOptions: { globals: { ...globals.node } },
   },

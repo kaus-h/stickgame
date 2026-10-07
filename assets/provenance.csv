@@ -1,2 +1,5 @@
 asset_path,source,prompt_id,generated_on,human_edits,reviewer,notes
+assets/concepts/0003-notebook-first.png,ChatGPT image generation (StickGame project),0003,2026-10-07,none,owner (superseded by 0004),Concept reference only; not a shipped game asset
 assets/concepts/0004-notebook-black-ink.png,ChatGPT image generation (StickGame project),0004,2026-10-07,none,owner (direction approved),Concept reference only; not a shipped game asset
+assets/sheets/0005-asset-sheet-v1.png,ChatGPT image generation (StickGame project),0005,2026-10-07,none,pending,Pipeline test sheet
+assets/art/test-0005/*,Sliced from assets/sheets/0005-asset-sheet-v1.png by scripts/art/slice-sheet.mjs,0005,2026-10-07,automatic crop and downscale only,pending,Pipeline test assets; not final art
