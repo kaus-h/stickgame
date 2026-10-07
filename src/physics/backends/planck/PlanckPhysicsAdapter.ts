@@ -188,6 +188,8 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
 
   resetBodies(): void {
     for (const id of [...this.ropes.keys()]) this.detachRope(id);
+    // Contacts from before the teleport no longer describe the body (Codex review on PR 3).
+    this.groundContacts.clear();
     for (const { def, body } of this.bodies) {
       body.setTransform(def.position, 0);
       body.setLinearVelocity(def.velocity);

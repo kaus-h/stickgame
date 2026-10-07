@@ -76,6 +76,17 @@ describe('player controller', () => {
     expect(s.player.position.y).toBeCloseTo(8 - 0.35, 2);
   });
 
+  it('reports the real impact speed on landing', () => {
+    const sim = make({ ...level, spawn: vec2(2, 2) });
+    let land: { speed: number } | undefined;
+    for (let i = 0; i < 120 && !land; i++) {
+      sim.step([]);
+      land = sim.drainEvents().find((e) => e.type === 'land');
+    }
+    // Dropped ~5.6 m: well above 10 m/s at impact.
+    expect(land?.speed).toBeGreaterThan(10);
+  });
+
   it('reaches run speed within a fraction of a second and stops crisply', () => {
     const sim = make();
     run(sim, 20);
@@ -342,7 +353,7 @@ describe('tether', () => {
     expect(swingPeak(1)).toBeLessThan(swingPeak(0) - 3);
   });
 
-  it('landing returns the rope to paying out; the next take-off locks a new length', () => {
+  it('a locked rope stays locked through a landing (no re-measuring the shot)', () => {
     const low: LevelDef = {
       ...pit,
       anchors: [...pit.anchors, { id: 'low', position: vec2(2.5, 6.4), radius: 0.4 }],
@@ -353,14 +364,57 @@ describe('tether', () => {
     for (let i = 0; i < 60 && sim.snapshot().player.velocity.y < 0; i++) sim.step([]);
     sim.step([{ type: 'ropePress' }]);
     expect(sim.snapshot().rope).toMatchObject({ anchor: 1, locked: true });
-    const first = sim.snapshot().rope?.length ?? 0;
+    const first = sim.snapshot().rope?.length;
     for (let i = 0; i < 120 && sim.snapshot().player.mode !== 'grounded'; i++) sim.step([]);
     expect(sim.snapshot().player.mode).toBe('grounded');
-    expect(sim.snapshot().rope?.locked).toBe(false);
+    expect(sim.snapshot().rope).toMatchObject({ locked: true, length: first });
     run(sim, 3, () => [{ type: 'move', axis: -1 }]);
     sim.step([{ type: 'jumpPress' }]);
-    untilLocked(sim);
-    expect(sim.snapshot().rope?.length).not.toBeCloseTo(first, 3);
+    run(sim, 10);
+    expect(sim.snapshot().rope).toMatchObject({ locked: true, length: first });
+    expect(sim.drainEvents().filter((e) => e.type === 'ropeLock')).toHaveLength(1);
+  });
+
+  it('taking off closer than minLength keeps paying out and locks at the measured distance', () => {
+    const near: LevelDef = {
+      ...pit,
+      anchors: [{ id: 'near', position: vec2(2.6, 6.6), radius: 0.4 }],
+    };
+    const sim = make(near);
+    run(sim, 5);
+    sim.step([
+      { type: 'ropeAim', target: vec2(2.6, 6.6) },
+      { type: 'move', axis: 1 },
+    ]);
+    sim.step([{ type: 'ropePress' }]);
+    expect(sim.snapshot().rope?.locked).toBe(false);
+    // Run right under the anchor (inside minLength) and jump there.
+    for (let i = 0; i < 40 && sim.snapshot().player.position.x < 2.4; i++) sim.step([]);
+    sim.drainEvents();
+    let lock: { length: number } | undefined;
+    let at = vec2(0, 0);
+    for (let i = 0; i < 60 && !lock; i++) {
+      sim.step(i === 0 ? [{ type: 'jumpPress' }] : []);
+      lock = sim.drainEvents().find((e) => e.type === 'ropeLock');
+      at = sim.snapshot().player.position;
+    }
+    expect(lock?.length).toBeGreaterThanOrEqual(tuning.rope.minLength);
+    const p = sim.snapshot().rope?.point ?? vec2(0, 0);
+    expect(lock?.length).toBeCloseTo(Math.hypot(at.x - p.x, at.y - p.y), 9);
+  });
+
+  it('air control still works while a locked rope is slack', () => {
+    const sim = make(pit);
+    run(sim, 20, aimAndRun);
+    sim.step([{ type: 'jumpPress' }]);
+    run(sim, 4);
+    sim.step([{ type: 'ropePress' }]);
+    expect(sim.snapshot().rope?.taut).toBe(false); // rising toward the anchor: slack
+    const vx = sim.snapshot().player.velocity.x;
+    sim.step([{ type: 'move', axis: -1 }]);
+    run(sim, 2);
+    expect(sim.snapshot().rope?.taut).toBe(false);
+    expect(sim.snapshot().player.velocity.x).toBeLessThan(vx - 1);
   });
 
   it('early and late connections give different swing radii', () => {

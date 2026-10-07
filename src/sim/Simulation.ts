@@ -284,7 +284,8 @@ export class Simulation {
     const dt = SIM_DT;
     const target = this.axis * p.runSpeed;
 
-    const swinging = this.rope?.locked === true && !s.grounded;
+    // A taut locked rope owns the motion; a slack one leaves the normal air controller in charge.
+    const swinging = !s.grounded && this.ropeTaut(s.position);
     if (swinging) {
       // On the rope, gravity and the shot drive the swing; input only steers a little.
       const v = this.steer(s.position, vec2(vx, vy));
@@ -373,7 +374,7 @@ export class Simulation {
   /**
    * Owner decision 2026-10-07 (doc 04 amendment): while grounded the rope pays out freely up to
    * maxLength, so running carries the player under or past the anchor; the length locks to the
-   * distance at the moment the player becomes airborne.
+   * distance at the moment the player becomes airborne. Only used before the first lock.
    */
   private leash(): void {
     const rope = this.rope;
@@ -383,12 +384,14 @@ export class Simulation {
     rope.locked = false;
   }
 
-  /** Fix the swing radius. Run and jump momentum carries into the swing at the taut catch. */
-  private lock(distance: number): void {
+  /**
+   * Fix the swing radius to exactly the measured distance (never clamped: canon says the rope
+   * is the distance). Run and jump momentum carries into the swing at the taut catch.
+   */
+  private lock(length: number): void {
     const rope = this.rope;
     if (!rope) return;
     const r = this.tuning.rope;
-    const length = Math.min(r.maxLength, Math.max(r.minLength, distance));
     if (rope.id >= 0) this.physics.detachRope(rope.id);
     rope.id = this.physics.attachRope(this.body, this.ropeAnchor(rope), length, {
       catchRetention: r.catchRetention,
@@ -408,16 +411,19 @@ export class Simulation {
     };
   }
 
-  /** After each step: lock on take-off, return to a leash on landing. */
+  /**
+   * After each step: a paying-out rope locks on the first airborne tick. Once locked it stays
+   * locked until release, including across landings, so a shot cannot be re-measured afterwards
+   * (no rope shortening/extension, doc 12). If the player leaves the ground closer than minLength,
+   * the rope keeps paying out and locks on the first airborne tick at or beyond minLength, at the
+   * distance measured then.
+   */
   private updateRopeLock(grounded: boolean, position: Vec2): void {
     const rope = this.rope;
-    if (!rope) return;
-    if (!rope.locked && !grounded) {
-      const p = this.ropePoint(rope.anchor, rope.offset);
-      this.lock(Math.sqrt((position.x - p.x) ** 2 + (position.y - p.y) ** 2));
-    } else if (rope.locked && grounded) {
-      this.leash();
-    }
+    if (!rope || rope.locked || grounded) return;
+    const p = this.ropePoint(rope.anchor, rope.offset);
+    const distance = Math.sqrt((position.x - p.x) ** 2 + (position.y - p.y) ** 2);
+    if (distance >= this.tuning.rope.minLength) this.lock(distance);
   }
 
   private detach(): void {
@@ -520,13 +526,19 @@ export class Simulation {
 
   private afterPhysics(): void {
     const s = this.physics.bodyState(this.body);
+    const contacts = this.physics.drainContacts();
     if (s.grounded && !this.wasGrounded) {
-      this.events.push({ type: 'land', tick: this.tickCount, speed: Math.abs(s.velocity.y) });
+      // The solver has already removed the impact velocity; contacts carry the closing speed.
+      const speed = contacts.reduce(
+        (max, c) => (c.normal.y < -0.7 ? Math.max(max, c.speed) : max),
+        0,
+      );
+      this.events.push({ type: 'land', tick: this.tickCount, speed });
     }
     this.wasGrounded = s.grounded;
     this.updateRopeLock(s.grounded, s.position);
 
-    const hazard = this.physics.drainContacts().find((c) => c.kind === 'hazard');
+    const hazard = contacts.find((c) => c.kind === 'hazard');
     if (hazard) {
       this.die('hazard', s.position, s.velocity, this.segmentSolid[hazard.segment] ?? null);
       return;

@@ -329,9 +329,9 @@ export class GameScene extends Phaser.Scene {
     for (let k = 0; k < 3; k++) {
       const dy = (k - 1) * m(0.16);
       g.fillRoundedRect(
-        p.x - m(0.5) + k * 3,
+        p.x - m(0.65) + k * 3,
         p.y - m(0.12) + dy + ((seed + k) % 2) * 2,
-        m(1),
+        m(1.3),
         m(0.2),
         m(0.08),
       );
@@ -339,7 +339,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   private drawAnchor(g: Phaser.GameObjects.Graphics, p: Pt, i: number): void {
-    const r = m(0.26);
+    // The ring is the impact disc: art matches collision (AGENTS.md, Codex review on PR 6).
+    const r = m(this.opts.level.anchors[i]?.radius ?? 0.4);
     const ring: Pt[] = [];
     for (let k = 0; k <= 20; k++) {
       const a = (k / 20) * Math.PI * 2;
