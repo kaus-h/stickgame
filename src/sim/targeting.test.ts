@@ -5,7 +5,13 @@ import { KinematicPhysicsAdapter } from '../physics/backends/kinematic/Kinematic
 import { resolveTarget, type TargetAnchor } from './targeting';
 import type { RopeTuning } from './tuning';
 
-const rope: RopeTuning = { minLength: 0.8, maxLength: 11, selectRadius: 1.1, steerAccel: 6 };
+const rope: RopeTuning = {
+  minLength: 0.8,
+  maxLength: 11,
+  selectRadius: 1.1,
+  steerAccel: 6,
+  steerEnergyHeight: 0.6,
+};
 type Ray = (from: Vec2, to: Vec2) => RayHit | null;
 const noHit: Ray = () => null;
 const player = vec2(0, 0);

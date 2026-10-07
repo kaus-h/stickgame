@@ -16,10 +16,14 @@ export interface PlayerSnapshot {
 
 export interface RopeSnapshot {
   readonly anchor: number;
-  /** Mechanical impact point in world space this tick. */
+  /** Mechanical impact point in world space this tick (moves with a moving anchor). */
   readonly point: Vec2;
-  /** Rope length fixed at connection time. */
+  /** Rope length fixed at connection time: the swing radius. */
   readonly length: number;
+  /** True when the player is on the rope circle; false when the rope hangs slack. */
+  readonly taut: boolean;
+  /** Tick the rope connected on. */
+  readonly attachedTick: number;
 }
 
 /** Immutable view of the simulation after a step; render interpolates between two of these. */
@@ -96,7 +100,17 @@ export class Simulation {
   private jumpHeld = false;
   private wasGrounded = false;
   private aim: Vec2 | null = null;
-  private rope: { id: number; anchor: number; length: number } | null = null;
+  private rope: {
+    id: number;
+    anchor: number;
+    offset: Vec2;
+    length: number;
+    tick: number;
+    /** Swing energy per unit mass at connection (steering may add a capped amount). */
+    energy: number;
+  } | null = null;
+  /** Rope presses and releases in input order, applied once anchors are placed for the tick. */
+  private ropeActions: ('press' | 'release')[] = [];
 
   constructor(
     private readonly tuning: SimTuning,
@@ -118,6 +132,7 @@ export class Simulation {
     if (intents.some((i) => i.type === 'restart')) this.reset();
 
     this.moveAnchors();
+    this.applyRopeActions();
     this.control();
     this.physics.step(SIM_DT, this.tuning.physicsSubsteps);
     this.tickCount++;
@@ -134,7 +149,8 @@ export class Simulation {
     this.lastGroundedTick = -1_000;
     this.jumpBufferedTick = -1_000;
     this.wasGrounded = false;
-    this.rope = null;
+    this.rope = null; // resetBodies already removed the physics rope
+    this.ropeActions = [];
     this.events.push({ type: 'reset', tick: this.tickCount });
   }
 
@@ -152,13 +168,7 @@ export class Simulation {
         mode: this.rope ? 'tethered' : s.grounded ? 'grounded' : 'air',
         facing: this.facing,
       },
-      rope: this.rope
-        ? {
-            anchor: this.rope.anchor,
-            point: anchors[this.rope.anchor] as Vec2,
-            length: this.rope.length,
-          }
-        : null,
+      rope: this.rope ? this.ropeSnapshot(s.position, anchors) : null,
       anchors,
       aim: this.aim,
       target: this.target(s.position, anchors),
@@ -221,7 +231,11 @@ export class Simulation {
         this.aim = intent.target;
         break;
       case 'ropePress':
+        this.ropeActions.push('press');
+        break;
       case 'ropeRelease':
+        this.ropeActions.push('release');
+        break;
       case 'restart':
       case 'pause':
         break;
@@ -235,6 +249,14 @@ export class Simulation {
     let vy = s.velocity.y;
     const dt = SIM_DT;
     const target = this.axis * p.runSpeed;
+
+    const swinging = this.rope !== null && !s.grounded;
+    if (swinging) {
+      // On the rope, gravity and the shot drive the swing; input only steers a little.
+      const v = this.steer(s.position, vec2(vx, vy));
+      this.physics.setBodyVelocity(this.body, v);
+      return;
+    }
 
     if (s.grounded) {
       this.lastGroundedTick = this.tickCount;
@@ -263,6 +285,121 @@ export class Simulation {
     if (vy > 0) vy += this.tuning.gravity * (p.fallGravityScale - 1) * dt;
     vy = Math.min(vy, p.maxFallSpeed);
     this.physics.setBodyVelocity(this.body, vec2(vx, vy));
+  }
+
+  // --- rope ------------------------------------------------------------------------------------
+
+  /**
+   * Hold-to-tether. A press tries to connect once, on this exact tick: the rope length is the
+   * distance to the impact point now (doc 04). An invalid press reports why and does nothing else;
+   * holding the button does not retry. Release removes the rope and keeps the velocity as is.
+   */
+  private applyRopeActions(): void {
+    const actions = this.ropeActions;
+    this.ropeActions = [];
+    for (const action of actions) {
+      if (action === 'release') {
+        this.detach();
+        continue;
+      }
+      if (this.rope) continue; // already tethered: a second press cannot re-shoot mid-swing
+      const s = this.physics.bodyState(this.body);
+      const anchors = this.anchorIds.map((id) => this.physics.anchorPosition(id));
+      const target = this.target(s.position, anchors);
+      if (!target) continue;
+      if (!target.valid) {
+        this.events.push({
+          type: 'ropeInvalid',
+          tick: this.tickCount,
+          reason: target.reason,
+          at: target.impact ?? this.aim ?? s.position,
+        });
+        continue;
+      }
+      const id = this.physics.attachRope(
+        this.body,
+        {
+          kind: 'kinematic',
+          anchor: this.anchorIds[target.anchor] as number,
+          offset: target.offset,
+        },
+        target.distance,
+      );
+      this.rope = {
+        id,
+        anchor: target.anchor,
+        offset: target.offset,
+        length: target.distance,
+        tick: this.tickCount,
+        energy: this.energy(s.position, s.velocity),
+      };
+      this.events.push({
+        type: 'ropeAttach',
+        tick: this.tickCount,
+        anchor: target.anchor,
+        length: target.distance,
+      });
+    }
+  }
+
+  private detach(): void {
+    if (!this.rope) return;
+    this.physics.detachRope(this.rope.id);
+    this.rope = null;
+    const v = this.physics.bodyState(this.body).velocity;
+    this.events.push({ type: 'ropeRelease', tick: this.tickCount, velocity: v });
+  }
+
+  /** Mechanical energy per unit mass; +y is down, so height is -y. */
+  private energy(p: Vec2, v: Vec2): number {
+    return 0.5 * (v.x * v.x + v.y * v.y) - this.tuning.gravity * p.y;
+  }
+
+  /**
+   * Small tangential push toward the held direction, only while the rope is taut and only up to
+   * steerEnergyHeight of energy above the energy at connection (no unlimited pumping, doc 09 B3).
+   */
+  private steer(p: Vec2, v: Vec2): Vec2 {
+    const rope = this.rope;
+    if (!rope || this.axis === 0) return v;
+    const pivot = this.ropePoint(rope.anchor, rope.offset);
+    const rx = p.x - pivot.x;
+    const ry = p.y - pivot.y;
+    const dist = Math.sqrt(rx * rx + ry * ry);
+    if (dist < rope.length - 1e-3 || dist < 1e-9) return v; // slack: no rope to push against
+    // Tangent pointing the way the input asks for.
+    let tx = -ry / dist;
+    let ty = rx / dist;
+    if (tx * this.axis < 0) {
+      tx = -tx;
+      ty = -ty;
+    }
+    if (Math.abs(tx) < 0.2) return v; // near horizontal rope: no meaningful sideways steer
+    const dv = this.tuning.rope.steerAccel * SIM_DT;
+    const next = vec2(v.x + tx * dv, v.y + ty * dv);
+    const cap = rope.energy + this.tuning.gravity * this.tuning.rope.steerEnergyHeight;
+    return this.energy(p, next) <= cap || this.energy(p, next) <= this.energy(p, v) ? next : v;
+  }
+
+  private ropePoint(anchor: number, offset: Vec2): Vec2 {
+    const a = this.physics.anchorPosition(this.anchorIds[anchor] as number);
+    return vec2(a.x + offset.x, a.y + offset.y);
+  }
+
+  private ropeSnapshot(player: Vec2, anchors: readonly Vec2[]): RopeSnapshot | null {
+    const rope = this.rope;
+    if (!rope) return null;
+    const a = anchors[rope.anchor] as Vec2;
+    const point = vec2(a.x + rope.offset.x, a.y + rope.offset.y);
+    const dx = player.x - point.x;
+    const dy = player.y - point.y;
+    return {
+      anchor: rope.anchor,
+      point,
+      length: rope.length,
+      taut: Math.sqrt(dx * dx + dy * dy) >= rope.length - 1e-3,
+      attachedTick: rope.tick,
+    };
   }
 
   private cutJump(): void {
