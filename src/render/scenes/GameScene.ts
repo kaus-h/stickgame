@@ -4,6 +4,7 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
 import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
+import { FailureFeedback } from '../feedback/FailureFeedback';
 import { drawHero } from '../hero/drawHero';
 import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
@@ -55,6 +56,10 @@ export class GameScene extends Phaser.Scene {
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
   private readonly routed = new WeakSet<Phaser.GameObjects.GameObject>();
   private splats: Splat[] = [];
+  private ghostG!: Phaser.GameObjects.Graphics;
+  private causeLabel!: Phaser.GameObjects.Text;
+  private feedback = new FailureFeedback();
+  private reducedMotion = false;
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
   private camCenter: Vec2 = vec2(0, 0);
@@ -80,7 +85,17 @@ export class GameScene extends Phaser.Scene {
   create(): void {
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
+    // Previous-attempt ghost layer: drawn with the normal hero code, faded as a whole.
+    this.ghostG = this.add.graphics().setAlpha(0.22);
     this.dynamic = this.add.graphics();
+    this.causeLabel = this.add
+      .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
+      .setOrigin(0.5, 1)
+      .setVisible(false);
+    this.feedback = new FailureFeedback();
+    this.reducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
@@ -97,6 +112,7 @@ export class GameScene extends Phaser.Scene {
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
+      this.feedback.onEvents(events);
       for (const e of events) {
         if (e.type === 'death')
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
@@ -342,6 +358,8 @@ export class GameScene extends Phaser.Scene {
       if (v) this.drawAnchorHeading(g, p, v, i);
     });
 
+    this.drawPreviousAttempt(current, frame);
+
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
     // that rope, so the next attempt can adjust (doc 08 candidate feedback; never blocks retry).
     const last = current.lastDeath;
@@ -405,16 +423,72 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(a.x, a.y + r * 0.6, a.x, a.y + r * 1.6);
     }
 
-    // Death ink splats: short punctuation that never delays the retry.
-    this.splats = this.splats.filter((s) => (s.age += dt) < 0.6);
-    for (const s of this.splats) {
-      const fade = 1 - s.age / 0.6;
-      g.fillStyle(INK, 0.8 * fade);
-      for (let k = 0; k < 9; k++) {
-        const ang = k * 0.7 + s.seed;
-        const d = m(0.15 + (0.5 * ((k * 37 + s.seed) % 10)) / 10) * (0.6 + s.age);
-        g.fillCircle(s.x + Math.cos(ang) * d, s.y + Math.sin(ang) * d, m(0.06 + 0.05 * (k % 3)));
+    // Death punctuation: a fast pen scribble-out over the spot (0.45 s), drawn while the next
+    // attempt is already playing, so it never delays control. Reduced motion: no growth, quick fade.
+    const life = this.reducedMotion ? 0.25 : 0.45;
+    this.splats = this.splats.filter((sp) => (sp.age += dt) < life);
+    for (const sp of this.splats) {
+      const t = sp.age / life;
+      const grow = this.reducedMotion ? 1 : Math.min(1, t * 3);
+      g.lineStyle(2.2 * this.lineScale(), INK, 0.85 * (1 - t));
+      g.beginPath();
+      const r = m(0.45) * grow;
+      for (let k = 0; k <= 14; k++) {
+        const ang = k * 2.4 + sp.seed;
+        const rr = r * (0.35 + 0.65 * (((k * 37 + sp.seed) % 10) / 10));
+        const x = sp.x + Math.cos(ang) * rr;
+        const y = sp.y + Math.sin(ang) * rr * 0.8;
+        if (k === 0) g.moveTo(x, y);
+        else g.lineTo(x, y);
       }
+      g.strokePath();
+    }
+  }
+
+  /**
+   * The previous attempt, drawn faintly so the player can compare (GMR-43): its path as pencil
+   * dots, every rope impact as a small pencil target, and a ghost hero replaying it in time with
+   * the current attempt. A cause label appears only after repeated deaths at one spot.
+   */
+  private drawPreviousAttempt(current: SimSnapshot, frame: RenderFrame): void {
+    this.feedback.observe(current);
+    const g = this.dynamic;
+    const prev = this.feedback.previous;
+    const ghost = this.ghostG;
+    ghost.clear();
+    if (prev) {
+      g.fillStyle(PENCIL, 0.35);
+      for (let i = 0; i < prev.path.length; i += 4) {
+        const p = prev.path[i] as Vec2;
+        g.fillCircle(m(p.x), m(p.y), 1.4 * this.lineScale());
+      }
+      g.lineStyle(1.4 * this.lineScale(), PENCIL, 0.7);
+      for (const p of prev.impacts) {
+        g.strokeCircle(m(p.x), m(p.y), m(0.14));
+        g.fillStyle(PENCIL, 0.8).fillCircle(m(p.x), m(p.y), m(0.035));
+      }
+      const at = this.reducedMotion ? null : this.feedback.ghostAt(current.attemptTick);
+      if (at) {
+        const next = this.feedback.ghostAt(current.attemptTick + 1) ?? at;
+        drawHero(ghost, {
+          c: { x: m(at.x), y: m(at.y) },
+          facing: next.x >= at.x ? 1 : -1,
+          velocity: vec2((next.x - at.x) * 60, (next.y - at.y) * 60),
+          mode: 'air',
+          hand: null,
+          time: frame.current.tick / 60,
+          line: this.lineScale(),
+        });
+      }
+    }
+    const label = this.feedback.label();
+    if (label && current.attemptTick < 180) {
+      this.causeLabel
+        .setText(label.text)
+        .setPosition(m(label.at.x), m(label.at.y) - m(0.35))
+        .setVisible(true);
+    } else {
+      this.causeLabel.setVisible(false);
     }
   }
 
