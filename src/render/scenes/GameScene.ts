@@ -4,19 +4,15 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
 import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
-import { dashedInk, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
+import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
+import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
-const RULE = 0x9ec2df;
-const MARGIN = 0xe28a8a;
 const INK = 0x16161a;
 const PENCIL = 0x8a8a8a;
 const RED_PEN = 0xc5302a;
 const HIGHLIGHTER = 0xffe14a;
-
-/** College-ruled spacing in world meters; world-anchored so it doubles as a height ruler. */
-const RULE_SPACING = 0.5;
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
 const lerpV = (a: Vec2, b: Vec2, t: number): Pt => ({
@@ -50,6 +46,9 @@ export class GameScene extends Phaser.Scene {
   private timer!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
   private overlay: DebugOverlay | null = null;
+  private frameG!: Phaser.GameObjects.Graphics;
+  private uiCamera!: Phaser.Cameras.Scene2D.Camera;
+  private readonly routed = new WeakSet<Phaser.GameObjects.GameObject>();
   private splats: Splat[] = [];
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
@@ -77,6 +76,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
     this.dynamic = this.add.graphics();
+    this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
+    drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
     const hand = { fontFamily: '"Caveat", "Patrick Hand", cursive', color: '#16161a' };
     this.timer = this.add
@@ -96,7 +97,12 @@ export class GameScene extends Phaser.Scene {
       }
     });
     this.events.once('shutdown', () => this.unsubscribe?.());
+    // HUD and page frame render through their own unzoomed camera; the world camera zooms.
+    this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.routeCameras();
     this.scale.on('resize', () => {
+      drawFrame(this.frameG, this.scale.height);
+      this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
     });
     this.fitCamera();
@@ -104,7 +110,21 @@ export class GameScene extends Phaser.Scene {
     this.camCenter = spawn;
   }
 
+  /**
+   * Screen-fixed objects (scroll factor 0) belong to the UI camera, everything else to the world
+   * camera. Runs every frame so objects created later (overlays, touch controls) are routed too.
+   */
+  private routeCameras(): void {
+    for (const obj of this.children.list) {
+      if (this.routed.has(obj)) continue;
+      this.routed.add(obj);
+      const screen = (obj as unknown as { scrollFactorX?: number }).scrollFactorX === 0;
+      (screen ? this.cameras.main : this.uiCamera).ignore(obj);
+    }
+  }
+
   override update(time: number, deltaMs: number): void {
+    this.routeCameras();
     const frame = this.opts.source.frame(deltaMs / 1000);
     const dt = Math.min(0.05, (time - this.lastTime) / 1000 || deltaMs / 1000);
     this.lastTime = time;
@@ -146,24 +166,10 @@ export class GameScene extends Phaser.Scene {
 
   private drawStaticPage(): void {
     const { bounds, solids, anchors } = this.opts.level;
+    // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
+    addPaper(this, this.opts.level);
     const g = this.add.graphics();
-    const x0 = m(bounds.minX - 20);
-    const x1 = m(bounds.maxX + 20);
-    const y0 = m(bounds.minY - 20);
-    const y1 = m(bounds.maxY + 20);
-    g.fillStyle(PAPER, 1).fillRect(x0, y0, x1 - x0, y1 - y0);
-
-    // College ruling, world-anchored.
-    g.lineStyle(1.2, RULE, 0.5);
-    const first = Math.ceil((bounds.minY - 20) / RULE_SPACING) * RULE_SPACING;
-    for (let y = first; y < bounds.maxY + 20; y += RULE_SPACING) g.lineBetween(x0, m(y), x1, m(y));
-
-    // Margin and punched holes at the start of the page.
-    const marginX = m(bounds.minX + 0.6);
-    g.lineStyle(2, MARGIN, 0.75).lineBetween(marginX, y0, marginX, y1);
-    g.fillStyle(0xd9d3c6, 1);
-    for (let y = bounds.minY; y < bounds.maxY; y += 5)
-      g.fillCircle(m(bounds.minX + 0.25), m(y + 2.5), m(0.2));
+    drawDoodles(g, this.opts.level);
 
     // Moving-anchor tracks: faint pencil dots telegraph the motion.
     for (const a of anchors) {
@@ -230,7 +236,58 @@ export class GameScene extends Phaser.Scene {
         1,
         seed,
       );
+      if (s.kind === 'solid') this.drawWalkableEdges(g, s.points, seed);
     });
+
+    // Bake everything static into world-space texture tiles (a few quads per frame).
+    const pad = 4;
+    bakeGraphics(
+      this,
+      g,
+      {
+        x: m(bounds.minX - pad),
+        y: m(bounds.minY - pad),
+        w: m(bounds.maxX - bounds.minX + pad * 2),
+        h: m(bounds.maxY - bounds.minY + pad * 2),
+      },
+      -50,
+    );
+  }
+
+  /**
+   * Walkable tops read first (doc 07 §13): a heavier second pen pass on upward-facing edges, and a
+   * band of tighter hatching just under them so platforms have a lit top and shaded body.
+   */
+  private drawWalkableEdges(
+    g: Phaser.GameObjects.Graphics,
+    points: readonly Vec2[],
+    seed: number,
+  ): void {
+    const n = points.length;
+    for (let i = 0; i < n; i++) {
+      const a = points[i] as Vec2;
+      const b = points[(i + 1) % n] as Vec2;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 0.3) continue;
+      // Polygons are authored clockwise in +y-down space, so the outward normal is (dy, -dx).
+      const ny = -dx / len;
+      if (ny > -0.7) continue;
+      const pts = [
+        { x: m(a.x), y: m(a.y) },
+        { x: m(b.x), y: m(b.y) },
+      ];
+      strokeInk(g, wobble(pts, seed + i * 5, m(0.018), m(0.35)), 4.2, INK, 1, seed + i);
+      g.lineStyle(1.1, INK, 0.55);
+      const step = 0.11;
+      for (let t = step / 2; t < len; t += step) {
+        const x = a.x + (dx * t) / len;
+        const y = a.y + (dy * t) / len;
+        const depth = 0.12 + 0.1 * hash(seed + t * 13);
+        g.lineBetween(m(x), m(y + 0.06), m(x - 0.07), m(y + 0.06 + depth));
+      }
+    }
   }
 
   /** Thorny teeth along the upward-facing edges of a hazard, so danger reads by silhouette. */
@@ -248,9 +305,11 @@ export class GameScene extends Phaser.Scene {
       let k = 0;
       for (let x = left + 0.1; x < right - 0.3; x += 0.42, k++) {
         const h = 0.28 + (0.18 * ((seed * 13 + k * 7) % 5)) / 5;
-        const p0 = { x: m(x), y: m(a.y) };
-        const p1 = { x: m(x + 0.16), y: m(a.y - h) };
-        const p2 = { x: m(x + 0.32), y: m(a.y) };
+        // Teeth sit inside the collision shape (tips on its top edge): the art never extends past
+        // the lethal surface, so touching the drawing always means touching the hazard.
+        const p0 = { x: m(x), y: m(a.y + h) };
+        const p1 = { x: m(x + 0.16), y: m(a.y) };
+        const p2 = { x: m(x + 0.32), y: m(a.y + h) };
         g.fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
         strokeInk(g, wobble([p0, p1, p2], seed + k, 0.8, m(0.1)), 1.8, INK, 1, k);
       }
