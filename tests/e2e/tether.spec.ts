@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 
 interface Snap {
+  tick: number;
   player: { position: { x: number; y: number }; velocity: { x: number; y: number }; mode: string };
   rope: { length: number; point: { x: number; y: number }; taut: boolean } | null;
   target: { valid: boolean } | null;
@@ -35,19 +36,36 @@ test('run, jump, tether to the first anchor, swing and release in the lab', asyn
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
+  // The dev probe is published before Phaser finishes booting and binds DOM input.
+  await page.waitForFunction(
+    () =>
+      (
+        window as unknown as { __stickgame: { resources(): { cameras: number } } }
+      ).__stickgame.resources().cameras === 2,
+  );
   await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus without aiming
   await page.mouse.up();
   await page.waitForTimeout(400);
 
   const anchor = { x: 13.5, y: 2 };
+  const spawnX = (await snap(page)).player.position.x;
   await page.keyboard.down('KeyD');
+  await expect.poll(async () => (await snap(page)).player.position.x).toBeGreaterThan(spawnX + 0.2);
   let attached = false;
+  let jumpStartedTick: number | null = null;
   for (let i = 0; i < 600 && !attached; i++) {
     const s = await snap(page);
-    if (s.player.mode === 'grounded' && s.player.position.x > 4) {
+    if (jumpStartedTick === null && s.player.mode === 'grounded' && s.player.position.x > 4) {
       await page.keyboard.down('Space');
-      await page.waitForTimeout(120);
+      jumpStartedTick = s.tick;
+    } else if (
+      jumpStartedTick !== null &&
+      s.tick > jumpStartedTick + 1 &&
+      s.player.velocity.y >= 0
+    ) {
+      // A full jump clears the 2 m step. Wall time must not decide a simulation jump's height.
       await page.keyboard.up('Space');
+      jumpStartedTick = null;
     }
     const a = await toScreen(page, anchor.x, anchor.y);
     await page.mouse.move(a.x, a.y);
@@ -63,6 +81,7 @@ test('run, jump, tether to the first anchor, swing and release in the lab', asyn
     await page.waitForTimeout(16);
   }
   expect(attached).toBe(true);
+  if (jumpStartedTick !== null) await page.keyboard.up('Space');
 
   const onRope = await snap(page);
   expect(onRope.rope).not.toBeNull();

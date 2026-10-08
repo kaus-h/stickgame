@@ -86,15 +86,15 @@ async function start(): Promise<void> {
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();
+      const state = runtime.sim.snapshot();
       if (releaseTrace) {
-        const state = runtime.sim.snapshot();
         releaseTrace.before.set(state.tick, state.player.velocity);
         if (releaseTrace.before.size > 128) {
           const first = releaseTrace.before.keys().next().value;
           if (first !== undefined) releaseTrace.before.delete(first);
         }
       }
-      sfx.onFrame(runtime.sim.snapshot());
+      sfx.onFrame(state);
     },
   });
   runtime.onEvents((events) => {
