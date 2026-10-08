@@ -12,6 +12,8 @@ export interface GameRuntimeDeps {
   readonly platform: PlatformServices;
   /** Wall-clock milliseconds, used only to measure cost. Never fed into the simulation. */
   readonly now: () => number;
+  /** Called before each simulation tick, e.g. so device adapters can re-aim under a moving camera. */
+  readonly beforeTick?: () => void;
 }
 
 const FRAME_WINDOW = 120;
@@ -121,6 +123,7 @@ export class GameRuntime implements FrameSource {
   private step(): void {
     const start = this.deps.now();
     this.previous = this.current;
+    this.deps.beforeTick?.();
     this.sim.step(this.deps.intents.poll(this.sim.snapshot().tick));
     this.current = this.sim.snapshot();
     this.simStepMsTotal += this.deps.now() - start;
