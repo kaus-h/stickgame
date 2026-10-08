@@ -26,8 +26,11 @@ async function start(): Promise<void> {
     },
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
   );
+  // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
+  const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
+  const tuning = parseRuntimeTuning(runtimeTuning);
   const runtime = new GameRuntime({
-    tuning: parseRuntimeTuning(runtimeTuning),
+    tuning,
     level,
     physics: new KinematicPhysicsAdapter(),
     intents,
@@ -37,7 +40,20 @@ async function start(): Promise<void> {
       mapper.beforeTick();
     },
   });
-  scene = new GameScene({ level, source: runtime, onEvents: (l) => runtime.onEvents(l) });
+  scene = new GameScene({
+    level,
+    source: runtime,
+    onEvents: (l) => runtime.onEvents(l),
+    debug,
+  });
+  if (debug) {
+    // Loaded on demand so the panel never weighs on the production bundle.
+    void import('../../tools/tuning-panel').then(({ mountTuningPanel }) =>
+      mountTuningPanel(tuning, (t) => {
+        runtime.sim.retune(t.sim);
+      }),
+    );
+  }
 
   // ?fps=30 (or any value) caps the display loop to test frame-rate independence.
   const fpsLimit = Number(new URLSearchParams(window.location.search).get('fps') ?? 0);
