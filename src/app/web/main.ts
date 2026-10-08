@@ -79,6 +79,7 @@ async function start(): Promise<void> {
       __stickgame: {
         snapshot: () => runtime.sim.snapshot(),
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
+        screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
       },
     });
   }
