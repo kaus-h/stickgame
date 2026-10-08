@@ -46,6 +46,7 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
     t
       ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}`
       : 'target —',
+    anchorLine(s),
     s.contacts.length
       ? `contacts ${s.contacts.map((c) => `${c.solid}${c.kind === 'hazard' ? '!' : ''} n(${f2(c.normal.x)},${f2(c.normal.y)}) ${c.speed.toFixed(1)}`).join('  ')}`
       : 'contacts —',
@@ -53,6 +54,16 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
       ? `last death #${String(d.tick)} ${d.cause}${d.solid ? ` (${d.solid})` : ''} at ${v2(d.at)} ${speed(d.velocity).toFixed(1)} m/s${d.rope ? ` tethered a${String(d.rope.anchor)}` : ''}`
       : 'last death —',
   ];
+}
+
+/** Path state of the anchor in play (rope, else target), for moving-anchor debugging (GMR-26). */
+function anchorLine(s: SimSnapshot): string {
+  const i = s.rope?.anchor ?? s.target?.anchor ?? null;
+  if (i === null) return 'anchor —';
+  const a = s.anchors[i];
+  const v = s.anchorVelocities[i];
+  if (!a || !v) return 'anchor —';
+  return `anchor a${String(i)} at ${v2(a)} v ${v2(v)} (${speed(v).toFixed(2)} m/s)`;
 }
 
 /** Fixed-size ring of formatted events, newest last. */

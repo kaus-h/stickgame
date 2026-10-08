@@ -52,6 +52,9 @@ interface Anchor {
   y: number;
   vx: number;
   vy: number;
+  /** Velocity during the previous step: the change since then is the pivot's acceleration. */
+  lvx: number;
+  lvy: number;
 }
 
 interface Rope {
@@ -118,7 +121,15 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   }
 
   createKinematicAnchor(position: Vec2): number {
-    this.anchors.push({ initial: position, x: position.x, y: position.y, vx: 0, vy: 0 });
+    this.anchors.push({
+      initial: position,
+      x: position.x,
+      y: position.y,
+      vx: 0,
+      vy: 0,
+      lvx: 0,
+      lvy: 0,
+    });
     return this.anchors.length - 1;
   }
 
@@ -192,6 +203,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const n = Math.max(1, Math.floor(substeps));
     const h = dt / n;
     const touchedThisStep = this.bodies.map(() => new Set<number>());
+    this.applyPivotAcceleration(dt);
     for (let k = 0; k < n; k++) {
       for (const a of this.anchors) {
         a.x += a.vx * h;
@@ -223,6 +235,8 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       a.y = a.initial.y;
       a.vx = 0;
       a.vy = 0;
+      a.lvx = 0;
+      a.lvy = 0;
     }
     this.ropes.clear();
     this.contacts = [];
@@ -243,6 +257,47 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   }
 
   // --- internals -------------------------------------------------------------------------------
+
+  /**
+   * A scripted pivot changes velocity once per step (moveKinematicAnchor). Taken as an impulse, the
+   * change would be applied to the body's relative velocity in full: its radial part either made a
+   * taut rope go slack for a moment (pivot accelerating toward the body) or was turned into extra
+   * swing speed by the momentum-keeping catch (pivot accelerating away), so the swing gained energy
+   * the real pendulum never would (GMR-26). A taut rope is rigid radially: while the rope stays in
+   * tension under the pivot's acceleration over the step, the body follows the radial part of the
+   * velocity change with the pivot and only the tangential part acts on the swing (the fictitious
+   * force of the accelerating frame).
+   */
+  private applyPivotAcceleration(dt: number): void {
+    for (const rope of this.ropes.values()) {
+      if (rope.anchor.kind !== 'kinematic') continue;
+      const a = this.anchor(rope.anchor.anchor);
+      const dvx = a.vx - a.lvx;
+      const dvy = a.vy - a.lvy;
+      if (dvx === 0 && dvy === 0) continue;
+      const b = this.body(rope.body);
+      const rx = b.x - (a.x + rope.anchor.offset.x);
+      const ry = b.y - (a.y + rope.anchor.offset.y);
+      const d = dlen(rx, ry);
+      const L = rope.length;
+      if (d < 1e-9 || d < L - 1e-6 || d > L + ROPE_VIOLATION) continue; // slack or held off
+      const nx = rx / d;
+      const ny = ry / d;
+      const rvx = b.vx - a.lvx;
+      const rvy = b.vy - a.lvy;
+      if (rvx * nx + rvy * ny < -1e-6) continue; // moving inward: going slack anyway
+      const vt = -rvx * ny + rvy * nx;
+      const tension = (vt * vt) / L + (this.gx - dvx / dt) * nx + (this.gy - dvy / dt) * ny;
+      if (tension < 0) continue; // the pivot outruns gravity toward the body: the rope goes slack
+      const dvr = dvx * nx + dvy * ny;
+      b.vx += dvr * nx;
+      b.vy += dvr * ny;
+    }
+    for (const a of this.anchors) {
+      a.lvx = a.vx;
+      a.lvy = a.vy;
+    }
+  }
 
   private substepBody(index: number, h: number, touched: Set<number>): void {
     const b = this.bodies[index] as Body;
@@ -276,8 +331,12 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   ): boolean {
     const [ax, ay, avx, avy] = this.ropeAnchorKinematics(rope);
     const L = rope.length;
-    const rx = b.x - ax;
-    const ry = b.y - ay;
+    // The angle is measured from where the pivot was when this substep began (anchors have already
+    // advanced by v·h). Measuring it from the advanced pivot dropped the pivot's sideways travel
+    // from the body's position each substep, so a moving pivot swung the body about twice as hard
+    // as the real pendulum (GMR-26).
+    const rx = b.x - (ax - avx * h);
+    const ry = b.y - (ay - avy * h);
     const d = dlen(rx, ry);
     if (d < 1e-9 || d < L - 1e-6) return false;
     if (d > L + ROPE_VIOLATION) return false; // a solid holds the body outside the circle
@@ -589,10 +648,18 @@ function sweepCircleSegment(
   return best;
 }
 
+/** Sideways speed, as a share of the outward speed, needed for the full momentum redirect. */
+const CATCH_BLEND = 1;
+
 /**
- * Remove the outward radial component vr of a relative velocity at a taut catch. With retention
- * k, the tangential speed becomes sqrt(vt² + (k·vr)²) in the direction already travelled, so k = 1
- * keeps the speed (momentum turns into swing) and k = 0 is the plain inelastic catch.
+ * Remove the outward radial component vr of a relative velocity at a taut catch and, with
+ * retention k, turn part of it into swing in the direction already travelled.
+ *
+ * The redirected amount blends in with the sideways speed: kept = k·vr·min(1, |steer| / vr), steer = vt + horizontal velocity along the tangent.
+ * A catch with clear sideways motion keeps its speed (k = 1: momentum becomes swing, owner
+ * direction 2026-10-07). A catch moving straight along the rope gets the plain inelastic catch,
+ * so there is no arbitrary left/right choice and the outcome is continuous in the attach timing
+ * (GMR-26 found a 4–5 m/s release jump per tick without this blend on moving anchors).
  */
 function catchTaut(
   rvx: number,
@@ -605,10 +672,16 @@ function catchTaut(
   const tx = -ny;
   const ty = nx;
   const vt = rvx * tx + rvy * ty;
-  if (k <= 0) return [rvx - vr * nx, rvy - vr * ny];
-  const kept = k * vr;
-  // Straight outward with no sideways motion: keep the direction of the horizontal velocity.
-  const sign = vt !== 0 ? Math.sign(vt) : rvx * tx >= 0 ? 1 : -1;
-  const speed = Math.sqrt(vt * vt + kept * kept) * sign;
+  if (k <= 0) return [tx * vt, ty * vt];
+  // Which way the swing goes: the sideways motion plus the horizontal (run/jump) motion seen along
+  // the tangent. Running into a catch therefore swings the way you ran.
+  const steer = vt + rvx * tx;
+  if (steer === 0) return [tx * vt, ty * vt];
+  const blend = Math.min(1, Math.abs(steer) / (CATCH_BLEND * vr));
+  const kept = k * vr * blend;
+  // Add the speed gained by folding `kept` into the swing, in the steer direction. Never more
+  // energy than before the catch (|result| ≤ sqrt(vt² + kept²) ≤ incoming speed), and exactly vt
+  // when steer → 0, so the outcome is continuous in the catch state.
+  const speed = vt + Math.sign(steer) * (Math.sqrt(vt * vt + kept * kept) - Math.abs(vt));
   return [tx * speed, ty * speed];
 }

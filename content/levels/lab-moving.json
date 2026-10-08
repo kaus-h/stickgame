@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "id": "lab-moving",
+  "name": "Moving Anchor Lab",
+  "spawn": [3, 7.65],
+  "bounds": { "minX": -1, "minY": -8, "maxX": 99, "maxY": 13 },
+  "killY": 14,
+  "solids": [
+    { "id": "wall-left", "rect": { "x": -1, "y": -8, "w": 1, "h": 21 } },
+    { "id": "wall-right", "rect": { "x": 98, "y": -8, "w": 1, "h": 21 } },
+    { "id": "lethal-floor", "kind": "hazard", "rect": { "x": 0, "y": 11.4, "w": 98, "h": 1.6 } },
+
+    { "id": "start", "rect": { "x": 0, "y": 8, "w": 10, "h": 3.4 } },
+    { "id": "pad-vertical", "rect": { "x": 24, "y": 8, "w": 6, "h": 3.4 } },
+    { "id": "pad-fast", "rect": { "x": 37, "y": 8, "w": 5, "h": 3.4 } },
+    { "id": "pad-turn-before", "rect": { "x": 58, "y": 8, "w": 5, "h": 3.4 } },
+    { "id": "pad-turn-after", "rect": { "x": 74, "y": 8, "w": 5, "h": 3.4 } },
+    { "id": "finish", "rect": { "x": 90, "y": 8, "w": 8, "h": 3.4 } },
+    { "id": "exit-roof", "rect": { "x": 93, "y": 3.4, "w": 5, "h": 0.6 } }
+  ],
+  "anchors": [
+    { "id": "h-mover", "position": [13, 1], "path": { "to": [21, 1], "period": 4 } },
+    { "id": "v-mover", "position": [34, -1], "path": { "to": [34, 3], "period": 3 } },
+    { "id": "fast-mover", "position": [45, 0], "path": { "to": [55.5, 0], "period": 4.2 } },
+    { "id": "turn-before", "position": [66, 1], "path": { "to": [71, 1], "period": 5 } },
+    {
+      "id": "turn-after",
+      "position": [82, 1],
+      "path": { "to": [87, 1], "period": 5, "phase": 0.5 }
+    }
+  ],
+  "exit": { "min": [93.5, 4], "max": [98, 8] }
+}
