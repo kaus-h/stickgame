@@ -30,6 +30,24 @@ export default tseslint.config(
       'no-restricted-properties': [
         'error',
         { object: 'Math', property: 'random', message: 'Use the seeded RNG from core.' },
+        ...[
+          'sin',
+          'cos',
+          'tan',
+          'asin',
+          'acos',
+          'atan',
+          'atan2',
+          'hypot',
+          'pow',
+          'exp',
+          'log',
+          'cbrt',
+        ].map((property) => ({
+          object: 'Math',
+          property,
+          message: 'Engine-dependent result; use the deterministic helpers in core/dmath (GMR-32).',
+        })),
         { object: 'Date', property: 'now', message: 'Use simulation ticks, not wall-clock time.' },
         {
           object: 'performance',
