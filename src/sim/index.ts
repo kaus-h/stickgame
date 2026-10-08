@@ -20,12 +20,13 @@ export { evaluateExitEntry } from './exits';
 export type { ExitAttempt } from './exits';
 export { anchorPathState } from './anchorPath';
 export type { AnchorPathState } from './anchorPath';
-export { hashSnapshot } from './hash';
+export { hashSnapshot, levelFingerprint } from './hash';
 export { Simulation } from './Simulation';
 export type {
   ContactSnapshot,
   DeathCause,
   DeathRecord,
+  LifeEndReason,
   PlayerMode,
   PlayerSnapshot,
   RopeInvalidReason,

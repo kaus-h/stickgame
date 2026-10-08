@@ -204,7 +204,7 @@ describe('patroller simulation', () => {
     expect(s.lastDeath).toMatchObject({ cause: 'enemy-contact', enemy: 'goon', solid: null });
     expect(s.player.position).toEqual({ x: -2, y: 0 });
     expect(s.enemies[0]?.alive).toBe(true);
-    expect(sim.drainEvents().map((e) => e.type)).toEqual(['death', 'reset']);
+    expect(sim.drainEvents().map((e) => e.type)).toEqual(['death', 'lifeEnd', 'reset']);
     sim.dispose();
   });
   it('does not use a later floor impulse to turn side/corner arrival into a stomp', () => {

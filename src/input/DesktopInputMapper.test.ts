@@ -37,6 +37,15 @@ describe('DesktopInputMapper', () => {
     expect(out).toEqual([{ type: 'jumpPress' }, { type: 'jumpPress' }, { type: 'jumpRelease' }]);
   });
 
+  it('Backspace respawns at the checkpoint and G toggles the ghost (GMR-103)', () => {
+    const { out, mapper } = setup();
+    mapper.keyDown('Backspace');
+    mapper.keyDown('Backspace', true);
+    mapper.keyDown('KeyG');
+    mapper.keyDown('KeyR');
+    expect(out).toEqual([{ type: 'respawn' }, { type: 'ghostToggle' }, { type: 'restart' }]);
+  });
+
   it('aims in world space at press time and holds the rope until release', () => {
     const { out, mapper } = setup();
     mapper.pointerDown(128, 64, 0);

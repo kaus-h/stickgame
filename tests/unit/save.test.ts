@@ -53,14 +53,22 @@ describe('save schema (GMR-48)', () => {
       }),
     );
     expect(out?.levels).toEqual({
-      ok: { cleared: true, bestTicks: null, fewestDeaths: null, totalDeaths: 0, medals: ['gold'] },
+      ok: {
+        cleared: true,
+        bestTicks: null,
+        fewestDeaths: null,
+        totalDeaths: 0,
+        medals: ['gold'],
+        playTicks: 0,
+        firstClearTicks: null,
+      },
     });
     expect(out?.settings).toMatchObject({
       masterVolume: 1,
       reducedMotion: 'system',
       assist: 'standard',
     });
-    expect(out?.ghosts).toEqual({});
+    expect(out?.pbs).toEqual({});
   });
 
   it('rejects text that is not a save at all', () => {
@@ -134,5 +142,67 @@ describe('SaveStore', () => {
     store.updateSettings({ sfxVolume: 0.3 });
     await expect(store.flush()).resolves.toBeUndefined();
     expect(store.current.settings.sfxVolume).toBe(0.3);
+  });
+});
+
+describe('personal bests (GMR-103)', () => {
+  const pb = {
+    ticks: 960,
+    splits: [200, null],
+    replay: '{"v":1,"b":"dev","l":"1-1","s":0,"n":960,"i":[[0,["m",1]]]}',
+    levelVersion: 'abcd1234',
+  };
+
+  it('saves and loads a PB with its splits and replay', async () => {
+    const storage = memoryStorage();
+    const a = new SaveStore(storage);
+    await a.load();
+    a.setPersonalBest('1-1', pb);
+    a.updateSettings({ ghost: false });
+    await a.flush();
+    const b = new SaveStore(storage);
+    const data = await b.load();
+    expect(data.pbs['1-1']).toEqual(pb);
+    expect(data.settings.ghost).toBe(false);
+    b.clearPersonalBest('1-1');
+    expect(b.current.pbs).toEqual({});
+  });
+
+  it('migrates version 1: drops unvalidatable bare ghosts, adds play time and pbs', () => {
+    const v1 = {
+      version: 1,
+      levels: { '1-1': { cleared: true, bestTicks: 900, totalDeaths: 4 } },
+      settings: { muted: true },
+      ghosts: { '1-1': '{"v":1}' },
+    };
+    const out = decodeSave(JSON.stringify(v1));
+    expect(out?.version).toBe(2);
+    expect(out?.pbs).toEqual({});
+    expect(out && 'ghosts' in out).toBe(false);
+    expect(out?.levels['1-1']).toMatchObject({
+      cleared: true,
+      bestTicks: 900,
+      playTicks: 0,
+      firstClearTicks: null, // cleared before it was tracked: unknown, not invented
+    });
+    expect(out?.settings).toMatchObject({ muted: true, ghost: true });
+  });
+
+  it('repairs or drops a malformed PB instead of failing', () => {
+    const out = decodeSave(
+      JSON.stringify({
+        version: 2,
+        levels: {},
+        settings: {},
+        pbs: {
+          ok: { ...pb, splits: [200, -3, 'x'] },
+          noReplay: { ...pb, replay: 7 },
+          zero: { ...pb, ticks: 0 },
+          junk: 'nope',
+        },
+      }),
+    );
+    expect(Object.keys(out?.pbs ?? {})).toEqual(['ok']);
+    expect(out?.pbs.ok?.splits).toEqual([200, null, null]);
   });
 });

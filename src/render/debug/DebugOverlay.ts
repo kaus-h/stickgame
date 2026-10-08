@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { RenderFrame } from '../frame';
-import { EventLog, formatOverlay } from './format';
+import { EventLog, formatOverlay, formatRace } from './format';
 
 const INK = 0x16161a;
 const BLUE = 0x2f5fb3;
@@ -77,6 +77,7 @@ export class DebugOverlay {
           ]
         : []),
       ...formatOverlay(s, frame.stats),
+      formatRace(s, frame.race),
       '— events —',
       ...this.log.tail(8),
       '[`] hide',

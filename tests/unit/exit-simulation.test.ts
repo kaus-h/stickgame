@@ -146,7 +146,7 @@ describe('simulation compartment lifecycle', () => {
     expect(sim.snapshot().deaths).toBe(1);
     expect(sim.snapshot().completion).toBeNull();
     expect(sim.snapshot().player.position).toEqual(level.spawn);
-    expect(sim.drainEvents().map((e) => e.type)).toEqual(['death', 'reset']);
+    expect(sim.drainEvents().map((e) => e.type)).toEqual(['death', 'lifeEnd', 'reset']);
     sim.dispose();
   });
   it('does not cross a gate when collision blocks a high-speed approach first', () => {

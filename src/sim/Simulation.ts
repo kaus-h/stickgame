@@ -63,6 +63,20 @@ export interface SimSnapshot {
   readonly lastDeath: DeathRecord | null;
   /** Ticks since the run began (level start or restart); keeps counting through deaths. */
   readonly runTick: number;
+  /**
+   * Ticks into the current life (GMR-103): from spawn, death respawn or checkpoint respawn. The
+   * same clock as attemptTick, named for the racing HUD.
+   */
+  readonly lifeTick: number;
+  /** Lives in the current run, counting the one being played (1 after a restart). */
+  readonly lives: number;
+  /**
+   * Play ticks on this level since it was loaded, through restarts and deaths (never reset by a
+   * restart); the app adds it up for the save's time to first clear (GMR-103).
+   */
+  readonly levelTick: number;
+  /** Voluntary checkpoint respawns since the level was loaded (GMR-103). */
+  readonly respawns: number;
   /** Index of the last reached checkpoint in level.checkpoints, or -1 for the spawn. */
   readonly checkpoint: number;
   /** Accepted compartment entry, held until an immediate restart. */
@@ -117,6 +131,9 @@ export interface ContactSnapshot {
 
 export type DeathCause = 'hazard' | 'out-of-bounds' | 'enemy-contact';
 
+/** Why a life ended (GMR-103): a death, the respawn intent, a restart, or reaching the exit. */
+export type LifeEndReason = 'death' | 'respawn' | 'restart' | 'exit';
+
 export type SimEvent =
   | {
       readonly type: 'stomp';
@@ -143,8 +160,26 @@ export type SimEvent =
       readonly tick: number;
       readonly index: number;
       readonly id: string;
+      /** Run time at the checkpoint: the split (GMR-103). */
+      readonly runTicks: number;
     }
-  | { readonly type: 'respawn'; readonly tick: number; readonly checkpoint: number }
+  | {
+      readonly type: 'respawn';
+      readonly tick: number;
+      readonly checkpoint: number;
+      /** True for the respawn intent (GMR-103), false after a death. */
+      readonly voluntary: boolean;
+    }
+  | {
+      /** A life ended (GMR-103). `lifeTicks` is its length; the next life starts at 0. */
+      readonly type: 'lifeEnd';
+      readonly tick: number;
+      /** 1-based life number within the run. */
+      readonly life: number;
+      readonly lifeTicks: number;
+      readonly runTicks: number;
+      readonly reason: LifeEndReason;
+    }
   | { readonly type: 'exitMiss'; readonly tick: number; readonly attempt: ExitAttempt }
   | {
       readonly type: 'ropeAttach';
@@ -190,6 +225,9 @@ export class Simulation {
   private segmentSolid: string[] = [];
   private lastDeath: DeathRecord | null = null;
   private runTicks = 0;
+  private lifeCount = 1;
+  private levelTicks = 0;
+  private respawnCount = 0;
   private activeCheckpoint = -1;
   private completion: SimSnapshot['completion'] = null;
   private lastExitAttempt: SimSnapshot['lastExitAttempt'] = null;
@@ -247,6 +285,11 @@ export class Simulation {
     this.attemptTicks = 0;
     this.resetCount = 0;
     this.deathCount = 0;
+    this.runTicks = 0;
+    this.lifeCount = 1;
+    this.levelTicks = 0;
+    this.respawnCount = 0;
+    this.activeCheckpoint = -1;
     this.events = [];
     this.lastDeath = null;
     this.completion = null;
@@ -287,7 +330,8 @@ export class Simulation {
       return;
     }
     for (const intent of intents) this.applyIntent(intent);
-    if (intents.some((i) => i.type === 'restart')) this.reset();
+    if (intents.some((i) => i.type === 'restart')) this.restart();
+    else if (intents.some((i) => i.type === 'respawn')) this.respawnAtCheckpoint();
 
     this.moveAnchors();
     this.applyRopeActions();
@@ -297,6 +341,7 @@ export class Simulation {
     this.tickCount++;
     this.attemptTicks++;
     this.runTicks++;
+    this.levelTicks++;
     this.enemies = this.enemies.map((enemy, i) =>
       enemy.alive
         ? patrollerState((this.level.enemies ?? [])[i] as PatrollerDef, this.attemptTicks * SIM_DT)
@@ -319,14 +364,74 @@ export class Simulation {
   reset(): void {
     this.activeCheckpoint = -1;
     this.runTicks = 0;
+    this.lifeCount = 1;
     this.resetAttempt();
+  }
+
+  /**
+   * Controller state that survives a restart (held direction, facing, jump held, aim), as intents
+   * that rebuild it in another simulation. A run replay starts with these so a fresh simulation
+   * (the PB ghost, GMR-103) plays the run tick-exactly; the restart that follows clears the rest.
+   */
+  carryIntents(): Intent[] {
+    const out: Intent[] = [
+      { type: 'move', axis: this.facing },
+      { type: 'move', axis: this.axis },
+      this.jumpHeld ? { type: 'jumpPress' } : { type: 'jumpRelease' },
+    ];
+    if (this.aim) out.push({ type: 'ropeAim', target: this.aim });
+    return out;
+  }
+
+  /**
+   * Forget held input and aim, as on a freshly created simulation. For a reused headless ghost
+   * between runs (GMR-103); never called on the live simulation.
+   */
+  clearController(): void {
+    this.axis = 0;
+    this.facing = 1;
+    this.jumpHeld = false;
+    this.aim = null;
+  }
+
+  /** The restart intent: the life ends (unless already finished at the exit), a new run starts. */
+  private restart(): void {
+    if (!this.completion) this.endLife('restart');
+    this.reset();
+  }
+
+  /**
+   * The respawn intent (GMR-103): end this life and stand at the active checkpoint, at rest (doc 09:
+   * respawn speed is open; the current rule is at rest). The run clock keeps counting. With no
+   * checkpoint reached it is a restart.
+   */
+  private respawnAtCheckpoint(): void {
+    if (this.activeCheckpoint < 0) {
+      this.restart();
+      return;
+    }
+    this.respawnCount++;
+    this.endLife('respawn');
+    this.respawn(true);
+  }
+
+  private endLife(reason: LifeEndReason): void {
+    this.events.push({
+      type: 'lifeEnd',
+      tick: this.tickCount,
+      life: this.lifeCount,
+      lifeTicks: this.attemptTicks,
+      runTicks: this.runTicks,
+      reason,
+    });
+    if (reason === 'death' || reason === 'respawn') this.lifeCount++;
   }
 
   /**
    * A new life after a death (GMR-100): the authored state comes back (bodies, anchors, rope), and
    * the player stands at the last reached checkpoint. The run clock keeps counting.
    */
-  private respawn(): void {
+  private respawn(voluntary = false): void {
     this.resetAttempt();
     const cp = this.level.checkpoints?.[this.activeCheckpoint];
     if (cp) {
@@ -335,6 +440,7 @@ export class Simulation {
         type: 'respawn',
         tick: this.tickCount,
         checkpoint: this.activeCheckpoint,
+        voluntary,
       });
     }
   }
@@ -378,6 +484,10 @@ export class Simulation {
       aim: this.aim,
       lastDeath: this.lastDeath,
       runTick: this.runTicks,
+      lifeTick: this.attemptTicks,
+      lives: this.lifeCount,
+      levelTick: this.levelTicks,
+      respawns: this.respawnCount,
       checkpoint: this.activeCheckpoint,
       completion: this.completion,
       lastExitAttempt: this.lastExitAttempt,
@@ -450,7 +560,9 @@ export class Simulation {
         this.ropeActions.push('release');
         break;
       case 'restart':
+      case 'respawn':
       case 'pause':
+      case 'ghostToggle':
         break;
     }
   }
@@ -767,6 +879,7 @@ export class Simulation {
             attemptTicks: this.attemptTicks,
             runTicks: this.runTicks,
           };
+          this.endLife('exit');
           this.events.push({
             type: 'exit',
             tick: this.tickCount,
@@ -787,6 +900,7 @@ export class Simulation {
       s.position.y >= exit.min.y &&
       s.position.y <= exit.max.y
     ) {
+      this.endLife('exit');
       this.events.push({
         type: 'exit',
         tick: this.tickCount,
@@ -824,6 +938,7 @@ export class Simulation {
         : null,
     };
     this.events.push({ type: 'death', ...this.lastDeath });
+    this.endLife('death');
     this.respawn();
   }
 
@@ -839,7 +954,13 @@ export class Simulation {
       if (!cp) continue;
       if (Math.abs(p.x - cp.position.x) <= 0.75 && Math.abs(p.y - cp.position.y) <= 1.5) {
         this.activeCheckpoint = i;
-        this.events.push({ type: 'checkpoint', tick: this.tickCount, index: i, id: cp.id });
+        this.events.push({
+          type: 'checkpoint',
+          tick: this.tickCount,
+          index: i,
+          id: cp.id,
+          runTicks: this.runTicks,
+        });
         return;
       }
     }

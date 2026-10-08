@@ -22,6 +22,8 @@ const cleared: LevelRecord = {
   fewestDeaths: 0,
   totalDeaths: 0,
   medals: [],
+  playTicks: 0,
+  firstClearTicks: null,
 };
 
 describe('game flow model (GMR-47)', () => {

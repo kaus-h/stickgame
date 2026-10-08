@@ -174,6 +174,14 @@ describe('TouchInputMapper: direct-touch', () => {
     mapper.pointerUp(2);
     expect(take()).toEqual([{ type: 'pause' }, { type: 'restart' }]);
   });
+
+  it('the respawn button emits the respawn intent (GMR-103)', () => {
+    const { mapper, at, take } = setup();
+    const k = at('respawn');
+    mapper.pointerDown(1, k.x, k.y);
+    mapper.pointerUp(1);
+    expect(take()).toEqual([{ type: 'respawn' }]);
+  });
 });
 
 describe('TouchInputMapper: reticle-offset', () => {
