@@ -44,6 +44,12 @@ test('run, jump, tether to the first anchor, swing and release in the lab', asyn
   let attached = false;
   for (let i = 0; i < 600 && !attached; i++) {
     const s = await snap(page);
+    // Missed the window (ran past the anchor or died): restart and try again, like a player would.
+    if (s.player.position.x > anchor.x + 3) {
+      await page.keyboard.press('KeyR');
+      await page.waitForTimeout(50);
+      continue;
+    }
     if (s.player.mode === 'grounded' && s.player.position.x > 4) {
       await page.keyboard.down('Space');
       await page.waitForTimeout(120);
