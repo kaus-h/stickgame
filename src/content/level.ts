@@ -1,5 +1,5 @@
 import { vec2, type Vec2 } from '../core';
-import type { AnchorDef, LevelDef, SolidDef } from '../sim';
+import type { AnchorDef, LevelDef, PatrollerDef, SolidDef } from '../sim';
 import schemaValidator from './level-validator.generated.js';
 
 /** Level JSON schema version understood by this build (doc 32). */
@@ -189,6 +189,13 @@ export function compileLevel(source: unknown): LevelDef {
     killY: num(json.killY, 'level.killY'),
     solids: solids.map((s, i) => solid(s, `level.solids[${String(i)}]`)),
     anchors: anchors.map((a, i) => anchor(a, `level.anchors[${String(i)}]`)),
+    ...(json.enemies === undefined
+      ? {}
+      : {
+          enemies: entries(json.enemies).map((enemy, i) =>
+            patroller(enemy, `level.enemies[${String(i)}]`),
+          ),
+        }),
     ...authoringMetadata(json),
     ...(isRecord(json.exit)
       ? {
@@ -199,6 +206,7 @@ export function compileLevel(source: unknown): LevelDef {
   for (const item of [
     ...level.solids,
     ...level.anchors,
+    ...(level.enemies ?? []),
     ...(level.chambers ?? []),
     ...(level.checkpoints ?? []),
     ...(level.cameraHints ?? []),
@@ -210,6 +218,30 @@ export function compileLevel(source: unknown): LevelDef {
   if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
     fail('level.exit.id', `duplicate id "${level.exit.id}"`);
   return level;
+}
+
+function patroller(raw: Record<string, unknown>, path: string): PatrollerDef {
+  const position = point(raw.position, `${path}.position`);
+  const size = point(raw.size, `${path}.size`);
+  if (size.x <= 0 || size.y <= 0) fail(`${path}.size`, 'full width and height must be positive');
+  const rawStomp = raw.stomp as Record<string, unknown>;
+  const stomp = {
+    minDownSpeed: num(rawStomp.minDownSpeed, `${path}.stomp.minDownSpeed`),
+    reboundSpeed: num(rawStomp.reboundSpeed, `${path}.stomp.reboundSpeed`),
+    topInset: num(rawStomp.topInset, `${path}.stomp.topInset`),
+  };
+  if (stomp.topInset * 2 >= size.x)
+    fail(`${path}.stomp.topInset`, 'must leave a nonzero vulnerable top span');
+  const base = { id: str(raw.id, `${path}.id`), kind: 'patroller' as const, position, size, stomp };
+  if (!isRecord(raw.path)) return base;
+  const to = point(raw.path.to, `${path}.path.to`);
+  if (to.y !== position.y) fail(`${path}.path.to`, 'patroller path must be horizontal');
+  const period = num(raw.path.period, `${path}.path.period`);
+  if (anchorPathPeaks(position, to, period).speed > 3)
+    fail(`${path}.path`, 'peak patrol speed exceeds 3 m/s');
+  const phase =
+    raw.path.phase === undefined ? undefined : num(raw.path.phase, `${path}.path.phase`);
+  return { ...base, path: { to, period, ...(phase === undefined ? {} : { phase }) } };
 }
 
 function compileExit(raw: Record<string, unknown>): NonNullable<LevelDef['exit']> {

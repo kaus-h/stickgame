@@ -30,6 +30,10 @@ export interface BodyState {
 
 /** Chronological integrated motion, with velocity before the next collision impulse. */
 export interface BodyMotionSegment {
+  /** Zero-duration correction marker: update occupancy, never sweep as integrated motion. */
+  readonly correction?: boolean;
+  readonly startFraction?: number;
+  readonly endFraction?: number;
   readonly from: Vec2;
   readonly to: Vec2;
   readonly velocity: Vec2;
@@ -55,6 +59,8 @@ export interface RayHit {
 }
 
 export interface ContactEvent {
+  /** Fixed-step time fraction, when supplied by the production continuous solver. */
+  readonly fraction?: number;
   readonly body: number;
   readonly segment: number;
   readonly kind: Segment['kind'];
@@ -78,6 +84,8 @@ export interface PhysicsAdapter {
   /** Optional precise path for gameplay crossings; excludes depenetration/position corrections. */
   bodyMotion?(body: number): readonly BodyMotionSegment[];
   setBodyVelocity(body: number, velocity: Vec2): void;
+  /** Resolve a gameplay contact without replacing its body/world or detaching its rope. */
+  setBodyPosition?(body: number, position: Vec2): void;
 
   /** A pivot whose motion the sim scripts (moving anchors). */
   createKinematicAnchor(position: Vec2): number;

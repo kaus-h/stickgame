@@ -1,8 +1,9 @@
 import { SIM_DT, vec2, type Intent, type Vec2 } from '../core';
-import type { PhysicsAdapter, PhysicsStats } from '../physics';
+import type { PhysicsAdapter, PhysicsStats, BodyMotionSegment, ContactEvent } from '../physics';
 import { anchorPathState } from './anchorPath';
 import { evaluateExitEntry, type ExitAttempt } from './exits';
-import { levelSegments, type LevelDef } from './level';
+import { patrollerState, sweepPatroller, type EnemySnapshot, type EnemyContact } from './enemies';
+import { levelSegments, type LevelDef, type PatrollerDef } from './level';
 import { resolveTarget, type RopeInvalidReason, type TargetResolution } from './targeting';
 import type { SimTuning } from './tuning';
 
@@ -41,6 +42,7 @@ export interface SimSnapshot {
   readonly attemptTick: number;
   readonly resets: number;
   readonly deaths: number;
+  readonly enemies: readonly EnemySnapshot[];
   readonly player: PlayerSnapshot;
   readonly rope: RopeSnapshot | null;
   /** Current anchor positions (moving anchors move). */
@@ -74,6 +76,7 @@ export interface DeathRecord {
   readonly velocity: Vec2;
   /** Level id of the hazard solid touched, for cause "hazard". */
   readonly solid: string | null;
+  readonly enemy?: string | null;
   /** Ticks into the attempt when it ended. */
   readonly attemptTicks: number;
   /** The rope at the moment of death, if tethered. */
@@ -89,9 +92,17 @@ export interface ContactSnapshot {
   readonly speed: number;
 }
 
-export type DeathCause = 'hazard' | 'out-of-bounds';
+export type DeathCause = 'hazard' | 'out-of-bounds' | 'enemy-contact';
 
 export type SimEvent =
+  | {
+      readonly type: 'stomp';
+      readonly tick: number;
+      readonly enemy: string;
+      readonly at: Vec2;
+      readonly velocity: Vec2;
+      readonly rebound: Vec2;
+    }
   | { readonly type: 'reset'; readonly tick: number }
   | { readonly type: 'jump'; readonly tick: number }
   | { readonly type: 'land'; readonly tick: number; readonly speed: number }
@@ -149,6 +160,7 @@ export class Simulation {
   private completion: SimSnapshot['completion'] = null;
   private lastExitAttempt: SimSnapshot['lastExitAttempt'] = null;
   private lastContacts: readonly ContactSnapshot[] = [];
+  private enemies: EnemySnapshot[] = [];
 
   // Controller state (reset each attempt).
   private axis = 0;
@@ -209,6 +221,7 @@ export class Simulation {
 
   private createLevelBodies(): void {
     const { physics, level, tuning } = this;
+    this.enemies = (level.enemies ?? []).map((def) => patrollerState(def, 0));
     physics.setGeometry(levelSegments(level));
     this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({
@@ -238,6 +251,11 @@ export class Simulation {
     this.physics.step(SIM_DT, this.tuning.physicsSubsteps);
     this.tickCount++;
     this.attemptTicks++;
+    this.enemies = this.enemies.map((enemy, i) =>
+      enemy.alive
+        ? patrollerState((this.level.enemies ?? [])[i] as PatrollerDef, this.attemptTicks * SIM_DT)
+        : enemy,
+    );
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
   }
 
@@ -252,6 +270,7 @@ export class Simulation {
   }
 
   reset(): void {
+    this.enemies = (this.level.enemies ?? []).map((def) => patrollerState(def, 0));
     this.completion = null;
     this.lastExitAttempt = null;
     this.physics.resetBodies();
@@ -274,6 +293,7 @@ export class Simulation {
       attemptTick: this.attemptTicks,
       resets: this.resetCount,
       deaths: this.deathCount,
+      enemies: this.enemies,
       player: {
         position: s.position,
         velocity: s.velocity,
@@ -305,7 +325,7 @@ export class Simulation {
       tick: this.tickCount,
       attemptTick: this.attemptTicks,
       resets: this.resetCount,
-      entities: 1 + this.anchorIds.length,
+      entities: 1 + this.anchorIds.length + this.enemies.length,
       pendingEvents: this.events.length,
       physics: this.physics.stats(),
     };
@@ -622,6 +642,7 @@ export class Simulation {
       normal: c.normal,
       speed: c.speed,
     }));
+    if (this.resolveEnemyContact(previousPosition, previousVelocity, contacts)) return;
     if (s.grounded && !this.wasGrounded) {
       // The solver has already removed the impact velocity; contacts carry the closing speed.
       const speed = contacts.reduce(
@@ -652,6 +673,7 @@ export class Simulation {
       ];
       let attempt: ExitAttempt | null = null;
       for (const segment of motion) {
+        if (segment.correction) continue;
         attempt = evaluateExitEntry(
           exit,
           segment.from,
@@ -690,7 +712,13 @@ export class Simulation {
   }
 
   /** Death is instant: no delay or UI may sit between death and retry (doc 13). */
-  private die(cause: DeathCause, at: Vec2, velocity: Vec2, solid: string | null): void {
+  private die(
+    cause: DeathCause,
+    at: Vec2,
+    velocity: Vec2,
+    solid: string | null,
+    enemy?: string,
+  ): void {
     this.deathCount++;
     const rope = this.rope;
     this.lastDeath = {
@@ -699,6 +727,7 @@ export class Simulation {
       at,
       velocity,
       solid,
+      ...(enemy === undefined ? {} : { enemy }),
       attemptTicks: this.attemptTicks,
       rope: rope
         ? {
@@ -710,6 +739,141 @@ export class Simulation {
     };
     this.events.push({ type: 'death', ...this.lastDeath });
     this.reset();
+  }
+
+  private resolveEnemyContact(
+    previousPosition: Vec2,
+    previousVelocity: Vec2,
+    contacts: readonly ContactEvent[],
+  ): boolean {
+    if (!this.enemies.some((enemy) => enemy.alive)) return false;
+    const state = this.physics.bodyState(this.body);
+    const supplied = this.physics.bodyMotion?.(this.body);
+    const raw: readonly BodyMotionSegment[] = supplied ?? [
+      {
+        from: previousPosition,
+        to: state.position,
+        velocity: previousVelocity,
+        startFraction: 0,
+        endFraction: 1,
+      },
+    ];
+    const motion: BodyMotionSegment[] = [];
+    let lastTime = 0;
+    let lastPosition = previousPosition;
+    for (let i = 0; i < raw.length; i++) {
+      const segment = raw[i] as BodyMotionSegment;
+      const start = segment.startFraction ?? i / raw.length;
+      const end = segment.endFraction ?? (i + 1) / raw.length;
+      if (start > lastTime)
+        motion.push({
+          from: lastPosition,
+          to: lastPosition,
+          velocity: vec2(0, 0),
+          startFraction: lastTime,
+          endFraction: start,
+        });
+      // Corrections are instantaneous occupancy checks, never trajectories or clean stomps.
+      motion.push(
+        segment.correction
+          ? {
+              from: segment.to,
+              to: segment.to,
+              velocity: vec2(0, 0),
+              startFraction: end,
+              endFraction: end,
+            }
+          : { ...segment, startFraction: start, endFraction: end },
+      );
+      lastTime = end;
+      lastPosition = segment.to;
+    }
+    if (lastTime < 1)
+      motion.push({
+        from: lastPosition,
+        to: lastPosition,
+        velocity: vec2(0, 0),
+        startFraction: lastTime,
+        endFraction: 1,
+      });
+    let best: { index: number; hit: EnemyContact; time: number } | null = null;
+    for (let i = 0; i < this.enemies.length; i++) {
+      const enemy = this.enemies[i] as EnemySnapshot;
+      if (!enemy.alive) continue;
+      const def = (this.level.enemies ?? [])[i] as PatrollerDef;
+      const startState = patrollerState(def, (this.attemptTicks - 1) * SIM_DT);
+      for (const segment of motion) {
+        const start = segment.startFraction ?? 0;
+        const end = segment.endFraction ?? 1;
+        const at = (fraction: number): Vec2 =>
+          vec2(
+            startState.position.x + (enemy.position.x - startState.position.x) * fraction,
+            startState.position.y + (enemy.position.y - startState.position.y) * fraction,
+          );
+        const hit = sweepPatroller(
+          def,
+          segment.from,
+          segment.to,
+          segment.velocity,
+          at(start),
+          at(end),
+          this.tuning.player.radius,
+          (end - start) * SIM_DT,
+        );
+        if (!hit) continue;
+        const time = start + (end - start) * hit.fraction;
+        if (!best || time < best.time) best = { index: i, hit, time };
+      }
+    }
+    if (!best) return false;
+    // A prior/equal lethal collision wins; later impulses cannot alter the arrival decision.
+    const hazard = contacts.find(
+      (contact) => contact.kind === 'hazard' && (contact.fraction ?? 0) <= best.time + 1e-10,
+    );
+    if (hazard) {
+      this.die('hazard', state.position, state.velocity, this.segmentSolid[hazard.segment] ?? null);
+      return true;
+    }
+    for (const segment of motion) {
+      if (segment.to.y <= this.level.killY) continue;
+      const local =
+        segment.from.y > this.level.killY
+          ? 0
+          : (this.level.killY - segment.from.y) / (segment.to.y - segment.from.y);
+      const time =
+        (segment.startFraction ?? 0) +
+        ((segment.endFraction ?? 1) - (segment.startFraction ?? 0)) * local;
+      if (time <= best.time) {
+        this.die('out-of-bounds', state.position, state.velocity, null);
+        return true;
+      }
+    }
+    const def = (this.level.enemies ?? [])[best.index] as PatrollerDef;
+    if (!best.hit.stomp) {
+      this.die('enemy-contact', best.hit.at, best.hit.velocity, null, def.id);
+      return true;
+    }
+    if (!this.physics.setBodyPosition)
+      throw new Error('enemy gameplay requires PhysicsAdapter.setBodyPosition');
+    const rebound = vec2(best.hit.velocity.x, -def.stomp.reboundSpeed);
+    this.physics.setBodyPosition(this.body, best.hit.at);
+    this.physics.setBodyVelocity(this.body, rebound);
+    this.enemies[best.index] = {
+      ...(this.enemies[best.index] as EnemySnapshot),
+      position: best.hit.enemyAt,
+      velocity: vec2(0, 0),
+      alive: false,
+    };
+    this.wasGrounded = false;
+    this.events.push({
+      type: 'stomp',
+      tick: this.tickCount,
+      enemy: def.id,
+      at: best.hit.at,
+      velocity: best.hit.velocity,
+      rebound,
+    });
+    return true;
   }
 }
 

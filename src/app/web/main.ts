@@ -11,6 +11,7 @@ import { createPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
+import { enemyTelemetry } from '../../telemetry/enemyTelemetry';
 import { levelSources } from './level-catalog';
 
 // Composition root for the browser build.
@@ -84,6 +85,8 @@ async function start(): Promise<void> {
     for (const event of events) {
       const telemetry = exitTelemetry(level, event);
       if (telemetry) platform.analytics.track(telemetry);
+      const enemy = enemyTelemetry(level, event);
+      if (enemy) platform.analytics.track(enemy);
     }
   });
   scene = new GameScene({
@@ -176,6 +179,11 @@ async function start(): Promise<void> {
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
+        enemyPresentation: () => {
+          const label = devScene.children.getByName('enemy-cause') as
+            Phaser.GameObjects.Text | undefined;
+          return { ready: !!label, visible: label?.visible ?? false, text: label?.text ?? '' };
+        },
         level: () => ({
           id: level.id,
           revision: levelRevision,

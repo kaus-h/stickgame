@@ -1,6 +1,9 @@
 // sim: the canonical game rules (player, rope, anchors, hazards, enemies, exits, reset).
 // May import core and the physics interface only. Never Phaser, render, input devices, audio or platform.
 export { levelSegments } from './level';
+export { sweepPatroller, patrollerState } from './enemies';
+export type { EnemySnapshot, EnemyContact } from './enemies';
+export type { PatrollerDef } from './level';
 export { resolveTarget } from './targeting';
 export type { TargetAnchor, TargetResolution } from './targeting';
 export type {

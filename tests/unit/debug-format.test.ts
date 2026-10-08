@@ -27,6 +27,59 @@ const stats: RuntimeStats = {
 };
 
 describe('debug overlay formatting', () => {
+  it('reports stomp impact and incoming momentum with the rebound', () => {
+    const line = formatEvent({
+      type: 'stomp',
+      tick: 5,
+      enemy: 'goon-a',
+      at: vec2(2, 3),
+      velocity: vec2(4, 8),
+      rebound: vec2(4, -15),
+    });
+    expect(line).toContain(
+      'stomp goon-a at 2.00, 3.00 incoming 4.00, 8.00 rebound 4.00, -15.00 m/s',
+    );
+  });
+  it('exposes defeated patrol state and the enemy death identity', () => {
+    const sim = new Simulation(
+      parseRuntimeTuning(runtimeJson).sim,
+      new KinematicPhysicsAdapter(),
+      parseLevel(lab01),
+    );
+    const death = {
+      tick: 5,
+      cause: 'enemy-contact',
+      enemy: 'goon-a',
+      at: vec2(2, 3),
+      velocity: vec2(6, 0),
+      solid: null,
+      attemptTicks: 20,
+      rope: null,
+    } as const;
+    const overlay = formatOverlay(
+      {
+        ...sim.snapshot(),
+        enemies: [
+          {
+            id: 'goon-a',
+            kind: 'patroller',
+            position: vec2(2, 3),
+            size: vec2(1, 1),
+            velocity: vec2(0, 0),
+            alive: false,
+            facing: -1,
+          },
+        ],
+        lastDeath: death,
+      },
+      stats,
+    ).join('\n');
+    expect(overlay).toContain(
+      'goon-a defeated at 2.00, 3.00 size 1.00, 1.00 v 0.00, 0.00 facing -1',
+    );
+    expect(overlay).toContain('enemy-contact enemy goon-a');
+    expect(formatEvent({ type: 'death', ...death })).toContain('enemy-contact enemy goon-a');
+  });
   const attempt: ExitAttempt = {
     exitId: 'slot-a',
     family: 'slot',

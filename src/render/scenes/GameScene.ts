@@ -7,6 +7,8 @@ import { DebugOverlay } from '../debug/DebugOverlay';
 import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { entryMarks, exitMissMessage } from '../exit';
+import { drawPatroller } from '../enemy';
+import { causeText } from '../feedback/causeText';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -48,6 +50,8 @@ export class GameScene extends Phaser.Scene {
   private title!: Phaser.GameObjects.Text;
   private exitResult!: Phaser.GameObjects.Text;
   private exitMiss!: Phaser.GameObjects.Text;
+  private enemyDeathLabel!: Phaser.GameObjects.Text;
+  private stomps: { readonly tick: number; readonly at: Vec2 }[] = [];
   private overlay: DebugOverlay | null = null;
   private frameG!: Phaser.GameObjects.Graphics;
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
@@ -83,6 +87,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.splats = [];
+    this.stomps = [];
     this.lastTime = 0;
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
@@ -124,10 +129,24 @@ export class GameScene extends Phaser.Scene {
       .setDepth(20)
       .setOrigin(0.5, 1)
       .setVisible(false);
+    this.enemyDeathLabel = this.add
+      .text(0, 0, '', {
+        ...hand,
+        fontSize: '22px',
+        color: '#c5302a',
+        backgroundColor: '#f3efe6',
+        padding: { x: 5, y: 2 },
+      })
+      .setName('enemy-cause')
+      .setDepth(20)
+      .setOrigin(0.5, 1)
+      .setVisible(false);
     if (this.opts.debug) this.overlay = new DebugOverlay(this, this.opts.level);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
       for (const e of events) {
+        if (e.type === 'reset') this.stomps = [];
+        if (e.type === 'stomp') this.stomps.push({ tick: e.tick, at: e.at });
         if (e.type === 'death')
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
       }
@@ -191,6 +210,7 @@ export class GameScene extends Phaser.Scene {
 
   private followCamera({ previous, current, alpha }: RenderFrame, dt: number): void {
     const t = this.blend(previous, current, alpha);
+
     const p = previous.player.position;
     const c = current.player.position;
     const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
@@ -453,6 +473,33 @@ export class GameScene extends Phaser.Scene {
     g.clear();
     const t = this.blend(previous, current, alpha);
 
+    for (const enemy of current.enemies) {
+      if (!enemy.alive) continue;
+      const before = previous.enemies.find((item) => item.id === enemy.id) ?? enemy;
+      const position = vec2(
+        lerp(before.position.x, enemy.position.x, t),
+        lerp(before.position.y, enemy.position.y, t),
+      );
+      const authored = this.opts.level.enemies?.find((item) => item.id === enemy.id);
+      drawPatroller(g, position, enemy.size, authored?.stomp.topInset ?? 0, enemy.facing);
+    }
+    this.stomps = this.stomps.filter((stomp) => current.tick - stomp.tick < 24);
+    for (const stomp of this.stomps) {
+      const age = current.tick - stomp.tick;
+      if (age < 0) continue;
+      const radius = m(0.2 + age * 0.025);
+      g.lineStyle(2, INK, 1 - age / 24);
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4;
+        g.lineBetween(
+          m(stomp.at.x) + Math.cos(angle) * radius,
+          m(stomp.at.y) + Math.sin(angle) * radius,
+          m(stomp.at.x) + Math.cos(angle) * (radius + m(0.13)),
+          m(stomp.at.y) + Math.sin(angle) * (radius + m(0.13)),
+        );
+      }
+    }
+
     // Anchors.
     current.anchors.forEach((a, i) => {
       const prev = previous.anchors[i] ?? a;
@@ -468,6 +515,13 @@ export class GameScene extends Phaser.Scene {
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
     // that rope, so the next attempt can adjust (doc 08 candidate feedback; never blocks retry).
     const last = current.lastDeath;
+    const enemyDeathVisible = last?.cause === 'enemy-contact' && current.tick - last.tick < 90;
+    this.enemyDeathLabel.setVisible(enemyDeathVisible);
+    if (enemyDeathVisible) {
+      this.enemyDeathLabel
+        .setPosition(m(last.at.x), m(last.at.y - 0.55))
+        .setText(causeText(last.cause, last.solid));
+    }
     if (last) {
       const at = { x: m(last.at.x), y: m(last.at.y) };
       if (last.rope) {

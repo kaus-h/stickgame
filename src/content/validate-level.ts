@@ -171,6 +171,83 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
   if (level.spawn.y + RADIUS >= level.killY)
     issue('level.killY', 'kill plane intersects spawn', false, true);
 
+  for (const [index, enemy] of (level.enemies ?? []).entries()) {
+    const path = `level.enemies[${String(index)}]`;
+    const to = enemy.path?.to ?? enemy.position;
+    const left = Math.min(enemy.position.x, to.x) - enemy.size.x / 2;
+    const right = Math.max(enemy.position.x, to.x) + enemy.size.x / 2;
+    const top = enemy.position.y - enemy.size.y / 2;
+    const bottom = enemy.position.y + enemy.size.y / 2;
+    if (!inBounds({ x: left, y: top }, level) || !inBounds({ x: right, y: bottom }, level))
+      issue(`${path}.path`, 'entire patroller body and path must remain inside bounds');
+    if (bottom >= level.killY) issue(path, 'patroller body must remain above the kill plane');
+    const supports = level.solids
+      .filter((solid) => solid.kind === 'solid')
+      .flatMap((solid) =>
+        edges(solid.points)
+          .filter(({ a, b }) => Math.abs(a.y - b.y) < EPS && Math.abs(a.y - bottom) < EPS)
+          .map(({ a, b }) => ({ left: Math.min(a.x, b.x), right: Math.max(a.x, b.x) })),
+      )
+      .sort((a, b) => a.left - b.left);
+    let supportedTo = left;
+    for (const support of supports) {
+      if (support.left > supportedTo + EPS) break;
+      supportedTo = Math.max(supportedTo, support.right);
+    }
+    if (supportedTo < right - EPS)
+      issue(
+        `${path}.path`,
+        'entire patrol footprint needs continuous safe horizontal floor support',
+      );
+    // Horizontal paths sweep a rectangle. Reject interior collision exactly, including narrow
+    // obstacles between sample positions; floor/ceiling tangency itself is not overlap.
+    const sweptCorners = [
+      { x: left, y: top },
+      { x: right, y: top },
+      { x: right, y: bottom },
+      { x: left, y: bottom },
+    ];
+    const interior = (p: Vec2): boolean =>
+      p.x > left + EPS && p.x < right - EPS && p.y > top + EPS && p.y < bottom - EPS;
+    if (
+      level.solids.some(
+        (solid) =>
+          solid.points.some(interior) ||
+          sweptCorners.some(
+            (p) =>
+              inside(p, solid.points) &&
+              !edges(solid.points).some((edge) => edgeDistance(p, edge) < EPS),
+          ) ||
+          edges(sweptCorners).some(({ a, b }) =>
+            edges(solid.points).some((edge) => crosses(a, b, edge)),
+          ) ||
+          inside({ x: (left + right) / 2, y: (top + bottom) / 2 }, solid.points),
+      )
+    )
+      issue(path, 'patroller swept body overlaps authored collision');
+    // Spawn is checked against the phase-zero spawn position of every authored patrol path.
+    // For safety use the full footprint: a reset must never start on an approaching enemy.
+    const nearest = {
+      x: Math.max(left, Math.min(right, level.spawn.x)),
+      y: Math.max(top, Math.min(bottom, level.spawn.y)),
+    };
+    if (distance(level.spawn, nearest) < RADIUS + EPS)
+      issue('level.spawn', `player circle overlaps patrol footprint of ${enemy.id}`);
+    if (
+      level.solids.some(
+        (solid) =>
+          solid.kind === 'hazard' &&
+          edges(solid.points).some(
+            ({ a, b }) =>
+              Math.abs(a.y - bottom) < EPS &&
+              Math.abs(b.y - bottom) < EPS &&
+              Math.max(Math.min(a.x, b.x), left) < Math.min(Math.max(a.x, b.x), right),
+          ),
+      )
+    )
+      issue(`${path}.path`, 'patrol floor must be safe rather than hazard collision');
+  }
+
   const rawSolids = records(raw.solids);
   level.solids.forEach((solid, i) => {
     const path = `level.solids[${String(i)}]`;
