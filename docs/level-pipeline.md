@@ -91,3 +91,89 @@ schema and tool choice documented, decision recorded in Linear doc 32. Evidence:
 invalid-input and authoring-rule unit tests; repeated runtime replacement without body/joint/
 listener growth; real file-edit Playwright reload test; `npm run check`; stacked PR for Claude
 review. Human feel and native-device authoring preview remain unverified here.
+
+## Route solver (GMR-101)
+
+Static validation cannot prove a route exists. The route solver does: it plays the level with the
+real `Simulation` and `KinematicPhysicsAdapter`, headless, using only Move (digital axis), Jump
+(press + release) and Rope (aim at an anchor disc point + press, release later), and keeps the
+first route it finds that reaches each goal without dying.
+
+```bash
+npm run levels:solve                          # every level in content/levels
+npm run levels:solve -- lab-01 lab-moving     # some levels
+npm run levels:solve -- <id> --chamber c2     # chambers up to c2 only (no fixture written)
+npm run levels:solve -- <id> --chamber c2 --from-checkpoint   # c2 alone, from its checkpoint
+npm run levels:solve -- --budget 20000000     # simulated-tick budget per chamber
+npm run levels:solve -- --verify              # replay the committed fixtures, no search
+```
+
+Output: `content/solutions/<levelId>.json` with, per chamber, `solved`, the plan (steps on
+absolute ticks), the solution length in ticks, every input's timing window, the tightest
+jump/rope window, search effort and the deaths met while searching, plus an encoded full-level
+replay (`encodeReplay`, docs/replay.md) and notes (for example a `requiredFrom` anchor that the
+route never needed). `npm run test` replays every committed fixture from a fresh simulation and
+fails if one no longer reaches its goals, so a geometry or tuning change that breaks a proven
+route is caught in `npm run check`; re-run the solver for that level and review the new numbers.
+
+How it works (`src/tools/route-solver`):
+
+- **Goals.** Chambers are solved in order from the spawn, each continuing from the previous
+  chamber's end state, so the fixture is one replay from the spawn. A chamber ends at the first
+  checkpoint inside the next chamber (else on entering the next chamber's region); the last
+  chamber ends at an accepted exit. A level without chambers is one chamber, `level`, ending at
+  the exit. `--from-checkpoint` starts a chamber at rest on its checkpoint for fast authoring
+  iteration; that start is not reachable by input, so it writes no fixture.
+- **Search.** Best-first search over coarse decisions: set the axis, optionally jump (short or
+  full hold), press rope (each anchor in range × 5 impact points on its disc) or release, then hold
+  for 4–48 ticks. Order = elapsed ticks + a per-input cost + 2 × 8 ticks/m × free-space distance
+  to the goal. States are deduplicated on a quantised key and each 0.5 m cell gets a capped number
+  of expansions, so dead ends (hanging on a rope over a pit) cannot absorb the budget. Branches
+  that die, or pass within 2 cm of a hazard, are pruned (see the hazard graze finding below).
+  Budgets are simulated ticks, so results are deterministic; forks are deep copies used only to
+  search, and every reported route is re-run from a fresh simulation at tick 0.
+- **Refinement and windows.** Steps the route does not need are dropped, then each jump and rope
+  input is moved to the middle of its own window (1-tick refinement of the 4-tick search grid).
+  A window is the contiguous range of ticks an input can move, every other input held fixed in
+  absolute time, that still reaches the goal (scanned up to ±40 ticks; `capped` marks a window
+  at least that wide, `startClipped` one that cannot move earlier because the chamber starts
+  there).
+
+Reading windows. A window holds every later input fixed, so it is a lower bound on a player's
+leeway (a person re-times later inputs to what they see) and it describes the route found, not
+the best possible route; a chamber with an easier route may report a tight window. Proposed
+difficulty bands for the tightest jump/rope window of a chamber (PROPOSED, to be calibrated
+against playtest death and retry data, not locked):
+
+| Band     | Tightest window | Intended use                                     |
+| -------- | --------------- | ------------------------------------------------ |
+| Generous | ≥ 12 ticks      | Onboarding, first contact with a mechanic        |
+| Standard | 6–11 ticks      | Normal chamber challenge                         |
+| Tight    | 3–5 ticks       | Section finales, mastery routes                  |
+| Expert   | ≤ 2 ticks       | Optional/expert content only; review if critical |
+
+Current lab results (default budget, one dev machine; `npm run levels:solve`):
+
+| Level          | Result   | Route (ticks) | Tightest jump/rope window                 | Solve time |
+| -------------- | -------- | ------------- | ----------------------------------------- | ---------- |
+| lab-01         | solved   | 435           | 1 (jump at tick 0, start-clipped; next 6) | 9.6 s      |
+| lab-authoring  | solved   | 115           | 29 (single jump)                          | 0.2 s      |
+| lab-collision  | unsolved | –             | –                                         | 39 s       |
+| lab-exit-miss  | solved   | 101           | 1 (frame-precise braking, by design)      | 0.4 s      |
+| lab-exit-shaft | solved   | 59            | – (run only)                              | < 0.1 s    |
+| lab-exit-slot  | solved   | 67            | – (run only)                              | < 0.1 s    |
+| lab-exit-wide  | solved   | 67            | – (run only)                              | < 0.1 s    |
+| lab-moving     | solved   | 755           | 2 (rope release, re-grab sequence)        | 7.9 s      |
+
+`lab-collision` is a collision stress lab: the best state found is at (67.4, 1.7), left of
+`conflict-wall`, whose top is about 8 m above `ground-c`. With 40 M ticks the search exhausted
+its frontier (about 105 s) without passing it. No intended route is claimed for that lab.
+
+Limits. Digital axis only (analog touch values are not searched). The solver proves that a route
+exists; it does not find the easiest route, and it does not judge feel, readability or camera
+framing. An unsolved result within budget is a strong hint, not a proof of impossibility.
+Findings so far: `lab-authoring` is solved by a plain jump over the teeth, so its tagged required
+shot is optional; `lab-exit-miss` (the speed-rejection fixture) can be entered under 2 m/s by
+frame-precise braking. The simulation treats a hazard surface within its 1 cm ground probe as
+standing ground without a contact, so a player can jump off a lethal floor they never touch; the
+solver refuses such routes (2 cm hazard margin) and the issue is reported for a sim fix.
