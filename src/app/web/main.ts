@@ -7,12 +7,32 @@ import { parseLevel, parseRuntimeTuning } from '../../content';
 import { vec2 } from '../../core';
 import { bindDom, DesktopInputMapper, IntentQueue } from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
-import { WebPlatformServices } from '../../platform';
+import { createPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 
 // Composition root for the browser build.
 async function start(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  // Native Capacitor shell or plain web, decided once at startup (ADR-002, GMR-33).
+  const platform = await createPlatformServices();
+
+  // ?scene=device-lab (or a `--mode device-lab` build, used for the native shell) runs the on-device
+  // validation lab instead of the game. ?duration=SECONDS shortens the 15 minute frame-time run.
+  if (
+    (params.get('scene') ?? (import.meta.env.MODE === 'device-lab' ? 'device-lab' : '')) ===
+    'device-lab'
+  ) {
+    const { mountDeviceLab, DEFAULT_DURATION_SEC } = await import('../../tools/device-lab');
+    const duration = Number(params.get('duration') ?? DEFAULT_DURATION_SEC);
+    mountDeviceLab({
+      root: document.body,
+      platform,
+      durationSec: duration > 0 ? duration : DEFAULT_DURATION_SEC,
+    });
+    return;
+  }
+
   // The handwriting font must be ready before Phaser rasterizes HUD text.
   await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
 
@@ -22,7 +42,7 @@ async function start(): Promise<void> {
     'lab-collision': labCollision,
     'lab-moving': labMoving,
   };
-  const levelName = new URLSearchParams(window.location.search).get('level') ?? 'lab-01';
+  const levelName = params.get('level') ?? 'lab-01';
   const level = parseLevel(levels[levelName] ?? lab01);
   const intents = new IntentQueue();
   let scene: GameScene | null = null;
@@ -40,7 +60,7 @@ async function start(): Promise<void> {
     level,
     physics: new KinematicPhysicsAdapter(),
     intents,
-    platform: new WebPlatformServices(),
+    platform,
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();

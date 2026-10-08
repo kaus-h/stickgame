@@ -23,3 +23,4 @@ export type {
   StorageService,
 } from './PlatformServices';
 export { WebPlatformServices } from './web/WebPlatformServices';
+export { createPlatformServices, isCapacitorNative } from './createPlatformServices';

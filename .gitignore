@@ -16,3 +16,11 @@ native/ios/App/Pods/
 native/android/.gradle/
 native/android/app/build/
 .claude/worktrees/
+
+# Native shells (GMR-33): generated build output and machine-local files
+native/android/local.properties
+native/android/.idea/
+native/android/build/
+native/ios/App/CapApp-SPM/.build/
+native/ios/App/*.xcodeproj/xcuserdata/
+native/ios/App/*.xcworkspace/xcuserdata/
