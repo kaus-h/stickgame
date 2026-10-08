@@ -7,5 +7,5 @@ export {
   MAX_ANCHOR_SPEED,
   parseLevel,
 } from './level';
-export { parseRuntimeTuning, TuningError } from './tuning';
-export type { RuntimeTuning } from './tuning';
+export { DEFAULT_ASSIST_TUNING, parseRuntimeTuning, TuningError } from './tuning';
+export type { AssistTuning, RuntimeTuning } from './tuning';

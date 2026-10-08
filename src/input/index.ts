@@ -4,3 +4,22 @@ export { bindDom, DEFAULT_DESKTOP_BINDINGS, DesktopInputMapper } from './Desktop
 export type { DesktopBindings, ScreenToWorld } from './DesktopInputMapper';
 export { IntentQueue } from './IntentQueue';
 export type { IntentLogEntry } from './IntentQueue';
+export {
+  bindTouchDom,
+  computeLayout,
+  DEFAULT_TOUCH_OPTIONS,
+  NO_INSETS,
+  TOUCH_SCHEMES,
+  TouchInputMapper,
+} from './TouchInputMapper';
+export type {
+  MoveStyle,
+  SafeAreaInsets,
+  TouchControl,
+  TouchControlId,
+  TouchControlsState,
+  TouchLayout,
+  TouchOptions,
+  TouchRole,
+  TouchScheme,
+} from './TouchInputMapper';

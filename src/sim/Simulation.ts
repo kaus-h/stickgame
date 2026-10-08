@@ -1,8 +1,14 @@
-import { SIM_DT, vec2, type Intent, type Vec2 } from '../core';
+import { SIM_DT, vec2, type AssistMode, type Intent, type Vec2 } from '../core';
 import type { PhysicsAdapter, PhysicsStats } from '../physics';
 import { anchorPathState } from './anchorPath';
 import { levelSegments, type LevelDef } from './level';
-import { resolveTarget, type RopeInvalidReason, type TargetResolution } from './targeting';
+import {
+  resolveTarget,
+  STANDARD_ASSIST,
+  type RopeInvalidReason,
+  type TargetAssist,
+  type TargetResolution,
+} from './targeting';
 import type { SimTuning } from './tuning';
 
 export type PlayerMode = 'grounded' | 'air' | 'tethered';
@@ -54,6 +60,14 @@ export interface SimSnapshot {
   readonly lastDeath: DeathRecord | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
   readonly target: TargetResolution | null;
+  /** Aim-assist tier this simulation was created with (GMR-27); `standard` = no assist. */
+  readonly assist: AssistMode;
+}
+
+/** Construction options. Everything here is part of a run's identity (replays record it). */
+export interface SimulationOptions {
+  /** Explicit, opt-in aim assist (GMR-27). Default: standard (no assist). */
+  readonly assist?: TargetAssist;
 }
 
 /**
@@ -158,12 +172,15 @@ export class Simulation {
   } | null = null;
   /** Rope presses and releases in input order, applied once anchors are placed for the tick. */
   private ropeActions: ('press' | 'release')[] = [];
+  private readonly assist: TargetAssist;
 
   constructor(
     private tuning: SimTuning,
     private readonly physics: PhysicsAdapter,
     private readonly level: LevelDef,
+    options: SimulationOptions = {},
   ) {
+    this.assist = options.assist ?? STANDARD_ASSIST;
     physics.setGravity(vec2(0, tuning.gravity));
     physics.setGeometry(levelSegments(level));
     this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
@@ -237,6 +254,7 @@ export class Simulation {
       lastDeath: this.lastDeath,
       contacts: this.lastContacts,
       target: this.target(s.position, anchors),
+      assist: this.assist.mode,
     };
   }
 
@@ -273,6 +291,7 @@ export class Simulation {
       })),
       this.tuning.rope,
       (from, to) => this.physics.raycast(from, to),
+      this.assist,
     );
   }
 

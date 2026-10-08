@@ -259,6 +259,45 @@ describe('rope targeting in the simulation', () => {
   });
 });
 
+describe('aim assist option (GMR-27)', () => {
+  const one: LevelDef = {
+    ...level,
+    anchors: [{ id: 'hook', position: vec2(4, 3), radius: 0.4 }],
+  };
+  const snapAssist = { mode: 'snap', wideSelectRadius: 1.8, snapRadius: 2.6 } as const;
+  // 2.2 m outside the disc: no anchor under standard, snapped under the snap tier.
+  const aim = vec2(4 + 0.4 + 2.2, 3);
+  const script = (tick: number): Intent[] =>
+    tick === 10 ? [{ type: 'ropeAim', target: aim }, { type: 'ropePress' }] : [];
+
+  it('defaults to standard and reports the tier in the snapshot', () => {
+    const sim = make(one);
+    expect(sim.snapshot().assist).toBe('standard');
+    run(sim, 30, script);
+    expect(sim.snapshot().rope).toBeNull();
+    expect(sim.snapshot().target).toMatchObject({ valid: false, reason: 'no-anchor' });
+  });
+
+  it('snap connects where standard does not, and flags the selection as snapped', () => {
+    const sim = new Simulation(tuning, new KinematicPhysicsAdapter(), one, { assist: snapAssist });
+    run(sim, 11, script);
+    const s = sim.snapshot();
+    expect(s.assist).toBe('snap');
+    expect(s.rope).not.toBeNull();
+    expect(s.target).toMatchObject({ snapped: true, anchor: 0 });
+  });
+
+  it('an explicit standard option is bit-identical to no option', () => {
+    const a = make(one);
+    const b = new Simulation(tuning, new KinematicPhysicsAdapter(), one, {
+      assist: { ...snapAssist, mode: 'standard' },
+    });
+    run(a, 120, script);
+    run(b, 120, script);
+    expect(b.snapshot()).toEqual(a.snapshot());
+  });
+});
+
 describe('tether', () => {
   /** A short start ledge, an anchor out over a deep pit, lava far below. */
   const pit: LevelDef = {

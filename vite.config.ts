@@ -54,6 +54,11 @@ export default defineConfig({
     // Phaser alone is ~1.4 MB minified; the download budget is enforced by scripts/bundle-report.mjs
     // against budgets.json (GMR-53), so this only silences Vite's generic warning.
     chunkSizeWarningLimit: 1600,
+    // The touch lab (GMR-27) ships with every build so preview links and the Capacitor shell can
+    // open it on a phone; it is a separate page and never loads with the game.
+    rollupOptions: {
+      input: { main: 'index.html', 'touch-lab': 'touch-lab.html' },
+    },
   },
   server: {
     port: 5173,

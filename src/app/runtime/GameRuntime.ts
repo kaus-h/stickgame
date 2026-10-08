@@ -3,7 +3,13 @@ import type { RuntimeTuning } from '../../content';
 import type { PhysicsAdapter } from '../../physics';
 import type { PlatformServices } from '../../platform';
 import type { FrameSource, RenderFrame, RuntimeStats } from '../../render';
-import { Simulation, type LevelDef, type SimEvent, type SimSnapshot } from '../../sim';
+import {
+  Simulation,
+  type LevelDef,
+  type SimEvent,
+  type SimSnapshot,
+  type TargetAssist,
+} from '../../sim';
 
 export interface GameRuntimeDeps {
   readonly tuning: RuntimeTuning;
@@ -15,6 +21,8 @@ export interface GameRuntimeDeps {
   readonly now: () => number;
   /** Called before each simulation tick, e.g. so device adapters can re-aim under a moving camera. */
   readonly beforeTick?: () => void;
+  /** Opt-in aim assist (GMR-27); omitted = standard. */
+  readonly assist?: TargetAssist;
 }
 
 const FRAME_WINDOW = 120;
@@ -41,7 +49,12 @@ export class GameRuntime implements FrameSource {
   private lastAlpha = 0;
 
   constructor(private readonly deps: GameRuntimeDeps) {
-    this.sim = new Simulation(deps.tuning.sim, deps.physics, deps.level);
+    this.sim = new Simulation(
+      deps.tuning.sim,
+      deps.physics,
+      deps.level,
+      deps.assist ? { assist: deps.assist } : {},
+    );
     this.clock = new FixedStepClock({ dt: SIM_DT, ...deps.tuning.clock });
     this.current = this.sim.snapshot();
     this.previous = this.current;

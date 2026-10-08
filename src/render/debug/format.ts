@@ -45,8 +45,8 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
       ? `rope a${String(rope.anchor)}  ${rope.locked ? 'locked' : 'paying out'} ${rope.taut ? 'taut' : 'slack'}  L ${rope.length.toFixed(3)} m  pivot ${v2(rope.point)}  since #${String(rope.attachedTick)}`
       : 'rope —',
     t
-      ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}`
-      : 'target —',
+      ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}${t.snapped ? ' SNAPPED' : ''}  assist ${s.assist}`
+      : `target —  assist ${s.assist}`,
     anchorLine(s),
     s.contacts.length
       ? `contacts ${s.contacts.map((c) => `${c.solid}${c.kind === 'hazard' ? '!' : ''} n(${f2(c.normal.x)},${f2(c.normal.y)}) ${c.speed.toFixed(1)}`).join('  ')}`

@@ -114,7 +114,10 @@ export class DesktopInputMapper {
   }
 }
 
-/** Attach the mapper to DOM events. Returns a function that removes every listener. */
+/**
+ * Attach the mapper to DOM events. Returns a function that removes every listener. Touch pointers
+ * are left to the TouchInputMapper (GMR-27); mouse and pen drive the desktop mapper.
+ */
 export function bindDom(target: HTMLElement, mapper: DesktopInputMapper): () => void {
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
@@ -124,14 +127,17 @@ export function bindDom(target: HTMLElement, mapper: DesktopInputMapper): () => 
     mapper.keyUp(e.code);
   };
   const onMove = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
     const r = target.getBoundingClientRect();
     mapper.pointerMove(e.clientX - r.left, e.clientY - r.top);
   };
   const onDown = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
     const r = target.getBoundingClientRect();
     mapper.pointerDown(e.clientX - r.left, e.clientY - r.top, e.button);
   };
   const onUp = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
     mapper.pointerUp(e.button);
   };
   const onBlur = (): void => {

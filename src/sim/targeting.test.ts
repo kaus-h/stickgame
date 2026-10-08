@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { vec2, type Vec2 } from '../core';
 import type { RayHit } from '../physics';
 import { KinematicPhysicsAdapter } from '../physics/backends/kinematic/KinematicPhysicsAdapter';
-import { resolveTarget, type TargetAnchor } from './targeting';
+import { resolveTarget, STANDARD_ASSIST, type TargetAnchor, type TargetAssist } from './targeting';
 import type { RopeTuning } from './tuning';
 
 const rope: RopeTuning = {
@@ -59,6 +59,7 @@ describe('resolveTarget', () => {
       anchor: null,
       impact: null,
       distance: null,
+      snapped: false,
     });
   });
 
@@ -105,5 +106,55 @@ describe('resolveTarget', () => {
     const far = resolve(vec2(5, -3), anchors, noHit, vec2(0, 0));
     expect(near.distance).toBeCloseTo(Math.sqrt(10), 12);
     expect(far.distance).toBeCloseTo(Math.sqrt(34), 12);
+  });
+});
+
+describe('resolveTarget assist tiers (GMR-27)', () => {
+  const wide: TargetAssist = { mode: 'wide-select', wideSelectRadius: 1.8, snapRadius: 2.6 };
+  const snap: TargetAssist = { mode: 'snap', wideSelectRadius: 1.8, snapRadius: 2.6 };
+  const anchors = [anchor(5, -3)];
+  const at = (gap: number) => vec2(5 + 0.4 + gap, -3);
+  const run = (aim: Vec2, assist: TargetAssist, list = anchors) =>
+    resolveTarget(player, aim, list, rope, noHit, assist);
+
+  it('standard with the radii set is identical to the default (assist values are ignored)', () => {
+    const standardWithRadii: TargetAssist = { ...snap, mode: 'standard' };
+    for (const gap of [0, 0.5, 1.1, 1.5, 2.2, 3]) {
+      expect(run(at(gap), standardWithRadii)).toEqual(resolve(at(gap), anchors));
+      expect(run(at(gap), STANDARD_ASSIST)).toEqual(resolve(at(gap), anchors));
+    }
+  });
+
+  it('wide-select widens the selection radius and never flags a snap', () => {
+    expect(run(at(1.5), STANDARD_ASSIST).valid).toBe(false);
+    const r = run(at(1.5), wide);
+    expect(r).toMatchObject({ valid: true, anchor: 0, snapped: false });
+    expect(run(at(1.81), wide).valid).toBe(false);
+  });
+
+  it('snap selects within snapRadius only when nothing is in the standard radius, and says so', () => {
+    expect(run(at(0.5), snap)).toMatchObject({ valid: true, snapped: false });
+    const s = run(at(2.2), snap);
+    expect(s).toMatchObject({ valid: true, anchor: 0, snapped: true });
+    // The impact point is still on the rim nearest the aim: the snap chooses the anchor only.
+    expect(s.impact?.x).toBeCloseTo(5.4, 12);
+    expect(run(at(2.61), snap)).toMatchObject({
+      valid: false,
+      reason: 'no-anchor',
+      snapped: false,
+    });
+  });
+
+  it('snap prefers an anchor inside the standard radius over a nearer-centred snap candidate', () => {
+    const two = [anchor(5, -3), anchor(8, -3)];
+    // 1.0 m gap to anchor 1 (standard), 2.0 m gap to anchor 0 (snap only).
+    const r = run(vec2(6.6, -3), snap, two);
+    expect(r).toMatchObject({ anchor: 1, snapped: false });
+  });
+
+  it('a snapped but invalid shot still reports the snap so it can be drawn', () => {
+    const far = [anchor(12, 0)];
+    const r = run(vec2(12 - 0.4 - 2, 0), snap, far);
+    expect(r).toMatchObject({ valid: false, reason: 'too-far', snapped: true });
   });
 });

@@ -4,8 +4,17 @@ import labCollision from '../../../content/levels/lab-collision.json';
 import labMoving from '../../../content/levels/lab-moving.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { parseLevel, parseRuntimeTuning } from '../../content';
-import { vec2 } from '../../core';
-import { bindDom, DesktopInputMapper, IntentQueue } from '../../input';
+import { parseAssistMode, vec2 } from '../../core';
+import {
+  bindDom,
+  bindTouchDom,
+  DesktopInputMapper,
+  IntentQueue,
+  TOUCH_SCHEMES,
+  TouchInputMapper,
+  type SafeAreaInsets,
+  type TouchScheme,
+} from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { WebPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
@@ -22,7 +31,8 @@ async function start(): Promise<void> {
     'lab-collision': labCollision,
     'lab-moving': labMoving,
   };
-  const levelName = new URLSearchParams(window.location.search).get('level') ?? 'lab-01';
+  const params = new URLSearchParams(window.location.search);
+  const levelName = params.get('level') ?? 'lab-01';
   const level = parseLevel(levels[levelName] ?? lab01);
   const intents = new IntentQueue();
   let scene: GameScene | null = null;
@@ -32,6 +42,28 @@ async function start(): Promise<void> {
     },
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
   );
+  // Touch controls (GMR-27): same intents, same simulation. Shown on the first touch or ?touch=1.
+  // ?scheme=direct-touch|drag-aim|reticle-offset, ?move=digital|analog, ?touchScale=1.2.
+  const scheme = TOUCH_SCHEMES.find((k) => k === params.get('scheme')) ?? 'direct-touch';
+  const touch = new TouchInputMapper(
+    (intent) => {
+      intents.push(intent);
+    },
+    (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
+    {
+      scheme,
+      moveStyle: params.get('move') === 'analog' ? 'analog' : 'digital',
+      scale: Number(params.get('touchScale')) || 1,
+    },
+  );
+  if (params.get('touch') === '1') touch.activate();
+  const layoutTouch = (): void => {
+    touch.setViewport(window.innerWidth, window.innerHeight, readSafeArea());
+  };
+  layoutTouch();
+  window.addEventListener('resize', layoutTouch);
+  // Aim assist (GMR-27): explicit, opt-in, visible. ?assist=wide-select|snap; default standard.
+  const assistMode = parseAssistMode(params.get('assist')) ?? 'standard';
   // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
   const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
   const tuning = parseRuntimeTuning(runtimeTuning);
@@ -44,13 +76,16 @@ async function start(): Promise<void> {
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();
+      touch.beforeTick();
     },
+    assist: { mode: assistMode, ...tuning.assist },
   });
   scene = new GameScene({
     level,
     source: runtime,
     onEvents: (l) => runtime.onEvents(l),
     debug,
+    touchControls: () => (touch.active ? touch.state() : null),
   });
   if (debug) {
     // Loaded on demand so the panel never weighs on the production bundle.
@@ -79,6 +114,7 @@ async function start(): Promise<void> {
   });
   game.events.once('ready', () => {
     bindDom(game.canvas, mapper);
+    bindTouchDom(game.canvas, touch);
     game.canvas.style.cursor = 'none';
   });
 
@@ -90,9 +126,33 @@ async function start(): Promise<void> {
         snapshot: () => runtime.sim.snapshot(),
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
+        touch: {
+          state: () => touch.state(),
+          layout: () => touch.layout(),
+          setScheme: (s: TouchScheme) => {
+            touch.setScheme(s);
+          },
+        },
       },
     });
   }
+}
+
+/**
+ * env(safe-area-inset-*) as CSS px numbers. index.html maps them to --safe-* variables and pads a
+ * hidden probe with them, because getComputedStyle resolves padding but not custom properties.
+ */
+function readSafeArea(): SafeAreaInsets {
+  const probe = document.getElementById('safe-area-probe');
+  if (!probe) return { top: 0, right: 0, bottom: 0, left: 0 };
+  const css = getComputedStyle(probe);
+  const px = (v: string): number => Number.parseFloat(v) || 0;
+  return {
+    top: px(css.paddingTop),
+    right: px(css.paddingRight),
+    bottom: px(css.paddingBottom),
+    left: px(css.paddingLeft),
+  };
 }
 
 void start();
