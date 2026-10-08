@@ -6,12 +6,11 @@ import {
   type ShareService,
   type StorageService,
 } from '../PlatformServices';
-
-const PREFIX = 'stickgame:';
+import { createWebStorage } from './webStorage';
 
 /**
  * The game's own website build (ADR-002): free first act, no ads, no purchases yet (the native
- * and Steam builds sell the full chapter). Storage is localStorage; share uses the Web Share API
+ * and Steam builds sell the full chapter). Storage is IndexedDB with localStorage and memory fallbacks; share uses the Web Share API
  * with a clipboard fallback; haptics use navigator.vibrate where the browser supports it.
  */
 export class WebPlatformServices extends NullPlatformServices {
@@ -35,23 +34,20 @@ export class WebPlatformServices extends NullPlatformServices {
     };
   };
 
+  /** IndexedDB, then localStorage, then memory (GMR-48); chosen once, lazily. */
+  private readonly backend = createWebStorage();
+
   override readonly storage: StorageService = {
-    load: (key) => {
-      try {
-        return Promise.resolve(localStorage.getItem(PREFIX + key));
-      } catch {
-        return Promise.resolve(null); // private mode or blocked storage: play without saves
-      }
-    },
-    save: (key, value) => {
-      try {
-        localStorage.setItem(PREFIX + key, value);
-      } catch {
-        // Quota or blocked storage: saves are best-effort on the web.
-      }
-      return Promise.resolve();
+    load: async (key) => (await this.backend).load(key),
+    save: async (key, value) => {
+      await (await this.backend).save(key, value);
     },
   };
+
+  /** Which storage backend is in use (diagnostics and tests). */
+  async storageKind(): Promise<string> {
+    return (await this.backend).kind;
+  }
 
   override readonly haptics: HapticsService = {
     impact: (strength) => {

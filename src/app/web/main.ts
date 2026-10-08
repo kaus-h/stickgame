@@ -18,7 +18,7 @@ import {
   type TouchScheme,
 } from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
-import { createPlatformServices } from '../../platform';
+import { createPlatformServices, SaveStore } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 
@@ -27,6 +27,9 @@ async function start(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
   // Native Capacitor shell or plain web, decided once at startup (ADR-002, GMR-33).
   const platform = await createPlatformServices();
+  // Local-first save (GMR-48): progress, bests and settings. Loading never blocks on failure.
+  const save = new SaveStore(platform.storage);
+  const saved = await save.load();
 
   // ?scene=device-lab (or a `--mode device-lab` build, used for the native shell) runs the on-device
   // validation lab instead of the game. ?duration=SECONDS shortens the 15 minute frame-time run.
@@ -65,7 +68,10 @@ async function start(): Promise<void> {
   );
   // Touch controls (GMR-27): same intents, same simulation. Shown on the first touch or ?touch=1.
   // ?scheme=direct-touch|drag-aim|reticle-offset, ?move=digital|analog, ?touchScale=1.2.
-  const scheme = TOUCH_SCHEMES.find((k) => k === params.get('scheme')) ?? 'direct-touch';
+  const scheme =
+    TOUCH_SCHEMES.find((k) => k === params.get('scheme')) ??
+    TOUCH_SCHEMES.find((k) => k === saved.settings.touchScheme) ??
+    'direct-touch';
   const touch = new TouchInputMapper(
     (intent) => {
       intents.push(intent);
@@ -84,21 +90,33 @@ async function start(): Promise<void> {
   layoutTouch();
   window.addEventListener('resize', layoutTouch);
   // Aim assist (GMR-27): explicit, opt-in, visible. ?assist=wide-select|snap; default standard.
-  const assistMode = parseAssistMode(params.get('assist')) ?? 'standard';
+  const assistMode = parseAssistMode(params.get('assist')) ?? saved.settings.assist;
   // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
   const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
   const tuning = parseRuntimeTuning(runtimeTuning);
   // Audio (GMR-41): procedural SFX rendered at unlock; fire-and-forget, never delays play.
   const audio = new AudioEngine(parseSfxBank(sfxBank));
   const sfx = new SfxDirector(audio);
+  audio.setVolume('master', saved.settings.masterVolume);
+  audio.setVolume('sfx', saved.settings.sfxVolume);
+  audio.setVolume('music', saved.settings.musicVolume);
+  audio.setMuted(saved.settings.muted);
   const unlockAudio = (): void => {
     audio.unlock();
   };
   for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
     window.addEventListener(type, unlockAudio, { capture: true, passive: true });
   }
+  // Run bookkeeping for the save: deaths since the last clear; a clear records time and deaths.
+  let runDeaths = 0;
+  const flushDeaths = (): void => {
+    if (runDeaths === 0) return;
+    save.recordRun(level.id, { cleared: false, ticks: 0, deaths: runDeaths });
+    runDeaths = 0;
+  };
   platform.onVisibilityChange((visible) => {
     audio.setVisible(visible);
+    if (!visible) flushDeaths();
   });
   const runtime = new GameRuntime({
     tuning,
@@ -116,6 +134,13 @@ async function start(): Promise<void> {
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
+    for (const e of events) {
+      if (e.type === 'death') runDeaths++;
+      else if (e.type === 'exit') {
+        save.recordRun(level.id, { cleared: true, ticks: e.attemptTicks, deaths: runDeaths });
+        runDeaths = 0;
+      }
+    }
   });
   scene = new GameScene({
     level,
@@ -163,6 +188,11 @@ async function start(): Promise<void> {
         snapshot: () => runtime.sim.snapshot(),
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
+        save: () => ({ data: save.current, source: save.source }),
+        flushSave: async () => {
+          flushDeaths();
+          await save.flush();
+        },
         touch: {
           state: () => touch.state(),
           layout: () => touch.layout(),
