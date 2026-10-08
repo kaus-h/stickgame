@@ -176,6 +176,7 @@ async function start(): Promise<void> {
       return r === 'system' ? undefined : r === 'on';
     },
     showExitResult: !flowMode,
+    overview: params.has('overview'),
   });
 
   // Game flow (GMR-47): title, level select, pause, results, settings.
