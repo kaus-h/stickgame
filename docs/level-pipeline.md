@@ -38,9 +38,10 @@ the generated file is current. This keeps runtime schema checks within the bundl
 
 Chambers require a stated problem and challenge family. Checkpoints and camera hints are
 authoring metadata in this issue; they do not activate respawning or alter the current camera.
-Enemies, triggers, mastery routes, one-use anchors and exit angle/speed acceptance are future
-feature contracts from doc 32, not supported runtime behavior yet. Unsupported fields are
-rejected; add them with their implementing issue and a migration when needed.
+Enemies, triggers, mastery routes and one-use anchors remain future feature contracts from doc 32.
+GMR-46 adds authored v2 compartment exit angle, speed and alignment acceptance;
+see [compartment-exits.md](compartment-exits.md). Other unsupported fields are rejected;
+add them with their implementing issue and a migration when needed.
 
 ## Author → validate → compile → preview
 

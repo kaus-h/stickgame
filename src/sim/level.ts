@@ -65,8 +65,28 @@ export interface LevelDef {
     readonly focus: Vec2;
   }[];
   readonly tunnels?: readonly { readonly id: string; readonly region: LevelRegion }[];
-  /** Entering this box completes the level (compartment exits replace it in GMR-46). */
-  readonly exit?: { readonly min: Vec2; readonly max: Vec2 };
+  /** Typed compartments use swept entry rules; bare regions preserve legacy lab behavior. */
+  readonly exit?: ExitDef | LevelRegion;
+}
+
+export type ExitFamily = 'wide' | 'slot' | 'shaft';
+export type ExitSide = 'left' | 'right' | 'top' | 'bottom';
+export interface ExitWindow {
+  readonly min: number;
+  readonly max: number;
+}
+export interface ExitDef extends LevelRegion {
+  readonly id: string;
+  readonly family: ExitFamily;
+  readonly entry: {
+    readonly side: ExitSide;
+    /** Unsigned deviation from inward normal in degrees, 0..90. */
+    readonly angle: ExitWindow;
+    /** Arrival speed, m/s. */
+    readonly speed: ExitWindow;
+    /** Opening fraction, increasing down/right. */
+    readonly alignment: ExitWindow;
+  };
 }
 
 export interface LevelRegion {

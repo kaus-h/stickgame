@@ -108,4 +108,26 @@ describe('SfxDirector', () => {
     d.onFrame(snap(true));
     expect(sink.calls).toEqual(['ropeTaut']);
   });
+
+  it('keeps the success cue silent on a rejected exit', () => {
+    const sink = recorder();
+    new SfxDirector(sink).onEvents([
+      {
+        type: 'exitMiss',
+        tick: 1,
+        attempt: {
+          exitId: 'slot-a',
+          family: 'slot',
+          at: vec2(1, 2),
+          velocity: vec2(3, 4),
+          speed: 5,
+          angleCos: 0.6,
+          alignment: 0.5,
+          accepted: false,
+          reason: 'angle',
+        },
+      },
+    ]);
+    expect(sink.calls).toEqual([]);
+  });
 });

@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "lab-exit-shaft",
+  "name": "Compartment Lab / Shaft",
+  "spawn": [2, 0.65],
+  "bounds": { "minX": 0, "minY": -2, "maxX": 18, "maxY": 19 },
+  "killY": 20,
+  "solids": [
+    { "id": "takeoff", "rect": { "x": 0, "y": 1, "w": 4, "h": 1 } },
+    { "id": "landing", "rect": { "x": 0, "y": 17, "w": 18, "h": 2 } }
+  ],
+  "anchors": [],
+  "exit": {
+    "id": "shaft-door",
+    "family": "shaft",
+    "min": [4, 11],
+    "max": [16, 17],
+    "entry": {
+      "side": "top",
+      "angle": { "min": 0, "max": 25 },
+      "speed": { "min": 20, "max": 28 },
+      "alignment": { "min": 0.03, "max": 0.97 }
+    }
+  }
+}

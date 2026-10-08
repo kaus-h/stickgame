@@ -26,6 +26,13 @@ test('a real JSON edit hot reloads geometry and resets without a document reload
     page.evaluate(() => (window as unknown as { __stickgame: LevelProbe }).__stickgame.resources());
   await expect.poll(async () => (await resources()).cameras).toBe(2);
   const initialResources = await resources();
+  const other = await page.context().newPage();
+  await other.goto('/?level=lab-exit-wide&renderer=canvas');
+  await other.waitForFunction(() => '__stickgame' in window);
+  const otherRevision = () =>
+    other.evaluate(
+      () => (window as unknown as { __stickgame: LevelProbe }).__stickgame.level().revision,
+    );
   try {
     await page.keyboard.down('ArrowRight');
     await expect
@@ -91,6 +98,8 @@ test('a real JSON edit hot reloads geometry and resets without a document reload
       expect((await resources()).cameras).toBe(initialResources.cameras);
     }
     expect((await resources()).textures).toBe(initialResources.textures);
+    // Editing another level must preserve an open attempt, including held input/completion.
+    expect(await otherRevision()).toBe(0);
   } finally {
     await writeFile(file, original);
   }

@@ -10,6 +10,7 @@ import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/Kinema
 import { createPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
+import { exitTelemetry } from '../../telemetry/exitTelemetry';
 import { levelSources } from './level-catalog';
 
 // Composition root for the browser build.
@@ -80,6 +81,10 @@ async function start(): Promise<void> {
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
+    for (const event of events) {
+      const telemetry = exitTelemetry(level, event);
+      if (telemetry) platform.analytics.track(telemetry);
+    }
   });
   scene = new GameScene({
     level,
@@ -127,6 +132,9 @@ async function start(): Promise<void> {
           catalog.levelSources as Readonly<Record<string, unknown>>,
         );
         const next = nextRegistry.load(levelName);
+        levelError = null;
+        // A catalog edit can concern another open level. Preserve this attempt and its input.
+        if (JSON.stringify(next) === JSON.stringify(level)) return;
         mapper.blur();
         intents.clear();
         intents.clearLog();
@@ -152,6 +160,19 @@ async function start(): Promise<void> {
           textures: game.textures.getTextureKeys().length,
           cameras: devScene.cameras.cameras.length,
         }),
+        exitPresentation: () => {
+          const result = devScene.children.getByName('exit-result') as
+            Phaser.GameObjects.Text | undefined;
+          const miss = devScene.children.getByName('exit-miss') as
+            Phaser.GameObjects.Text | undefined;
+          return {
+            ready: !!result,
+            result: result?.visible ?? false,
+            resultText: result?.text ?? '',
+            miss: miss?.visible ?? false,
+            missText: miss?.text ?? '',
+          };
+        },
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),

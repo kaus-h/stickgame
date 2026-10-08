@@ -1,6 +1,7 @@
 ﻿import { dcos, dlen, dsin, vec2, type Vec2 } from '../../../core';
 import type {
   BodyDef,
+  BodyMotionSegment,
   BodyState,
   ContactEvent,
   PhysicsAdapter,
@@ -44,6 +45,7 @@ interface Body {
   r: number;
   grounded: boolean;
   touching: Set<number>;
+  motion: BodyMotionSegment[];
 }
 
 interface Anchor {
@@ -102,6 +104,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       r: def.radius,
       grounded: false,
       touching: new Set(),
+      motion: [],
     });
     const body = this.bodies[this.bodies.length - 1] as Body;
     // A body authored resting on the floor is grounded from tick 0 (jump works immediately).
@@ -112,6 +115,10 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   bodyState(id: number): BodyState {
     const b = this.body(id);
     return { position: vec2(b.x, b.y), velocity: vec2(b.vx, b.vy), grounded: b.grounded };
+  }
+
+  bodyMotion(id: number): readonly BodyMotionSegment[] {
+    return this.body(id).motion;
   }
 
   setBodyVelocity(id: number, velocity: Vec2): void {
@@ -200,6 +207,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   }
 
   step(dt: number, substeps: number): void {
+    for (const body of this.bodies) body.motion.length = 0;
     const n = Math.max(1, Math.floor(substeps));
     const h = dt / n;
     const touchedThisStep = this.bodies.map(() => new Set<number>());
@@ -228,6 +236,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       b.vx = b.def.velocity.x;
       b.vy = b.def.velocity.y;
       b.touching = new Set();
+      b.motion.length = 0;
       b.grounded = this.isGrounded(b);
     }
     for (const a of this.anchors) {
@@ -249,6 +258,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   }
 
   clearLevel(): void {
+    for (const body of this.bodies) body.motion.length = 0;
     this.bodies.length = 0;
     this.anchors.length = 0;
     this.ropes.clear();
@@ -312,13 +322,53 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const rope = this.ropeFor(index);
     const x0 = b.x;
     const y0 = b.y;
-    if (rope && this.swingStep(b, rope, h, touched, index, x0, y0)) return;
+    const traceStart = b.motion.length;
+    if (rope && this.swingStep(b, rope, h, touched, index, x0, y0)) {
+      this.clipRopeMotion(b, rope, traceStart);
+      return;
+    }
 
     // Free flight (or a slack rope).
     b.vx += this.gx * h;
     b.vy += this.gy * h;
     this.sweep(b, b.vx * h, b.vy * h, true, touched, index);
-    if (rope) this.enforceRopeLimit(b, rope, touched, index, x0, y0, h);
+    if (rope) {
+      this.enforceRopeLimit(b, rope, touched, index, x0, y0, h);
+      this.clipRopeMotion(b, rope, traceStart);
+    }
+  }
+
+  /** Metadata only: provisional free flight outside a satisfied leash is not a real crossing. */
+  private clipRopeMotion(b: Body, rope: Rope, start: number): void {
+    const [ax, ay] = this.ropeAnchorKinematics(rope);
+    const radiusSquared = rope.length * rope.length;
+    // Collision wins when a solid holds the player outside the rope circle. Keep that actual path.
+    if ((b.x - ax) ** 2 + (b.y - ay) ** 2 > radiusSquared + 1e-8) return;
+    let write = start;
+    for (let i = start; i < b.motion.length; i++) {
+      const segment = b.motion[i] as BodyMotionSegment;
+      const fx = segment.from.x - ax;
+      const fy = segment.from.y - ay;
+      const dx = segment.to.x - segment.from.x;
+      const dy = segment.to.y - segment.from.y;
+      const aa = dx * dx + dy * dy;
+      const bb = 2 * (fx * dx + fy * dy);
+      const cc = fx * fx + fy * fy - radiusSquared;
+      const disc = bb * bb - 4 * aa * cc;
+      if (disc < 0 || aa === 0) continue;
+      const root = Math.sqrt(Math.max(0, disc));
+      const low = Math.max(0, (-bb - root) / (2 * aa));
+      const high = Math.min(1, (-bb + root) / (2 * aa));
+      if (low > high || high <= 0 || low >= 1) continue;
+      b.motion[write++] = {
+        from: low === 0 ? segment.from : vec2(segment.from.x + dx * low, segment.from.y + dy * low),
+        to: high === 1 ? segment.to : vec2(segment.from.x + dx * high, segment.from.y + dy * high),
+        velocity: segment.velocity,
+      };
+      // Anything after this first excursion is provisional until the positional constraint runs.
+      if (high < 1) break;
+    }
+    b.motion.length = write;
   }
 
   /**
@@ -432,10 +482,13 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       if (rx * rx + ry * ry < 1e-18) return;
       const hit = this.firstHit(b.x, b.y, rx, ry, b.r);
       if (!hit) {
+        if (affectVelocity) this.recordMotion(b, b.x + rx, b.y + ry);
         b.x += rx;
         b.y += ry;
         return;
       }
+      // Record the physical trajectory to contact, before either skin separation or impulse.
+      if (affectVelocity) this.recordMotion(b, b.x + rx * hit.t, b.y + ry * hit.t);
       b.x += rx * hit.t + hit.nx * SKIN;
       b.y += ry * hit.t + hit.ny * SKIN;
       this.touch(b, hit.segment, hit.nx, hit.ny, touched, bodyIndex);
@@ -454,6 +507,11 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
         ry -= rn * hit.ny;
       }
     }
+  }
+
+  private recordMotion(b: Body, x: number, y: number): void {
+    if (x === b.x && y === b.y) return;
+    b.motion.push({ from: vec2(b.x, b.y), to: vec2(x, y), velocity: vec2(b.vx, b.vy) });
   }
 
   /** Earliest time of impact in [0, 1] of a circle moving by (dx, dy) against all segments. */

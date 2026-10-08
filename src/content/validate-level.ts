@@ -408,6 +408,66 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
           'level.exit',
           'exit has no sampled collision-clear player position; bounding feasibility fails',
         );
+      if ('entry' in level.exit) {
+        const { entry } = level.exit;
+        const horizontal = entry.side === 'top' || entry.side === 'bottom';
+        const aperture = horizontal ? max.x - min.x : max.y - min.y;
+        if (aperture < 0.8 - EPS)
+          issue('level.exit.entry', 'exit opening needs at least 0.8 m clear aperture');
+        const low = Math.max(entry.alignment.min, RADIUS / aperture);
+        const high = Math.min(entry.alignment.max, 1 - RADIUS / aperture);
+        if (low > high + EPS)
+          issue(
+            'level.exit.entry.alignment',
+            'alignment window cannot fit the player circle inside opening',
+          );
+        else {
+          // Check a short swept circle across the mouth, including between sampled centers.
+          // This establishes ingress feasibility, not a gameplay route or speed proof.
+          const normal = {
+            x: entry.side === 'left' ? 1 : entry.side === 'right' ? -1 : 0,
+            y: entry.side === 'top' ? 1 : entry.side === 'bottom' ? -1 : 0,
+          };
+          let ingress = false;
+          for (let sample = 0; sample <= 128; sample++) {
+            const alignment = low + ((high - low) * sample) / 128;
+            const center = {
+              x: horizontal ? min.x + alignment * aperture : entry.side === 'left' ? min.x : max.x,
+              y: horizontal ? (entry.side === 'top' ? min.y : max.y) : min.y + alignment * aperture,
+            };
+            const a = { x: center.x - normal.x * RADIUS, y: center.y - normal.y * RADIUS };
+            const b = { x: center.x + normal.x * RADIUS, y: center.y + normal.y * RADIUS };
+            if (
+              inBounds(a, level) &&
+              inBounds(b, level) &&
+              center.y + RADIUS < level.killY &&
+              !bodyBlocked(a, level.solids) &&
+              !bodyBlocked(b, level.solids) &&
+              !level.solids.some((solid) =>
+                edges(solid.points).some(
+                  (edge) =>
+                    intersects(a, b, edge) ||
+                    edgeDistance(edge.a, { a, b }) < RADIUS - EPS ||
+                    edgeDistance(edge.b, { a, b }) < RADIUS - EPS,
+                ),
+              )
+            )
+              ingress = true;
+          }
+          if (!ingress)
+            issue(
+              'level.exit.entry',
+              'authored alignment has no sampled collision-clear ingress across opening',
+            );
+        }
+        if (
+          level.spawn.x >= min.x &&
+          level.spawn.x <= max.x &&
+          level.spawn.y >= min.y &&
+          level.spawn.y <= max.y
+        )
+          issue('level.spawn', 'spawn must start outside the authored exit compartment');
+      }
     }
   }
   return issues;

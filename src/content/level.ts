@@ -192,10 +192,7 @@ export function compileLevel(source: unknown): LevelDef {
     ...authoringMetadata(json),
     ...(isRecord(json.exit)
       ? {
-          exit: {
-            min: point(json.exit.min, 'level.exit.min'),
-            max: point(json.exit.max, 'level.exit.max'),
-          },
+          exit: compileExit(json.exit),
         }
       : {}),
   };
@@ -210,7 +207,34 @@ export function compileLevel(source: unknown): LevelDef {
     if (ids.has(item.id)) fail('level', `duplicate id "${item.id}"`);
     ids.add(item.id);
   }
+  if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
+    fail('level.exit.id', `duplicate id "${level.exit.id}"`);
   return level;
+}
+
+function compileExit(raw: Record<string, unknown>): NonNullable<LevelDef['exit']> {
+  const box = region(raw, 'level.exit');
+  if (raw.family === undefined) return box;
+  const family = raw.family as 'wide' | 'slot' | 'shaft';
+  const entry = raw.entry as Record<string, unknown>;
+  const side = entry.side as 'left' | 'right' | 'top' | 'bottom';
+  if (family === 'slot' && side !== 'left' && side !== 'right')
+    fail('level.exit.entry.side', 'slot exits require left or right entry');
+  if (family === 'shaft' && side !== 'top' && side !== 'bottom')
+    fail('level.exit.entry.side', 'shaft exits require top or bottom entry');
+  const window = (key: string): { min: number; max: number } => {
+    const rawWindow = entry[key] as Record<string, unknown>;
+    const min = num(rawWindow.min, `level.exit.entry.${key}.min`);
+    const max = num(rawWindow.max, `level.exit.entry.${key}.max`);
+    if (min > max) fail(`level.exit.entry.${key}`, 'min must not exceed max');
+    return { min, max };
+  };
+  return {
+    ...box,
+    id: str(raw.id, 'level.exit.id'),
+    family,
+    entry: { side, angle: window('angle'), speed: window('speed'), alignment: window('alignment') },
+  };
 }
 
 function region(v: unknown, path: string): { min: Vec2; max: Vec2 } {

@@ -25,7 +25,7 @@
     "killY": { "type": "number" },
     "solids": { "type": "array", "items": { "$ref": "#/definitions/solid" } },
     "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
-    "exit": { "$ref": "#/definitions/region" },
+    "exit": { "oneOf": [{ "$ref": "#/definitions/region" }, { "$ref": "#/definitions/exit" }] },
     "section": { "$ref": "#/definitions/id" },
     "telemetry": {
       "type": "object",
@@ -85,7 +85,76 @@
       }
     }
   },
+  "allOf": [
+    {
+      "if": { "properties": { "version": { "const": 1 } } },
+      "then": { "properties": { "exit": { "$ref": "#/definitions/region" } } }
+    }
+  ],
   "definitions": {
+    "exit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "family", "min", "max", "entry"],
+      "allOf": [
+        {
+          "if": { "properties": { "family": { "const": "slot" } } },
+          "then": {
+            "properties": { "entry": { "properties": { "side": { "enum": ["left", "right"] } } } }
+          }
+        },
+        {
+          "if": { "properties": { "family": { "const": "shaft" } } },
+          "then": {
+            "properties": { "entry": { "properties": { "side": { "enum": ["top", "bottom"] } } } }
+          }
+        }
+      ],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "family": { "enum": ["wide", "slot", "shaft"] },
+        "min": { "$ref": "#/definitions/point" },
+        "max": { "$ref": "#/definitions/point" },
+        "entry": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["side", "angle", "speed", "alignment"],
+          "properties": {
+            "side": { "enum": ["left", "right", "top", "bottom"] },
+            "angle": { "$ref": "#/definitions/angleWindow" },
+            "speed": { "$ref": "#/definitions/speedWindow" },
+            "alignment": { "$ref": "#/definitions/alignmentWindow" }
+          }
+        }
+      }
+    },
+    "angleWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number", "minimum": 0, "exclusiveMaximum": 90 },
+        "max": { "type": "number", "minimum": 0, "maximum": 90 }
+      }
+    },
+    "speedWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number", "minimum": 0 },
+        "max": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "alignmentWindow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "type": "number", "minimum": 0, "maximum": 1 },
+        "max": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
     "text": { "type": "string", "minLength": 1 },
     "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$" },
     "point": {
