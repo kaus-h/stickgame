@@ -129,7 +129,7 @@ How it works (`src/tools/route-solver`):
   for 4–48 ticks. Order = elapsed ticks + a per-input cost + 2 × 8 ticks/m × free-space distance
   to the goal. States are deduplicated on a quantised key and each 0.5 m cell gets a capped number
   of expansions, so dead ends (hanging on a rope over a pit) cannot absorb the budget. Branches
-  that die, or pass within 2 cm of a hazard, are pruned (see the hazard graze finding below).
+  that die are pruned.
   Budgets are simulated ticks, so results are deterministic; forks are deep copies used only to
   search, and every reported route is re-run from a fresh simulation at tick 0.
 - **Refinement and windows.** Steps the route does not need are dropped, then each jump and rope
@@ -174,6 +174,6 @@ exists; it does not find the easiest route, and it does not judge feel, readabil
 framing. An unsolved result within budget is a strong hint, not a proof of impossibility.
 Findings so far: `lab-authoring` is solved by a plain jump over the teeth, so its tagged required
 shot is optional; `lab-exit-miss` (the speed-rejection fixture) can be entered under 2 m/s by
-frame-precise braking. The simulation treats a hazard surface within its 1 cm ground probe as
-standing ground without a contact, so a player can jump off a lethal floor they never touch; the
-solver refuses such routes (2 cm hazard margin) and the issue is reported for a sim fix.
+frame-precise braking. The solver also found that a hazard within the 1 cm ground probe counted as
+standing ground, so a player could jump off a lethal floor without touching it. That is fixed in
+GMR-102 (hazards are never ground), and the solver no longer needs a hazard margin.

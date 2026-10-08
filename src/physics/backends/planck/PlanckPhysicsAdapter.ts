@@ -246,7 +246,9 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
       nx = -nx;
       ny = -ny;
     }
-    const isGround = ny < GROUND_NORMAL_Y;
+    // A hazard is never standing ground: touching it kills, it never grants a jump (GMR-102).
+    const isGround =
+      ny < GROUND_NORMAL_Y && (this.segments[segTag.index] as Segment).kind !== 'hazard';
     if (isGround)
       this.groundContacts.set(
         bodyTag.index,
