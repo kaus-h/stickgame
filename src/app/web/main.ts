@@ -4,7 +4,8 @@ import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
-import { vec2 } from '../../core';
+import { vec2, type Vec2 } from '../../core';
+import type { SimEvent } from '../../sim';
 import { bindDom, DesktopInputMapper, IntentQueue } from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices } from '../../platform';
@@ -46,6 +47,14 @@ async function start(): Promise<void> {
   let levelRevision = 0;
   let levelError: string | null = null;
   const intents = new IntentQueue();
+  // Dev evidence compares release with the exact pre-tick velocity, independent of browser latency.
+  const releaseTrace = import.meta.env.DEV
+    ? {
+        before: new Map<number, Vec2>(),
+        evidence: null as
+          (Extract<SimEvent, { type: 'ropeRelease' }> & { before: Vec2 | undefined }) | null,
+      }
+    : null;
   let scene: GameScene | null = null;
   const mapper = new DesktopInputMapper(
     (intent) => {
@@ -77,12 +86,23 @@ async function start(): Promise<void> {
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();
+      if (releaseTrace) {
+        const state = runtime.sim.snapshot();
+        releaseTrace.before.set(state.tick, state.player.velocity);
+        if (releaseTrace.before.size > 128) {
+          const first = releaseTrace.before.keys().next().value;
+          if (first !== undefined) releaseTrace.before.delete(first);
+        }
+      }
       sfx.onFrame(runtime.sim.snapshot());
     },
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
     for (const event of events) {
+      if (releaseTrace && event.type === 'ropeRelease')
+        releaseTrace.evidence = { ...event, before: releaseTrace.before.get(event.tick) };
+      if (releaseTrace && event.type === 'reset') releaseTrace.evidence = null;
       const telemetry = exitTelemetry(level, event);
       if (telemetry) platform.analytics.track(telemetry);
       const enemy = enemyTelemetry(level, event);
@@ -179,6 +199,7 @@ async function start(): Promise<void> {
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
+        releaseEvidence: () => releaseTrace?.evidence ?? null,
         enemyPresentation: () => {
           const label = devScene.children.getByName('enemy-cause') as
             Phaser.GameObjects.Text | undefined;

@@ -15,6 +15,10 @@ interface Probe {
   resources(): { textures: number; cameras: number };
   worldToScreen(x: number, y: number): { x: number; y: number };
   enemyPresentation(): { ready: boolean; visible: boolean; text: string };
+  releaseEvidence(): {
+    velocity: { x: number; y: number };
+    before: { x: number; y: number };
+  } | null;
 }
 const snap = (page: Page) =>
   page.evaluate(() => (window as unknown as { __stickgame: Probe }).__stickgame.snapshot());
@@ -46,6 +50,9 @@ test('a moving goon stomp continues into the next rope opportunity and resets cl
       () => (window as unknown as { __stickgame: Probe }).__stickgame.audio().sounds,
     ),
   ).toContain('stomp');
+  // Start the patrol from its authored phase after font/render readiness and evidence reads.
+  await page.keyboard.press('KeyR');
+  await expect.poll(async () => (await snap(page)).resets).toBeGreaterThan(0);
   await page.keyboard.down('KeyD');
   await expect
     .poll(async () => (await snap(page)).enemies[0]?.alive, { timeout: 15_000 })
@@ -64,13 +71,21 @@ test('a moving goon stomp continues into the next rope opportunity and resets cl
   const screenshot = info.outputPath('stomp-to-rope.png');
   await page.screenshot({ path: screenshot });
   await info.attach('Stomp continued into rope', { path: screenshot, contentType: 'image/png' });
-  const beforeRelease = await snap(page);
   await page.mouse.up();
   await page.keyboard.up('KeyD');
   await expect.poll(async () => (await snap(page)).rope).toBeNull();
-  expect(
-    Math.abs((await snap(page)).player.velocity.x - beforeRelease.player.velocity.x),
-  ).toBeLessThan(4);
+  await expect
+    .poll(async () =>
+      page.evaluate(() =>
+        (window as unknown as { __stickgame: Probe }).__stickgame.releaseEvidence(),
+      ),
+    )
+    .not.toBeNull();
+  const release = await page.evaluate(() =>
+    (window as unknown as { __stickgame: Probe }).__stickgame.releaseEvidence(),
+  );
+  expect(release?.before).toBeDefined();
+  expect(release?.velocity).toEqual(release?.before);
   await page.keyboard.press('KeyR');
   await expect.poll(async () => (await snap(page)).enemies[0]?.alive).toBe(true);
   expect((await snap(page)).completion).toBeNull();
