@@ -32,6 +32,14 @@ export type RopeAnchor =
   | { readonly kind: 'static'; readonly point: Vec2 }
   | { readonly kind: 'kinematic'; readonly anchor: number; readonly offset: Vec2 };
 
+export interface RopeOptions {
+  /**
+   * Share of the outward radial speed kept, redirected along the swing, when the rope snaps taut
+   * (0 = classic inelastic catch, 1 = speed fully preserved). Default 0.
+   */
+  readonly catchRetention?: number;
+}
+
 export interface RayHit {
   readonly point: Vec2;
   readonly normal: Vec2;
@@ -69,7 +77,7 @@ export interface PhysicsAdapter {
   anchorPosition(anchor: number): Vec2;
 
   /** Inextensible rope: the body may move closer than `length`, never farther. */
-  attachRope(body: number, anchor: RopeAnchor, length: number): number;
+  attachRope(body: number, anchor: RopeAnchor, length: number, options?: RopeOptions): number;
   detachRope(rope: number): void;
 
   /** Closest solid or hazard segment hit along from→to. */

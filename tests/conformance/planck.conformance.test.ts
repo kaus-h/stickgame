@@ -7,5 +7,6 @@ runPhysicsConformance('planck (candidate B)', () => new PlanckPhysicsAdapter(), 
   knownFailures: [
     'large swing keeps its energy within tolerance',
     'slides across a seam between collinear floor segments without snagging',
+    'catchRetention turns outward speed into swing at a taut catch',
   ],
 });

@@ -24,7 +24,9 @@
       "minLength": 0.8,
       "maxLength": 11,
       "selectRadius": 1.1,
-      "steerAccel": 6
+      "steerAccel": 6,
+      "steerEnergyHeight": 0.6,
+      "catchRetention": 1
     }
   }
 }

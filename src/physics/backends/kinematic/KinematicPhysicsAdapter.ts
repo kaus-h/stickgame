@@ -7,6 +7,7 @@ import type {
   PhysicsStats,
   RayHit,
   RopeAnchor,
+  RopeOptions,
   Segment,
 } from '../../adapter';
 import { SegmentGrid } from './SegmentGrid';
@@ -50,6 +51,7 @@ interface Rope {
   body: number;
   anchor: RopeAnchor;
   length: number;
+  catchRetention: number;
 }
 
 interface Hit {
@@ -123,11 +125,12 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     return vec2(a.x, a.y);
   }
 
-  attachRope(body: number, anchor: RopeAnchor, length: number): number {
+  attachRope(body: number, anchor: RopeAnchor, length: number, options?: RopeOptions): number {
     this.body(body);
     if (anchor.kind === 'kinematic') this.anchor(anchor.anchor);
     const id = this.nextRope++;
-    this.ropes.set(id, { body, anchor, length });
+    const catchRetention = Math.min(1, Math.max(0, options?.catchRetention ?? 0));
+    this.ropes.set(id, { body, anchor, length, catchRetention });
     return id;
   }
 
@@ -266,9 +269,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     let rvy = b.vy - avy;
     const vr = rvx * nx + rvy * ny;
     if (vr > 0) {
-      // Snapping taut: an inextensible rope removes the outward relative velocity.
-      rvx -= vr * nx;
-      rvy -= vr * ny;
+      // Snapping taut: an inextensible rope removes the outward relative velocity (optionally
+      // redirecting part of it along the swing).
+      [rvx, rvy] = catchTaut(rvx, rvy, nx, ny, vr, rope.catchRetention);
     } else if (vr < -1e-6) {
       return false; // moving inward: the rope goes slack
     }
@@ -302,8 +305,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const ny = dy / dist;
     const vr = (b.vx - avx) * nx + (b.vy - avy) * ny;
     if (vr > 0) {
-      b.vx -= vr * nx;
-      b.vy -= vr * ny;
+      const [rvx, rvy] = catchTaut(b.vx - avx, b.vy - avy, nx, ny, vr, rope.catchRetention);
+      b.vx = avx + rvx;
+      b.vy = avy + rvy;
     }
   }
 
@@ -530,4 +534,28 @@ function sweepCircleSegment(
     best = { t, nx: hx / hl, ny: hy / hl };
   }
   return best;
+}
+
+/**
+ * Remove the outward radial component vr of a relative velocity at a taut catch. With retention
+ * k, the tangential speed becomes sqrt(vt² + (k·vr)²) in the direction already travelled, so k = 1
+ * keeps the speed (momentum turns into swing) and k = 0 is the plain inelastic catch.
+ */
+function catchTaut(
+  rvx: number,
+  rvy: number,
+  nx: number,
+  ny: number,
+  vr: number,
+  k: number,
+): [number, number] {
+  const tx = -ny;
+  const ty = nx;
+  const vt = rvx * tx + rvy * ty;
+  if (k <= 0) return [rvx - vr * nx, rvy - vr * ny];
+  const kept = k * vr;
+  // Straight outward with no sideways motion: keep the direction of the horizontal velocity.
+  const sign = vt !== 0 ? Math.sign(vt) : rvx * tx >= 0 ? 1 : -1;
+  const speed = Math.sqrt(vt * vt + kept * kept) * sign;
+  return [tx * speed, ty * speed];
 }

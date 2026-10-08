@@ -41,4 +41,14 @@ export interface RopeTuning {
   readonly selectRadius: number;
   /** Small horizontal steering while swinging, m/s² (no unlimited pumping, doc 09 B3). */
   readonly steerAccel: number;
+  /**
+   * Steering may add at most this much swing energy over the energy at connection, expressed as
+   * metres of height (g·h per unit mass). Caps pumping so the shot, not wiggling, sets the swing.
+   */
+  readonly steerEnergyHeight: number;
+  /**
+   * Share of outward speed redirected into the swing when the rope snaps taut (0 = inelastic,
+   * 1 = speed kept). Owner direction 2026-10-07: run/jump momentum transfers into the swing.
+   */
+  readonly catchRetention: number;
 }

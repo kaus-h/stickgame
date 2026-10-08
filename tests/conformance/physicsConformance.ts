@@ -243,6 +243,23 @@ export function runPhysicsConformance(
       expect(world.bodyState(body).position).toEqual(vec2(0, 0));
     });
 
+    it('catchRetention turns outward speed into swing at a taut catch', () => {
+      const speedAfterCatch = (catchRetention: number): number => {
+        const world = makeWorld();
+        // Taut at the bottom, moving 6 m/s straight outward and 3 m/s sideways.
+        const body = world.createBody({ position: vec2(0, 0), velocity: vec2(3, 6), radius: 0.3 });
+        world.attachRope(body, { kind: 'static', point: vec2(0, -4) }, 4, { catchRetention });
+        world.step(SIM_DT, substeps);
+        const v = world.bodyState(body).velocity;
+        return Math.sqrt(v.x * v.x + v.y * v.y);
+      };
+      const kept = speedAfterCatch(1);
+      const lost = speedAfterCatch(0);
+      report(name, 'speed after catch k=1 / k=0 (m/s)', `${kept.toFixed(3)} / ${lost.toFixed(3)}`);
+      expect(kept).toBeGreaterThan(Math.sqrt(45) - 0.3);
+      expect(lost).toBeLessThan(3.5);
+    });
+
     it('is deterministic for identical inputs', () => {
       const run = (): Vec2 => {
         const world = makeWorld([solid(-10, 5, 10, 5), solid(6, 5, 9, -2)]);

@@ -22,7 +22,14 @@ const tuning: SimTuning = {
     coyoteTicks: 6,
     jumpBufferTicks: 7,
   },
-  rope: { minLength: 0.8, maxLength: 11, selectRadius: 1.1, steerAccel: 6 },
+  rope: {
+    minLength: 0.8,
+    maxLength: 11,
+    selectRadius: 1.1,
+    steerAccel: 6,
+    steerEnergyHeight: 0.6,
+    catchRetention: 1,
+  },
 };
 
 const box = (
@@ -237,5 +244,251 @@ describe('rope targeting in the simulation', () => {
     const later = sim.snapshot().target;
     expect(first).toMatchObject({ anchor: 2 });
     expect(later?.anchor).not.toBe(2);
+  });
+});
+
+describe('tether', () => {
+  /** A short start ledge, an anchor out over a deep pit, lava far below. */
+  const pit: LevelDef = {
+    ...level,
+    spawn: vec2(1, 7.6),
+    killY: 40,
+    solids: [box('ledge', 0, 8, 4, 2), box('lava', -10, 30, 60, 1, 'hazard')],
+    anchors: [{ id: 'hook', position: vec2(9, 2), radius: 0.4 }],
+  };
+  const hook = vec2(9, 2);
+  const aimAndRun = (t: number): Intent[] =>
+    t === 0
+      ? [
+          { type: 'ropeAim', target: hook },
+          { type: 'move', axis: 1 },
+        ]
+      : [];
+
+  function attachAt(tick: number): Simulation {
+    const sim = make(pit);
+    run(sim, tick, aimAndRun);
+    sim.step([{ type: 'ropePress' }]);
+    return sim;
+  }
+
+  /** Step until the rope locks (the player leaves the ground). */
+  function untilLocked(sim: Simulation, intents: (t: number) => Intent[] = () => []): void {
+    for (let i = 0; i < 300 && sim.snapshot().rope?.locked !== true; i++) {
+      sim.step(intents(sim.snapshot().tick));
+    }
+    expect(sim.snapshot().rope?.locked).toBe(true);
+  }
+
+  it('an airborne connection locks the length to the impact distance on the press tick', () => {
+    const sim = make(pit);
+    run(sim, 20, aimAndRun);
+    sim.step([{ type: 'jumpPress' }]);
+    run(sim, 8);
+    const before = sim.snapshot().player.position;
+    expect(sim.snapshot().player.mode).toBe('air');
+    sim.step([{ type: 'ropePress' }]);
+    const events = sim.drainEvents();
+    const expected = Math.hypot(hook.x - before.x, hook.y - before.y);
+    expect(events.find((e) => e.type === 'ropeAttach')).toMatchObject({ anchor: 0 });
+    const lock = events.find((e) => e.type === 'ropeLock') as { length: number } | undefined;
+    expect(lock?.length).toBeCloseTo(expected, 12);
+    expect(sim.snapshot().rope).toMatchObject({ locked: true });
+    expect(sim.snapshot().rope?.length).toBeCloseTo(expected, 12);
+  });
+
+  it('a grounded connection pays out while running and locks at take-off', () => {
+    const sim = make(pit);
+    run(sim, 5, aimAndRun);
+    sim.step([{ type: 'ropePress' }]);
+    expect(sim.snapshot().rope?.locked).toBe(false);
+    const atAttach = sim.snapshot().rope?.length ?? 0;
+    run(sim, 10);
+    // Still on the ledge, closer to the anchor: the rope follows the distance, nothing locks.
+    const paying = sim.snapshot();
+    expect(paying.rope?.locked).toBe(false);
+    expect(paying.rope?.length).toBeLessThan(atAttach);
+    sim.drainEvents();
+    untilLocked(sim);
+    const s = sim.snapshot();
+    const lock = sim.drainEvents().find((e) => e.type === 'ropeLock') as
+      { length: number } | undefined;
+    const d = Math.hypot(s.player.position.x - hook.x, s.player.position.y - hook.y);
+    expect(lock?.length).toBeCloseTo(d, 9);
+    expect(s.rope?.length).toBe(lock?.length);
+  });
+
+  it('run momentum carries into the swing at the taut catch', () => {
+    /** Highest point (smallest y) reached after the rope catches. */
+    const swingPeak = (catchRetention: number): number => {
+      const t = { ...tuning, rope: { ...tuning.rope, catchRetention } };
+      const sim = new Simulation(t, new KinematicPhysicsAdapter(), pit);
+      run(sim, 5, aimAndRun);
+      sim.step([{ type: 'ropePress' }]);
+      run(sim, 15);
+      sim.step([{ type: 'jumpPress' }]);
+      let caught = false;
+      let peak = Infinity;
+      for (let i = 0; i < 150; i++) {
+        sim.step([]);
+        const s = sim.snapshot();
+        caught ||= s.rope?.taut === true;
+        if (caught) peak = Math.min(peak, s.player.position.y);
+      }
+      return peak;
+    };
+    // Full retention swings the player metres higher than an inelastic catch.
+    expect(swingPeak(1)).toBeLessThan(swingPeak(0) - 3);
+  });
+
+  it('landing returns the rope to paying out; the next take-off locks a new length', () => {
+    const low: LevelDef = {
+      ...pit,
+      anchors: [...pit.anchors, { id: 'low', position: vec2(2.5, 6.4), radius: 0.4 }],
+    };
+    const sim = make(low);
+    run(sim, 30);
+    sim.step([{ type: 'ropeAim', target: vec2(2.5, 6.4) }, { type: 'jumpPress' }]);
+    for (let i = 0; i < 60 && sim.snapshot().player.velocity.y < 0; i++) sim.step([]);
+    sim.step([{ type: 'ropePress' }]);
+    expect(sim.snapshot().rope).toMatchObject({ anchor: 1, locked: true });
+    const first = sim.snapshot().rope?.length ?? 0;
+    for (let i = 0; i < 120 && sim.snapshot().player.mode !== 'grounded'; i++) sim.step([]);
+    expect(sim.snapshot().player.mode).toBe('grounded');
+    expect(sim.snapshot().rope?.locked).toBe(false);
+    run(sim, 3, () => [{ type: 'move', axis: -1 }]);
+    sim.step([{ type: 'jumpPress' }]);
+    untilLocked(sim);
+    expect(sim.snapshot().rope?.length).not.toBeCloseTo(first, 3);
+  });
+
+  it('early and late connections give different swing radii', () => {
+    const early = attachAt(5).snapshot().rope?.length ?? 0;
+    const late = attachAt(25).snapshot().rope?.length ?? 0;
+    expect(early - late).toBeGreaterThan(0.5);
+  });
+
+  it('different impact points on one anchor give different radii', () => {
+    const lengths = [vec2(9, 1.7), vec2(9, 2.3)].map((aim) => {
+      const sim = make(pit);
+      sim.step([{ type: 'ropeAim', target: aim }]);
+      run(sim, 10);
+      sim.step([{ type: 'ropePress' }]);
+      return sim.snapshot().rope?.length ?? 0;
+    });
+    expect(Math.abs((lengths[0] ?? 0) - (lengths[1] ?? 0))).toBeGreaterThan(0.2);
+  });
+
+  it('stays on the rope circle through the swing', () => {
+    const sim = attachAt(20);
+    untilLocked(sim);
+    const length = sim.snapshot().rope?.length ?? 0;
+    let maxStretch = 0;
+    let lowest = -Infinity;
+    for (let i = 0; i < 240; i++) {
+      sim.step([]);
+      const s = sim.snapshot();
+      const d = Math.hypot(s.player.position.x - hook.x, s.player.position.y - hook.y);
+      maxStretch = Math.max(maxStretch, d - length);
+      lowest = Math.max(lowest, s.player.position.y);
+    }
+    expect(maxStretch).toBeLessThan(0.01);
+    expect(lowest).toBeGreaterThan(hook.y + length - 0.05); // swung through the bottom
+    expect(sim.snapshot().deaths).toBe(0);
+  });
+
+  it('release keeps the swing velocity (no canned launch)', () => {
+    const sim = attachAt(20);
+    run(sim, 50);
+    const swingVelocity = sim.snapshot().player.velocity;
+    sim.step([{ type: 'ropeRelease' }]);
+    const release = sim.drainEvents().find((e) => e.type === 'ropeRelease') as
+      { velocity: { x: number; y: number } } | undefined;
+    expect(release?.velocity).toEqual(swingVelocity);
+    expect(sim.snapshot().rope).toBeNull();
+    // One tick later the body has only fallen under gravity from that velocity.
+    const after = sim.snapshot().player.velocity;
+    expect(after.x).toBeCloseTo(swingVelocity.x, 6);
+  });
+
+  it('an invalid press reports why, attaches nothing and does not retry while held', () => {
+    const sim = make(pit);
+    sim.step([{ type: 'ropeAim', target: vec2(30, -20) }, { type: 'ropePress' }]);
+    run(sim, 30);
+    const events = sim.drainEvents();
+    expect(events.filter((e) => e.type === 'ropeInvalid')).toHaveLength(1);
+    expect(events.find((e) => e.type === 'ropeInvalid')).toMatchObject({ reason: 'no-anchor' });
+    expect(events.some((e) => e.type === 'ropeAttach')).toBe(false);
+    expect(sim.snapshot().rope).toBeNull();
+  });
+
+  it('a second press while tethered does not re-shoot', () => {
+    const sim = attachAt(20);
+    untilLocked(sim);
+    const length = sim.snapshot().rope?.length;
+    run(sim, 10);
+    sim.step([{ type: 'ropePress' }]);
+    expect(sim.snapshot().rope?.length).toBe(length);
+    expect(sim.stats().physics.joints).toBe(1);
+  });
+
+  it('repeated attach and release never leaks constraints', () => {
+    const sim = make(pit);
+    sim.step([{ type: 'ropeAim', target: hook }]);
+    for (let i = 0; i < 200; i++) {
+      sim.step([{ type: 'ropePress' }]);
+      expect(sim.stats().physics.joints).toBeLessThanOrEqual(1);
+      sim.step([{ type: 'ropeRelease' }]);
+      expect(sim.stats().physics.joints).toBe(0);
+    }
+  });
+
+  it('death and restart remove the rope', () => {
+    const sim = attachAt(20);
+    expect(sim.stats().physics.joints).toBe(1);
+    sim.step([{ type: 'restart' }]);
+    expect(sim.snapshot().rope).toBeNull();
+    expect(sim.stats().physics.joints).toBe(0);
+  });
+
+  it('steering cannot pump the swing beyond the energy budget', () => {
+    const sim = make(pit);
+    run(sim, 20, aimAndRun);
+    const s0 = sim.snapshot().player;
+    const e0 = 0.5 * (s0.velocity.x ** 2 + s0.velocity.y ** 2) - tuning.gravity * s0.position.y;
+    sim.step([{ type: 'ropePress' }]);
+    let axis = 1;
+    let maxE = -Infinity;
+    for (let i = 0; i < 1200; i++) {
+      const v = sim.snapshot().player.velocity;
+      const want = v.x >= 0 ? 1 : -1; // pump in time with the swing
+      const intents: Intent[] = want !== axis ? [{ type: 'move', axis: want }] : [];
+      axis = want;
+      sim.step(intents);
+      const p = sim.snapshot().player;
+      const e = 0.5 * (p.velocity.x ** 2 + p.velocity.y ** 2) - tuning.gravity * p.position.y;
+      maxE = Math.max(maxE, e);
+    }
+    expect(maxE).toBeLessThan(e0 + tuning.gravity * tuning.rope.steerEnergyHeight + 0.5);
+  });
+
+  it('the rope point follows a moving anchor', () => {
+    const moving: LevelDef = {
+      ...pit,
+      anchors: [
+        { id: 'm', position: vec2(9, 2), radius: 0.4, path: { to: vec2(12, 2), period: 3 } },
+      ],
+    };
+    const sim = make(moving);
+    sim.step([{ type: 'ropeAim', target: vec2(9.2, 2) }]);
+    sim.step([{ type: 'ropePress' }]);
+    const first = sim.snapshot();
+    run(sim, 60);
+    const later = sim.snapshot();
+    const anchorMove = (later.anchors[0]?.x ?? 0) - (first.anchors[0]?.x ?? 0);
+    expect(anchorMove).toBeGreaterThan(0.5);
+    const offset = (first.rope?.point.x ?? 0) - (first.anchors[0]?.x ?? 0);
+    expect(offset).toBeCloseTo(0.2, 2);
+    expect((later.rope?.point.x ?? 0) - (later.anchors[0]?.x ?? 0)).toBeCloseTo(offset, 12);
   });
 });

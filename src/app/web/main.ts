@@ -52,6 +52,17 @@ async function start(): Promise<void> {
     bindDom(game.canvas, mapper);
     game.canvas.style.cursor = 'none';
   });
+
+  // Dev-only hook for e2e tests: read state and map world points to the screen. Not in builds.
+  if (import.meta.env.DEV) {
+    const devScene = scene;
+    Object.assign(window, {
+      __stickgame: {
+        snapshot: () => runtime.sim.snapshot(),
+        worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
+      },
+    });
+  }
 }
 
 void start();
