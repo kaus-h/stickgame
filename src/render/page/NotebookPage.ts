@@ -85,7 +85,16 @@ export function addPaper(
   const y0 = Math.floor(m(b.minY - pad) / TILE) * TILE;
   const w = Math.ceil(m(b.maxX + pad) - x0);
   const h = Math.ceil(m(b.maxY + pad) - y0);
-  return scene.add.tileSprite(x0, y0, w, h, PAPER_KEY).setOrigin(0, 0).setDepth(-100);
+  const paper = scene.add.tileSprite(x0, y0, w, h, PAPER_KEY).setOrigin(0, 0).setDepth(-100);
+  // Phaser's Canvas TileSprite releases its canvas on destroy but leaves its private
+  // display texture registered. Remove only that instance's texture, never the shared tile.
+  // The runtime member is omitted from Phaser 4's TileSprite declarations.
+  const displayKey = (paper as unknown as { displayTexture: Phaser.Textures.Texture | null })
+    .displayTexture?.key;
+  scene.events.once('shutdown', () => {
+    if (displayKey && scene.textures.exists(displayKey)) scene.textures.remove(displayKey);
+  });
+  return paper;
 }
 
 /**

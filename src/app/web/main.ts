@@ -1,12 +1,10 @@
 import * as Phaser from 'phaser';
-import lab01 from '../../../content/levels/lab-01.json';
-import labCollision from '../../../content/levels/lab-collision.json';
-import labMoving from '../../../content/levels/lab-moving.json';
 import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
-import { parseLevel, parseRuntimeTuning } from '../../content';
-import { parseAssistMode, vec2 } from '../../core';
+import { parseRuntimeTuning } from '../../content';
+import { LevelRegistry } from '../../content/level-registry';
+import { parseAssistMode, vec2, type Intent } from '../../core';
 import {
   bindDom,
   bindTouchDom,
@@ -21,6 +19,12 @@ import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/Kinema
 import { createPlatformServices, SaveStore } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
+import { exitTelemetry } from '../../telemetry/exitTelemetry';
+import chapterJson from '../../../content/chapters/chapter-1.json';
+import stringsEn from '../../../content/strings/en.json';
+import { levelSources } from './level-catalog';
+import { GameFlowUi } from './ui/GameFlowUi';
+import { parseChapter, playOrder } from './ui/flow';
 
 // Composition root for the browser build.
 async function start(): Promise<void> {
@@ -51,19 +55,28 @@ async function start(): Promise<void> {
   await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
 
   // ?level=lab-collision (GMR-24) or ?level=lab-moving (GMR-26) loads a lab (default: lab-01).
-  const levels: Record<string, unknown> = {
-    'lab-01': lab01,
-    'lab-collision': labCollision,
-    'lab-moving': labMoving,
-  };
-  const levelName = params.get('level') ?? 'lab-01';
-  const level = parseLevel(levels[levelName] ?? lab01);
+  const registry = new LevelRegistry(levelSources);
+  const chapter = parseChapter(chapterJson, new Set(registry.ids));
+  // Without ?level= the game boots to the title screen (GMR-47); ?level= jumps straight into a
+  // level (labs, tests and level authoring) and keeps the in-canvas exit card.
+  const flowMode = !params.has('level');
+  let levelName = params.get('level') ?? playOrder(chapter)[0]?.id ?? 'lab-01';
+  let level = registry.load(levelName);
+  let levelRevision = 0;
+  let levelError: string | null = null;
   const intents = new IntentQueue();
   let scene: GameScene | null = null;
+  // The pause intent (Esc, P, touch pause) opens the menu; it never reaches the simulation.
+  let flow: GameFlowUi | null = null;
+  const pushIntent = (intent: Intent): void => {
+    if (intent.type === 'pause') {
+      flow?.onPauseKey();
+      return;
+    }
+    intents.push(intent);
+  };
   const mapper = new DesktopInputMapper(
-    (intent) => {
-      intents.push(intent);
-    },
+    pushIntent,
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
   );
   // Touch controls (GMR-27): same intents, same simulation. Shown on the first touch or ?touch=1.
@@ -73,9 +86,7 @@ async function start(): Promise<void> {
     TOUCH_SCHEMES.find((k) => k === saved.settings.touchScheme) ??
     'direct-touch';
   const touch = new TouchInputMapper(
-    (intent) => {
-      intents.push(intent);
-    },
+    pushIntent,
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
     {
       scheme,
@@ -135,10 +146,22 @@ async function start(): Promise<void> {
   runtime.onEvents((events) => {
     sfx.onEvents(events);
     for (const e of events) {
+      const telemetry = exitTelemetry(level, e);
+      if (telemetry) platform.analytics.track(telemetry);
       if (e.type === 'death') runDeaths++;
       else if (e.type === 'exit') {
-        save.recordRun(level.id, { cleared: true, ticks: e.attemptTicks, deaths: runDeaths });
+        const previousBest = save.current.levels[level.id]?.bestTicks ?? null;
+        const deaths = runDeaths;
+        save.recordRun(level.id, { cleared: true, ticks: e.attemptTicks, deaths });
         runDeaths = 0;
+        if (flowMode && flow) {
+          flow.showResults({
+            levelId: level.id,
+            ticks: e.attemptTicks,
+            deaths,
+            newBest: previousBest !== null && e.attemptTicks < previousBest,
+          });
+        }
       }
     }
   });
@@ -148,7 +171,55 @@ async function start(): Promise<void> {
     onEvents: (l) => runtime.onEvents(l),
     debug,
     touchControls: () => (touch.active ? touch.state() : null),
+    reducedMotion: () => {
+      const r = save.current.settings.reducedMotion;
+      return r === 'system' ? undefined : r === 'on';
+    },
+    showExitResult: !flowMode,
   });
+
+  // Game flow (GMR-47): title, level select, pause, results, settings.
+  const gameScene = scene;
+  flow = new GameFlowUi(document.body, stringsEn, chapter, () => save.current, {
+    play: (levelId) => {
+      flushDeaths();
+      mapper.blur();
+      intents.clear();
+      runtime.sim.setAssist({ mode: save.current.settings.assist, ...tuning.assist });
+      if (levelId === level.id) {
+        intents.push({ type: 'restart' });
+        return;
+      }
+      const next = registry.load(levelId);
+      levelName = levelId;
+      runtime.replaceLevel(next);
+      level = next;
+      gameScene.replaceLevel(next);
+    },
+    restart: () => {
+      intents.push({ type: 'restart' });
+    },
+    setMenuPaused: (paused) => {
+      runtime.pause('menu', paused);
+      // Keys pressed in the menus (Enter, Space) must not leak into the next attempt.
+      if (!paused) {
+        mapper.blur();
+        intents.clear();
+      }
+    },
+    settings: (patch) => {
+      save.updateSettings(patch);
+      const st = save.current.settings;
+      audio.setVolume('master', st.masterVolume);
+      audio.setVolume('sfx', st.sfxVolume);
+      audio.setVolume('music', st.musicVolume);
+      audio.setMuted(st.muted);
+    },
+  });
+  if (flowMode) {
+    runtime.pause('menu', true);
+    flow.showTitle();
+  } else flow.screen = 'playing';
   if (debug) {
     // Loaded on demand so the panel never weighs on the production bundle.
     void import('../../tools/tuning-panel').then(({ mountTuningPanel }) =>
@@ -180,12 +251,57 @@ async function start(): Promise<void> {
     game.canvas.style.cursor = 'none';
   });
 
+  // Accept the catalog boundary: JSON updates travel here without reloading the document.
+  // Compile first; malformed edits leave the running attempt intact until the file is fixed.
+  if (import.meta.hot) {
+    import.meta.hot.accept('./level-catalog', (catalog) => {
+      if (!catalog) return;
+      try {
+        const nextRegistry = new LevelRegistry(
+          catalog.levelSources as Readonly<Record<string, unknown>>,
+        );
+        const next = nextRegistry.load(levelName);
+        levelError = null;
+        // A catalog edit can concern another open level. Preserve this attempt and its input.
+        if (JSON.stringify(next) === JSON.stringify(level)) return;
+        mapper.blur();
+        intents.clear();
+        intents.clearLog();
+        runtime.replaceLevel(next);
+        level = next;
+        scene.replaceLevel(next);
+        levelRevision++;
+        levelError = null;
+      } catch (error) {
+        levelError = error instanceof Error ? error.message : String(error);
+        console.warn(`Level reload rejected: ${levelError}`);
+      }
+    });
+  }
+
   // Dev-only hook for e2e tests: read state and map world points to the screen. Not in builds.
   if (import.meta.env.DEV) {
     const devScene = scene;
     Object.assign(window, {
       __stickgame: {
         snapshot: () => runtime.sim.snapshot(),
+        resources: () => ({
+          textures: game.textures.getTextureKeys().length,
+          cameras: devScene.cameras.cameras.length,
+        }),
+        exitPresentation: () => {
+          const result = devScene.children.getByName('exit-result') as
+            Phaser.GameObjects.Text | undefined;
+          const miss = devScene.children.getByName('exit-miss') as
+            Phaser.GameObjects.Text | undefined;
+          return {
+            ready: !!result,
+            result: result?.visible ?? false,
+            resultText: result?.text ?? '',
+            miss: miss?.visible ?? false,
+            missText: miss?.text ?? '',
+          };
+        },
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         save: () => ({ data: save.current, source: save.source }),
@@ -200,7 +316,18 @@ async function start(): Promise<void> {
             touch.setScheme(s);
           },
         },
+        flow: () => flow.screen,
+        // Shows the results card for the current level as if it had just been cleared.
+        debugResults: (ticks: number, deaths: number) => {
+          flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+        },
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
+        level: () => ({
+          id: level.id,
+          revision: levelRevision,
+          spawn: level.spawn,
+          error: levelError,
+        }),
       },
     });
   }

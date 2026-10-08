@@ -38,6 +38,8 @@ export class NullPhysicsAdapter implements PhysicsAdapter {
 
   resetBodies(): void {}
 
+  clearLevel(): void {}
+
   stats(): PhysicsStats {
     return { bodies: 0, joints: 0, contacts: 0 };
   }

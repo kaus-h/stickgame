@@ -37,9 +37,11 @@ describe('slim Phaser build guard (GMR-99)', () => {
     const have = provided();
     const missing = new Set<string>();
     for (const file of sources('src')) {
-      for (const m of readFileSync(file, 'utf8').matchAll(
-        /\bPhaser\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?/g,
-      )) {
+      const text = readFileSync(file, 'utf8');
+      for (const m of text.matchAll(/\bPhaser\.([A-Za-z0-9_]+)(?:\.([A-Za-z0-9_]+))?/g)) {
+        // Type positions (`x: Phaser.T`, `<Phaser.T>`, `| Phaser.T`) are erased at compile time.
+        const before = text.slice(Math.max(0, m.index - 3), m.index);
+        if (/[:<|]\s*$/.test(before)) continue;
         const root = m[1] as string;
         const leaf = m[2];
         // Namespaces kept as objects must provide the member too (e.g. GameObjects.Graphics).

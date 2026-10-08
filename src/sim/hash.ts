@@ -51,5 +51,25 @@ export function hashSnapshot(s: SimSnapshot): string {
     f64(a.x);
     f64(a.y);
   }
+  // Null entry state adds no bytes, preserving all historical replay hashes.
+  for (const record of [s.completion, s.lastExitAttempt]) {
+    if (!record) continue;
+    int32(record === s.completion ? 0x45584954 : 0x4d495353);
+    for (const text of [record.exitId, record.family, record.reason ?? '']) {
+      int32(text.length);
+      for (let i = 0; i < text.length; i++) int32(text.charCodeAt(i));
+    }
+    int32(record.tick);
+    int32(record.accepted ? 1 : 0);
+    f64(record.at.x);
+    f64(record.at.y);
+    f64(record.velocity.x);
+    f64(record.velocity.y);
+    f64(record.speed);
+    f64(record.angleCos);
+    f64(record.alignment);
+    if ('attemptTicks' in record && typeof record.attemptTicks === 'number')
+      int32(record.attemptTicks);
+  }
   return (h >>> 0).toString(16).padStart(8, '0');
 }

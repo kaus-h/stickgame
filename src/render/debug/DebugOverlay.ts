@@ -1,6 +1,6 @@
 import * as Phaser from 'phaser';
 import { metersToPixels as m } from '../../core';
-import type { SimEvent, SimSnapshot } from '../../sim';
+import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { RenderFrame } from '../frame';
 import { EventLog, formatOverlay } from './format';
 
@@ -22,8 +22,14 @@ export class DebugOverlay {
   private readonly world: Phaser.GameObjects.Graphics;
   private readonly trail: { x: number; y: number }[] = [];
   private lastTick = -1;
+  private readonly toggle = (): void => {
+    this.setVisible(!this.visible);
+  };
 
-  constructor(private readonly scene: Phaser.Scene) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    private readonly level?: LevelDef,
+  ) {
     this.world = scene.add.graphics().setDepth(50).setVisible(false);
     this.text = scene.add
       .text(12, 0, '', {
@@ -36,9 +42,11 @@ export class DebugOverlay {
       .setScrollFactor(0)
       .setDepth(100)
       .setVisible(false);
-    scene.input.keyboard?.on('keydown-BACKTICK', () => {
-      this.setVisible(!this.visible);
-    });
+    scene.input.keyboard?.on('keydown-BACKTICK', this.toggle);
+  }
+
+  destroy(): void {
+    this.scene.input.keyboard?.off('keydown-BACKTICK', this.toggle);
   }
 
   setVisible(visible: boolean): void {
@@ -55,7 +63,24 @@ export class DebugOverlay {
     const s = frame.current;
     this.recordTrail(s);
     if (!this.visible) return;
-    const lines = [...formatOverlay(s, frame.stats), '— events —', ...this.log.tail(8), '[`] hide'];
+    const chamber = this.level?.chambers?.find(
+      ({ region }) =>
+        s.player.position.x >= region.min.x &&
+        s.player.position.x <= region.max.x &&
+        s.player.position.y >= region.min.y &&
+        s.player.position.y <= region.max.y,
+    );
+    const lines = [
+      ...(this.level
+        ? [
+            `level ${this.level.id} | telemetry ${this.level.telemetry?.levelId ?? this.level.id} | chamber ${chamber?.id ?? 'none'}`,
+          ]
+        : []),
+      ...formatOverlay(s, frame.stats),
+      '— events —',
+      ...this.log.tail(8),
+      '[`] hide',
+    ];
     this.text.setText(lines.join('\n'));
     this.text.setPosition(12, this.scene.scale.height - this.text.height - 12);
     this.drawWorld(s);

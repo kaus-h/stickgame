@@ -2,6 +2,7 @@
 // May import core only. sim depends on the interface, never on a backend.
 export type {
   BodyDef,
+  BodyMotionSegment,
   BodyState,
   ContactEvent,
   PhysicsAdapter,

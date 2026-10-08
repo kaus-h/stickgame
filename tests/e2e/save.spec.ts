@@ -16,7 +16,7 @@ const hook = <T>(page: Page, fn: (h: Hook) => T | Promise<T>) =>
 test.setTimeout(60_000);
 
 test('deaths are saved locally and survive a reload', async ({ page }) => {
-  await page.goto('/?renderer=canvas');
+  await page.goto('/?level=lab-01&renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.locator('canvas').click({ position: { x: 5, y: 5 } });
   // Run and keep jumping until the lethal floor ends the attempt.

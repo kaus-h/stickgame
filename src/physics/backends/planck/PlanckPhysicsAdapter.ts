@@ -32,7 +32,7 @@ type FixtureTag = { kind: 'segment'; index: number } | { kind: 'body'; index: nu
 const GROUND_NORMAL_Y = -0.7;
 
 export class PlanckPhysicsAdapter implements PhysicsAdapter {
-  private world = new World({ gravity: { x: 0, y: 25 } });
+  private readonly world = new World({ gravity: { x: 0, y: 25 } });
   private segments: Segment[] = [];
   private segmentBodies: Body[] = [];
   private readonly bodies: BodyRecord[] = [];
@@ -208,10 +208,20 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
     return { bodies: this.bodies.length, joints: this.ropes.size, contacts };
   }
 
+  clearLevel(): void {
+    for (const id of [...this.ropes.keys()]) this.detachRope(id);
+    for (const { body } of this.bodies) this.world.destroyBody(body);
+    for (const { body } of this.anchors) this.world.destroyBody(body);
+    this.bodies.length = 0;
+    this.anchors.length = 0;
+    this.setGeometry([]);
+    this.contacts = [];
+    this.groundContacts.clear();
+    this.nextRope = 1;
+  }
+
   dispose(): void {
-    this.world = new World();
-    this.ropes.clear();
-    this.staticPivots.clear();
+    this.clearLevel();
   }
 
   private onContact(c: Contact, begin: boolean): void {

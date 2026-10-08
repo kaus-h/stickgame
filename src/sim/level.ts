@@ -6,6 +6,8 @@ export interface SolidDef {
   readonly id: string;
   readonly kind: 'solid' | 'hazard';
   readonly points: readonly Vec2[];
+  /** Optional teeth silhouette; collision remains authoritative. Authoring metadata only. */
+  readonly visualPoints?: readonly Vec2[];
 }
 
 /**
@@ -19,6 +21,8 @@ export interface AnchorDef {
   /** Impact disc radius, m. */
   readonly radius: number;
   readonly path?: AnchorPathDef;
+  /** Tagged required shot's take-off point, used by authoring reach/visibility checks. */
+  readonly requiredFrom?: Vec2;
 }
 
 /** Smooth ping-pong path. Limits on peak speed and acceleration: docs/moving-anchors.md. */
@@ -44,8 +48,50 @@ export interface LevelDef {
   readonly killY: number;
   readonly solids: readonly SolidDef[];
   readonly anchors: readonly AnchorDef[];
-  /** Entering this box completes the level (compartment exits replace it in GMR-46). */
-  readonly exit?: { readonly min: Vec2; readonly max: Vec2 };
+  /** Stable analytics ID. Defaults to level.id during migration. */
+  readonly telemetry?: { readonly levelId: string };
+  readonly section?: string;
+  /** Authoring descriptions only; these do not add gameplay triggers or respawn behavior. */
+  readonly chambers?: readonly {
+    readonly id: string;
+    readonly region: LevelRegion;
+    readonly problem: string;
+    readonly challengeFamily: string;
+  }[];
+  readonly checkpoints?: readonly { readonly id: string; readonly position: Vec2 }[];
+  readonly cameraHints?: readonly {
+    readonly id: string;
+    readonly region: LevelRegion;
+    readonly focus: Vec2;
+  }[];
+  readonly tunnels?: readonly { readonly id: string; readonly region: LevelRegion }[];
+  /** Typed compartments use swept entry rules; bare regions preserve legacy lab behavior. */
+  readonly exit?: ExitDef | LevelRegion;
+}
+
+export type ExitFamily = 'wide' | 'slot' | 'shaft';
+export type ExitSide = 'left' | 'right' | 'top' | 'bottom';
+export interface ExitWindow {
+  readonly min: number;
+  readonly max: number;
+}
+export interface ExitDef extends LevelRegion {
+  readonly id: string;
+  readonly family: ExitFamily;
+  readonly entry: {
+    readonly side: ExitSide;
+    /** Unsigned deviation from inward normal in degrees, 0..90. */
+    readonly angle: ExitWindow;
+    /** Arrival speed, m/s. */
+    readonly speed: ExitWindow;
+    /** Opening fraction, increasing down/right. */
+    readonly alignment: ExitWindow;
+  };
+}
+
+export interface LevelRegion {
+  readonly min: Vec2;
+  readonly max: Vec2;
 }
 
 /** Polygon edges become physics segments. */

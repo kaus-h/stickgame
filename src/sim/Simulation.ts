@@ -1,6 +1,7 @@
 import { SIM_DT, vec2, type AssistMode, type Intent, type Vec2 } from '../core';
 import type { PhysicsAdapter, PhysicsStats } from '../physics';
 import { anchorPathState } from './anchorPath';
+import { evaluateExitEntry, type ExitAttempt } from './exits';
 import { levelSegments, type LevelDef } from './level';
 import {
   resolveTarget,
@@ -58,6 +59,11 @@ export interface SimSnapshot {
   readonly contacts: readonly ContactSnapshot[];
   /** The most recent death (survives the reset it caused). */
   readonly lastDeath: DeathRecord | null;
+  /** Accepted compartment entry, held until an immediate restart. */
+  readonly completion:
+    (ExitAttempt & { readonly tick: number; readonly attemptTicks: number }) | null;
+  /** Last entry result, including rejected crossings, for spatial feedback/telemetry. */
+  readonly lastExitAttempt: (ExitAttempt & { readonly tick: number }) | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
   readonly target: TargetResolution | null;
   /** Aim-assist tier this simulation was created with (GMR-27); `standard` = no assist. */
@@ -104,7 +110,13 @@ export type SimEvent =
   | { readonly type: 'jump'; readonly tick: number }
   | { readonly type: 'land'; readonly tick: number; readonly speed: number }
   | ({ readonly type: 'death' } & DeathRecord)
-  | { readonly type: 'exit'; readonly tick: number; readonly attemptTicks: number }
+  | {
+      readonly type: 'exit';
+      readonly tick: number;
+      readonly attemptTicks: number;
+      readonly attempt?: ExitAttempt;
+    }
+  | { readonly type: 'exitMiss'; readonly tick: number; readonly attempt: ExitAttempt }
   | {
       readonly type: 'ropeAttach';
       readonly tick: number;
@@ -143,11 +155,13 @@ export class Simulation {
   private deathCount = 0;
   private events: SimEvent[] = [];
 
-  private readonly body: number;
-  private readonly anchorIds: number[];
+  private body!: number;
+  private anchorIds: number[] = [];
   /** Level solid id for each physics segment (levelSegments keeps solid order). */
-  private readonly segmentSolid: string[];
+  private segmentSolid: string[] = [];
   private lastDeath: DeathRecord | null = null;
+  private completion: SimSnapshot['completion'] = null;
+  private lastExitAttempt: SimSnapshot['lastExitAttempt'] = null;
   private lastContacts: readonly ContactSnapshot[] = [];
 
   // Controller state (reset each attempt).
@@ -172,16 +186,54 @@ export class Simulation {
   } | null = null;
   /** Rope presses and releases in input order, applied once anchors are placed for the tick. */
   private ropeActions: ('press' | 'release')[] = [];
-  private readonly assist: TargetAssist;
+  private assist: TargetAssist;
 
   constructor(
     private tuning: SimTuning,
     private readonly physics: PhysicsAdapter,
-    private readonly level: LevelDef,
+    private level: LevelDef,
     options: SimulationOptions = {},
   ) {
     this.assist = options.assist ?? STANDARD_ASSIST;
     physics.setGravity(vec2(0, tuning.gravity));
+    this.createLevelBodies();
+  }
+
+  /**
+   * Change the opt-in aim assist (settings, GMR-47). Call only at an attempt boundary (level start
+   * or restart) so a replay's recorded tier stays true for the whole attempt.
+   */
+  setAssist(assist: TargetAssist): void {
+    this.assist = assist;
+  }
+
+  /** Authoring reload: discard all attempt state while retaining the physics world and tuning. */
+  replaceLevel(level: LevelDef): void {
+    this.physics.clearLevel();
+    this.level = level;
+    this.tickCount = 0;
+    this.attemptTicks = 0;
+    this.resetCount = 0;
+    this.deathCount = 0;
+    this.events = [];
+    this.lastDeath = null;
+    this.completion = null;
+    this.lastExitAttempt = null;
+    this.lastContacts = [];
+    this.axis = 0;
+    this.facing = 1;
+    this.lastGroundedTick = -1_000;
+    this.jumpBufferedTick = -1_000;
+    this.jumpHeld = false;
+    this.wasGrounded = false;
+    this.aim = null;
+    this.rope = null;
+    this.ropeActions = [];
+    this.createLevelBodies();
+  }
+
+  private createLevelBodies(): void {
+    const { physics, level, tuning } = this;
     physics.setGeometry(levelSegments(level));
     this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({
@@ -196,16 +248,22 @@ export class Simulation {
   }
 
   step(intents: readonly Intent[]): void {
+    // Results hold the successful attempt. Restart uses the existing verb and same world.
+    if (this.completion && !intents.some((i) => i.type === 'restart')) {
+      this.tickCount++;
+      return;
+    }
     for (const intent of intents) this.applyIntent(intent);
     if (intents.some((i) => i.type === 'restart')) this.reset();
 
     this.moveAnchors();
     this.applyRopeActions();
     this.control();
+    const beforePhysics = this.physics.bodyState(this.body);
     this.physics.step(SIM_DT, this.tuning.physicsSubsteps);
     this.tickCount++;
     this.attemptTicks++;
-    this.afterPhysics();
+    this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
   }
 
   /** Back to the authored initial state inside the same physics world. */
@@ -219,6 +277,8 @@ export class Simulation {
   }
 
   reset(): void {
+    this.completion = null;
+    this.lastExitAttempt = null;
     this.physics.resetBodies();
     this.physics.drainContacts();
     this.attemptTicks = 0;
@@ -252,6 +312,8 @@ export class Simulation {
       ),
       aim: this.aim,
       lastDeath: this.lastDeath,
+      completion: this.completion,
+      lastExitAttempt: this.lastExitAttempt,
       contacts: this.lastContacts,
       target: this.target(s.position, anchors),
       assist: this.assist.mode,
@@ -578,7 +640,7 @@ export class Simulation {
     });
   }
 
-  private afterPhysics(): void {
+  private afterPhysics(previousPosition: Vec2, previousVelocity: Vec2): void {
     const s = this.physics.bodyState(this.body);
     const contacts = this.physics.drainContacts();
     this.lastContacts = contacts.map((c) => ({
@@ -609,6 +671,39 @@ export class Simulation {
     }
 
     const exit = this.level.exit;
+    if (exit && 'entry' in exit) {
+      // Production physics supplies chronological segments with pre-contact velocity.
+      // Other adapters use the chord and pre-step velocity, never a later collision impulse.
+      const motion = this.physics.bodyMotion?.(this.body) ?? [
+        { from: previousPosition, to: s.position, velocity: previousVelocity },
+      ];
+      let attempt: ExitAttempt | null = null;
+      for (const segment of motion) {
+        attempt = evaluateExitEntry(
+          exit,
+          segment.from,
+          segment.to,
+          segment.velocity,
+          this.tuning.player.radius,
+        );
+        if (attempt) break;
+      }
+      if (attempt) {
+        this.lastExitAttempt = { ...attempt, tick: this.tickCount };
+        if (attempt.accepted) {
+          this.completion = { ...attempt, tick: this.tickCount, attemptTicks: this.attemptTicks };
+          this.events.push({
+            type: 'exit',
+            tick: this.tickCount,
+            attemptTicks: this.attemptTicks,
+            attempt,
+          });
+        } else {
+          this.events.push({ type: 'exitMiss', tick: this.tickCount, attempt });
+        }
+      }
+      return;
+    }
     if (
       exit &&
       s.position.x >= exit.min.x &&

@@ -11,7 +11,7 @@ test('audio unlocks on the first gesture, renders every sound and reports latenc
 }) => {
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(e.message));
-  await page.goto('/?renderer=canvas');
+  await page.goto('/?level=lab-01&renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   const before = await page.evaluate(() =>
     (window as unknown as { __stickgame: { audio(): AudioInfo } }).__stickgame.audio(),

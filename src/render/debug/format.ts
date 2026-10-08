@@ -1,4 +1,4 @@
-import type { SimEvent, SimSnapshot } from '../../sim';
+import type { ExitAttempt, SimEvent, SimSnapshot } from '../../sim';
 import { BUILD_HASH } from '../../core';
 import type { RuntimeStats } from '../frame';
 
@@ -19,7 +19,9 @@ export function formatEvent(e: SimEvent): string {
     case 'death':
       return `${t} death ${e.cause}${e.solid ? ` (${e.solid})` : ''} at ${v2(e.at)} ${speed(e.velocity).toFixed(1)} m/s${e.rope ? ` rope a${String(e.rope.anchor)} L${f2(e.rope.length)}` : ''}`;
     case 'exit':
-      return `${t} exit after ${(e.attemptTicks / 60).toFixed(2)} s`;
+      return `${t} exit after ${(e.attemptTicks / 60).toFixed(2)} s${e.attempt ? ` ${attemptLine(e.attempt)}` : ''}`;
+    case 'exitMiss':
+      return `${t} exit miss ${attemptLine(e.attempt)}`;
     case 'ropeAttach':
       return `${t} rope attach a${String(e.anchor)} d${f2(e.length)}`;
     case 'ropeLock':
@@ -54,7 +56,17 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
     d
       ? `last death #${String(d.tick)} ${d.cause}${d.solid ? ` (${d.solid})` : ''} at ${v2(d.at)} ${speed(d.velocity).toFixed(1)} m/s${d.rope ? ` tethered a${String(d.rope.anchor)}` : ''}`
       : 'last death —',
+    s.completion
+      ? `completion #${String(s.completion.tick)} ${(s.completion.attemptTicks / 60).toFixed(2)} s ${attemptLine(s.completion)}`
+      : 'completion —',
+    s.lastExitAttempt
+      ? `last exit #${String(s.lastExitAttempt.tick)} ${attemptLine(s.lastExitAttempt)}`
+      : 'last exit —',
   ];
+}
+
+function attemptLine(a: ExitAttempt): string {
+  return `${a.exitId} ${a.family} ${a.accepted ? 'accepted' : (a.reason ?? 'miss')} at ${v2(a.at)} v(${v2(a.velocity)}) ${f2(a.speed)} m/s cos ${a.angleCos.toFixed(3)} alignment ${a.alignment.toFixed(3)}`;
 }
 
 /** Path state of the anchor in play (rope, else target), for moving-anchor debugging (GMR-26). */

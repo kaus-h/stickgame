@@ -4,7 +4,7 @@ import runtimeJson from '../../content/tuning/runtime.json';
 import { parseLevel, parseRuntimeTuning } from '../../src/content';
 import { vec2 } from '../../src/core';
 import { KinematicPhysicsAdapter } from '../../src/physics/backends/kinematic/KinematicPhysicsAdapter';
-import { Simulation, type SimEvent } from '../../src/sim';
+import { Simulation, type ExitAttempt, type SimEvent } from '../../src/sim';
 import type { RuntimeStats } from '../../src/render/frame';
 import { EventLog, formatEvent, formatOverlay } from '../../src/render/debug/format';
 
@@ -27,6 +27,43 @@ const stats: RuntimeStats = {
 };
 
 describe('debug overlay formatting', () => {
+  const attempt: ExitAttempt = {
+    exitId: 'slot-a',
+    family: 'slot',
+    at: vec2(1, 2),
+    velocity: vec2(3, 4),
+    speed: 5,
+    angleCos: 0.6,
+    alignment: 0.4,
+    accepted: false,
+    reason: 'angle',
+  };
+  it('exposes authored exit identity and arrival evidence for misses and completion', () => {
+    const miss = formatEvent({ type: 'exitMiss', tick: 10, attempt });
+    expect(miss).toContain('slot-a slot angle at 1.00, 2.00');
+    expect(miss).toContain('v(3.00, 4.00) 5.00 m/s cos 0.600 alignment 0.400');
+    const accepted = { ...attempt, accepted: true, reason: null };
+    expect(formatEvent({ type: 'exit', tick: 11, attemptTicks: 120, attempt: accepted })).toContain(
+      'slot-a slot accepted',
+    );
+    const sim = new Simulation(
+      parseRuntimeTuning(runtimeJson).sim,
+      new KinematicPhysicsAdapter(),
+      parseLevel(lab01),
+    );
+    const lines = formatOverlay(
+      {
+        ...sim.snapshot(),
+        completion: { ...accepted, tick: 11, attemptTicks: 120 },
+        lastExitAttempt: { ...attempt, tick: 10 },
+      },
+      stats,
+    );
+    expect(lines).toContain(
+      'completion #11 2.00 s slot-a slot accepted at 1.00, 2.00 v(3.00, 4.00) 5.00 m/s cos 0.600 alignment 0.400',
+    );
+    expect(lines.some((line) => line.startsWith('last exit #10'))).toBe(true);
+  });
   it('formats every event type on one line', () => {
     const events: SimEvent[] = [
       { type: 'reset', tick: 1 },

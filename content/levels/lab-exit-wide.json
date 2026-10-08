@@ -1,0 +1,22 @@
+{
+  "version": 2,
+  "id": "lab-exit-wide",
+  "name": "Compartment Lab / Wide",
+  "spawn": [2, 7.65],
+  "bounds": { "minX": 0, "minY": -2, "maxX": 18, "maxY": 12 },
+  "killY": 13,
+  "solids": [{ "id": "floor", "rect": { "x": 0, "y": 8, "w": 18, "h": 2 } }],
+  "anchors": [],
+  "exit": {
+    "id": "wide-door",
+    "family": "wide",
+    "min": [10, 5],
+    "max": [15, 8],
+    "entry": {
+      "side": "left",
+      "angle": { "min": 0, "max": 60 },
+      "speed": { "min": 3, "max": 7.5 },
+      "alignment": { "min": 0.15, "max": 0.9 }
+    }
+  }
+}

@@ -161,7 +161,7 @@ for (const viewport of [
     test.use({ hasTouch: true, viewport });
 
     test('controls stay hidden until the first touch, then appear', async ({ page }) => {
-      await page.goto('/?renderer=canvas');
+      await page.goto('/?level=lab-01&renderer=canvas');
       await page.waitForFunction(() => '__stickgame' in window);
       await page.waitForTimeout(300);
       expect((await touchState(page)).active).toBe(false);

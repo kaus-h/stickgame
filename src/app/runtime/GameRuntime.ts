@@ -37,6 +37,8 @@ export class GameRuntime implements FrameSource {
   private previous: SimSnapshot;
   private current: SimSnapshot;
   private paused = false;
+  /** Why the game is paused (tab hidden, pause menu, title screen); runs only when empty. */
+  private readonly pauseReasons = new Set<string>();
   private readonly unsubscribe: () => void;
   private readonly eventListeners = new Set<(events: readonly SimEvent[]) => void>();
 
@@ -59,7 +61,7 @@ export class GameRuntime implements FrameSource {
     this.current = this.sim.snapshot();
     this.previous = this.current;
     this.unsubscribe = deps.platform.onVisibilityChange((visible) => {
-      this.setPaused(!visible);
+      this.pause('hidden', !visible);
     });
   }
 
@@ -92,8 +94,29 @@ export class GameRuntime implements FrameSource {
 
   /** Pause stops the clock without accumulating time, so resuming never bursts through catch-up steps. */
   setPaused(paused: boolean): void {
+    this.pause('manual', paused);
+  }
+
+  /**
+   * Pause for a named reason. The runtime runs only when no reason holds, so returning to a visible
+   * tab cannot resume a game the player paused from the menu (GMR-47).
+   */
+  pause(reason: string, on: boolean): void {
+    if (on) this.pauseReasons.add(reason);
+    else this.pauseReasons.delete(reason);
+    const paused = this.pauseReasons.size > 0;
+    if (paused !== this.paused) this.clock.reset();
     this.paused = paused;
+  }
+
+  /** Reload level data in the same simulation/physics world, with no stale interpolation. */
+  replaceLevel(level: LevelDef): void {
+    this.sim.replaceLevel(level);
     this.clock.reset();
+    this.current = this.sim.snapshot();
+    this.previous = this.current;
+    this.lastSteps = 0;
+    this.lastAlpha = 0;
   }
 
   onEvents(listener: (events: readonly SimEvent[]) => void): () => void {
