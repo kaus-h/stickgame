@@ -354,7 +354,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const [ax, ay] = this.ropeAnchorKinematics(rope);
     const radiusSquared = rope.length * rope.length;
     // Collision wins when a solid holds the player outside the rope circle. Keep that actual path.
-    if ((b.x - ax) ** 2 + (b.y - ay) ** 2 > radiusSquared + 1e-8) return;
+    const resolvedX = b.x - ax;
+    const resolvedY = b.y - ay;
+    if (resolvedX * resolvedX + resolvedY * resolvedY > radiusSquared + 1e-8) return;
     let write = start;
     for (let i = start; i < b.motion.length; i++) {
       const segment = b.motion[i] as BodyMotionSegment;
