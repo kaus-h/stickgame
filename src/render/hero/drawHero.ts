@@ -14,7 +14,7 @@ export interface HeroPose {
   readonly mode: PlayerMode;
   /** Where the rope hand grips, if tethered. */
   readonly hand: Pt | null;
-  /** Seconds, for scarf flutter (presentation only). */
+  /** Seconds (presentation-only animation clock). */
   readonly time: number;
   /**
    * Stroke multiplier: 1 / camera zoom clamped, so lines keep a readable on-screen weight on
@@ -26,9 +26,8 @@ export interface HeroPose {
 /**
  * The protagonist (design reference assets/concepts/0006-hero-pose-sheet.png, style bible §5):
  * a round, slightly lumpy skull head with tearless eye holes and a stitched mouth, single-line
- * limbs, round hands, solid black boots, and a short scarf whose two tails trail the velocity, so
- * speed and direction read at a glance. Everything stays inside the 0.35 m collision radius
- * except the scarf, which is drawn behind the motion and never suggests a hit area.
+ * limbs, round hands and solid black boots (owner: no scarf). Speed and direction read from the
+ * pose and the speed strokes behind the body.
  */
 /**
  * Drawn size relative to the collision circle (GMR-55). The art is 1.3× the body and anchored at
@@ -64,8 +63,6 @@ function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   const speed = Math.hypot(v.x, v.y);
   const phase = c.x / m(0.4);
   const runAmt = mode === 'grounded' ? Math.min(1, Math.abs(v.x) / 6) : 0;
-
-  drawScarf(g, neck, v, face, p.time, L);
 
   // Legs with boots.
   const legLen = m(0.165);
@@ -157,53 +154,4 @@ function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
       g.lineBetween(ox, oy, ox + ux * m(0.22), oy + uy * m(0.22));
     }
   }
-}
-
-/** Two scarf tails from the neck, trailing the velocity, fluttering faster with speed. */
-function drawScarf(
-  g: Phaser.GameObjects.Graphics,
-  neck: Pt,
-  v: Vec2,
-  face: -1 | 1,
-  time: number,
-  L: number,
-): void {
-  const speed = Math.hypot(v.x, v.y);
-  // At rest the tails hang behind and down; moving, they stream opposite the velocity.
-  const dir = speed > 0.5 ? { x: -v.x / speed, y: -v.y / speed } : { x: -face * 0.6, y: 0.8 };
-  const len = m(0.24 + Math.min(0.22, speed * 0.02));
-  const flutter = 0.5 + Math.min(1.5, speed * 0.12);
-  g.fillStyle(PAPER, 1);
-  for (const [k, spread] of [
-    [0, -0.18],
-    [1, 0.16],
-  ] as const) {
-    const pts: Pt[] = [];
-    const n = 5;
-    for (let i = 0; i <= n; i++) {
-      const t = i / n;
-      const wave = Math.sin(time * 12 * flutter + t * 5 + k * 1.7) * m(0.035) * t * flutter;
-      // Perpendicular to the trail direction.
-      const px = -dir.y;
-      const py = dir.x;
-      pts.push({
-        x: neck.x + dir.x * len * t + px * (wave + spread * len * t),
-        y: neck.y + dir.y * len * t + py * (wave + spread * len * t),
-      });
-    }
-    strokeInk(g, pts, 3.2 * L, INK);
-    // Frayed tip.
-    const tip = pts[pts.length - 1] as Pt;
-    g.lineStyle(1.1 * L, INK, 0.9);
-    for (let f = -1; f <= 1; f++) {
-      g.lineBetween(
-        tip.x,
-        tip.y,
-        tip.x + dir.x * m(0.05) - dir.y * m(0.025 * f),
-        tip.y + dir.y * m(0.05) + dir.x * m(0.025 * f),
-      );
-    }
-  }
-  // Knot at the neck.
-  g.fillStyle(INK, 1).fillCircle(neck.x, neck.y, m(0.03) * Math.max(1, L * 0.8));
 }
