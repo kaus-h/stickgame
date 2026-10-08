@@ -269,7 +269,7 @@ export function searchChamber(
         for (let k = 1; k <= maxWait && w.tick < deadline; k++) {
           const events = w.step(source);
           simTicks++;
-          if (events.some((e) => e.type === 'death') || w.grazesHazard()) {
+          if (events.some((e) => e.type === 'death')) {
             deaths++;
             break;
           }
