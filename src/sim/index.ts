@@ -4,6 +4,7 @@ export { levelSegments } from './level';
 export { resolveTarget } from './targeting';
 export type { TargetAnchor, TargetResolution } from './targeting';
 export type { AnchorDef, LevelDef, SolidDef } from './level';
+export { hashSnapshot } from './hash';
 export { Simulation } from './Simulation';
 export type {
   DeathCause,
