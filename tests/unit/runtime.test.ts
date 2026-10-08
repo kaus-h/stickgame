@@ -5,7 +5,11 @@ import { GameRuntime } from '../../src/app/runtime/GameRuntime';
 import { parseLevel, parseRuntimeTuning } from '../../src/content';
 import { SeededRng, type Intent, type IntentSource } from '../../src/core';
 import { KinematicPhysicsAdapter } from '../../src/physics/backends/kinematic/KinematicPhysicsAdapter';
-import { NullPlatformServices, type PlatformServices } from '../../src/platform';
+import {
+  MockPlatformServices,
+  NullPlatformServices,
+  type PlatformServices,
+} from '../../src/platform';
 import { Simulation, type SimSnapshot } from '../../src/sim';
 
 const tuning = parseRuntimeTuning(runtimeJson);
@@ -103,13 +107,9 @@ describe('GameRuntime timing policy', () => {
   });
 
   it('pauses on visibility loss without bursting catch-up steps on resume', () => {
-    let notify: (visible: boolean) => void = () => {};
-    const platform: PlatformServices = {
-      name: 'test',
-      onVisibilityChange: (listener) => {
-        notify = listener;
-        return () => {};
-      },
+    const platform = new MockPlatformServices();
+    const notify = (visible: boolean): void => {
+      platform.setVisible(visible);
     };
     const runtime = makeRuntime(platform);
     runtime.frame(1 / 60);
