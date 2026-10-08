@@ -48,11 +48,12 @@ This bible is the reference for every prompt, procedural renderer and asset revi
 
 **Decision (2026-10-07).** AI-generated terrain tiles (sheet 0005 v1/v2) are dropped. Even with explicit "pure ink" prompts they drift back to grey dungeon stone, which reads goth, not paper.
 
-## 5. The hero (reference: `assets/concepts/0007-hero-pose-sheet.png`, superseding 0006, which had a scarf)
+## 5. The hero (reference: `assets/concepts/0007-hero-pose-sheet.png`, owner-approved 2026-10-08; supersedes 0006, which had a scarf)
 
 - **Head.** Round, slightly lumpy skull drawn in one wobbly line. Two eye holes and a short stitched mouth (3–4 cross-stitches). The tearless eyes are the signature mark from 07A 2C.
 - **Body.** Single-line neck and limbs, tiny round hands, small solid-black boots.
 - **No scarf, cape or accessories** (owner, 2026-10-07). Motion reads from the pose and a few short speed strokes behind the body.
+- **Heads.** The drawn heads from `assets/concepts/0008-hero-parts-sheet.png` are approved for use as the in-game head sprites (owner, 2026-10-08). Limbs and body stay procedural.
 - **Silhouette test.** The hero must read at 40 px tall on a phone.
 - **Open question for owner review.** Hollow outlined eyes or solid black ovals? 0006 drew solid ovals, which read better at small size.
 
