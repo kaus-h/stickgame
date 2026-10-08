@@ -4,6 +4,7 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
 import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
+import { drawHero } from '../hero/drawHero';
 import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
 
@@ -473,84 +474,25 @@ export class GameScene extends Phaser.Scene {
     s: SimSnapshot,
     frame: RenderFrame,
   ): void {
-    const face = s.player.facing;
-    const v = s.player.velocity;
-    const mode = s.player.mode;
-    const headR = m(0.19);
-    const head = { x: c.x, y: c.y - m(0.14) };
-    const neck = { x: c.x, y: c.y + m(0.03) };
-    const hip = { x: c.x - face * m(0.02), y: c.y + m(0.19) };
-    const phase = c.x / m(0.42);
-    const runAmt = mode === 'grounded' ? Math.min(1, Math.abs(v.x) / 6) : 0;
-
-    // Legs.
-    const legLen = m(0.17);
-    const legs: [Pt, Pt][] = [0, Math.PI].map((off) => {
-      let ang: number;
-      if (mode === 'grounded') ang = Math.sin(phase + off) * 0.75 * runAmt;
-      else if (mode === 'tethered') ang = (off === 0 ? 0.35 : -0.2) * face + v.x * 0.02;
-      else ang = (off === 0 ? 0.5 : -0.35) * face;
-      const knee = { x: hip.x + Math.sin(ang) * legLen, y: hip.y + Math.cos(ang) * legLen * 0.95 };
-      const foot = { x: knee.x + Math.sin(ang * 0.4) * legLen * 0.9, y: knee.y + legLen * 0.75 };
-      return [knee, foot];
-    });
-    for (const [knee, foot] of legs) strokeInk(g, [hip, knee, foot], 2.6, INK);
-
-    // Body.
-    strokeInk(g, [neck, hip], 2.8, INK);
-
-    // Arms: reach up the rope when tethered, swing while running.
-    const shoulder = { x: c.x, y: c.y + m(0.07) };
-    const armLen = m(0.2);
-    if (mode === 'tethered' && s.rope) {
+    let hand: Pt | null = null;
+    if (s.player.mode === 'tethered' && s.rope) {
       const prevPoint = frame.previous.rope?.point ?? s.rope.point;
-      const anchor = lerpV(prevPoint, s.rope.point, frame.alpha);
-      const hand = this.handPoint(c, anchor);
-      strokeInk(g, [shoulder, hand], 2.4, INK);
-      strokeInk(
-        g,
-        [shoulder, { x: shoulder.x - face * armLen * 0.6, y: shoulder.y + armLen * 0.8 }],
-        2.4,
-        INK,
-      );
-    } else {
-      for (const off of [0, Math.PI]) {
-        const ang =
-          mode === 'grounded'
-            ? -Math.sin(phase + off) * 0.7 * runAmt
-            : off === 0
-              ? -1.9 * face
-              : 1.2 * face;
-        strokeInk(
-          g,
-          [
-            shoulder,
-            { x: shoulder.x + Math.sin(ang) * armLen, y: shoulder.y + Math.cos(ang) * armLen },
-          ],
-          2.4,
-          INK,
-        );
-      }
+      hand = this.handPoint(c, lerpV(prevPoint, s.rope.point, frame.alpha));
     }
+    drawHero(g, {
+      c,
+      facing: s.player.facing,
+      velocity: s.player.velocity,
+      mode: s.player.mode,
+      hand,
+      time: this.time.now / 1000,
+      line: this.lineScale(),
+    });
+  }
 
-    // Head: paper-white fill, ink outline, hollow eyes, stitched mouth (our dash/stitch motif).
-    g.fillStyle(PAPER, 1).fillCircle(head.x, head.y, headR);
-    const ring: Pt[] = [];
-    for (let k = 0; k <= 16; k++) {
-      const a = (k / 16) * Math.PI * 2;
-      ring.push({ x: head.x + Math.cos(a) * headR, y: head.y + Math.sin(a) * headR * 1.05 });
-    }
-    strokeInk(g, ring, 2.8, INK);
-    g.fillStyle(INK, 1);
-    g.fillEllipse(head.x + face * m(0.035), head.y - m(0.02), m(0.08), m(0.1));
-    g.fillEllipse(head.x + face * m(0.115), head.y - m(0.02), m(0.065), m(0.09));
-    g.lineStyle(1.6, INK, 1);
-    const my = head.y + m(0.09);
-    g.lineBetween(head.x + face * m(0.0), my, head.x + face * m(0.14), my);
-    for (let k = 0; k < 3; k++) {
-      const sx = head.x + face * m(0.025 + k * 0.045);
-      g.lineBetween(sx, my - m(0.03), sx, my + m(0.03));
-    }
+  /** Keep ink strokes at least ~their desktop weight on screen when the camera zooms out (phones). */
+  private lineScale(): number {
+    return Math.min(2.2, Math.max(1, 0.9 / this.cameras.main.zoom));
   }
 
   // --- HUD (drawn on the page, fixed to the screen) ---------------------------------------------
