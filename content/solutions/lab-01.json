@@ -1,0 +1,233 @@
+{
+  "format": 1,
+  "level": "lab-01",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 435,
+  "chambers": [
+    {
+      "id": "level",
+      "problem": null,
+      "challengeFamily": null,
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 435,
+      "ticks": 435,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 0, "action": "jump", "hold": 49 },
+        { "t": 18, "action": "rope", "anchor": 0, "offset": 0, "release": 71 },
+        { "t": 74, "action": "rope", "anchor": 0, "offset": 0, "release": 112 },
+        { "t": 143, "action": "rope", "anchor": 1, "offset": 1, "release": 179 },
+        { "t": 227, "action": "rope", "anchor": 3, "offset": 0, "release": 312 },
+        { "t": 316, "action": "rope", "anchor": 3, "offset": 1, "release": 340 },
+        { "t": 350, "action": "rope", "anchor": 3, "offset": 1, "release": 376 },
+        { "t": 420, "action": "jump", "hold": 32 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "release",
+          "tick": 49,
+          "earliest": -24,
+          "latest": 40,
+          "size": 65,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "rope",
+          "event": "press",
+          "tick": 18,
+          "earliest": -9,
+          "latest": 8,
+          "size": 18,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "rope",
+          "event": "release",
+          "tick": 71,
+          "earliest": -8,
+          "latest": 3,
+          "size": 12,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "rope",
+          "event": "press",
+          "tick": 74,
+          "earliest": -3,
+          "latest": 2,
+          "size": 6,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "rope",
+          "event": "release",
+          "tick": 112,
+          "earliest": -3,
+          "latest": 18,
+          "size": 22,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "rope",
+          "event": "press",
+          "tick": 143,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "rope",
+          "event": "release",
+          "tick": 179,
+          "earliest": -15,
+          "latest": 17,
+          "size": 33,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "press",
+          "tick": 227,
+          "earliest": -11,
+          "latest": 12,
+          "size": 24,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "release",
+          "tick": 312,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 316,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "release",
+          "tick": 340,
+          "earliest": -3,
+          "latest": 5,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "press",
+          "tick": 350,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "release",
+          "tick": 376,
+          "earliest": -18,
+          "latest": 20,
+          "size": 39,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "jump",
+          "event": "press",
+          "tick": 420,
+          "earliest": -22,
+          "latest": 31,
+          "size": 54,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "jump",
+          "event": "release",
+          "tick": 452,
+          "earliest": -31,
+          "latest": 40,
+          "size": 72,
+          "capped": true,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 1,
+        "action": "jump",
+        "event": "press",
+        "tick": 0,
+        "earliest": 0,
+        "latest": 0,
+        "size": 1,
+        "capped": false,
+        "startClipped": true
+      },
+      "search": { "expansions": 2898, "simTicks": 1447884, "deathsEncountered": 11375 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-01\",\"s\":0,\"n\":435,\"i\":[[0,[\"m\",1],\"j\"],[18,[\"a\",13.5,2],\"r\"],[49,\"J\"],[71,\"R\"],[74,[\"a\",13.5,2],\"r\"],[112,\"R\"],[143,[\"a\",21.28,-1.5],\"r\"],[179,\"R\"],[227,[\"a\",37.2294340356313,1],\"r\"],[312,\"R\"],[316,[\"a\",42.906946572303205,1],\"r\"],[340,\"R\"],[350,[\"a\",45.143703305156265,1],\"r\"],[376,\"R\"],[420,\"j\"]]}"
+}
