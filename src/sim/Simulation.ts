@@ -48,6 +48,8 @@ export interface SimSnapshot {
   readonly anchorVelocities: readonly Vec2[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
+  /** Contacts that began during the last step (debug and feedback; never gameplay input). */
+  readonly contacts: readonly ContactSnapshot[];
   /** The most recent death (survives the reset it caused). */
   readonly lastDeath: DeathRecord | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
@@ -70,6 +72,15 @@ export interface DeathRecord {
   readonly attemptTicks: number;
   /** The rope at the moment of death, if tethered. */
   readonly rope: { readonly anchor: number; readonly point: Vec2; readonly length: number } | null;
+}
+
+export interface ContactSnapshot {
+  /** Level solid id. */
+  readonly solid: string;
+  readonly kind: 'solid' | 'hazard';
+  readonly normal: Vec2;
+  /** Closing speed at impact, m/s. */
+  readonly speed: number;
 }
 
 export type DeathCause = 'hazard' | 'out-of-bounds';
@@ -123,6 +134,7 @@ export class Simulation {
   /** Level solid id for each physics segment (levelSegments keeps solid order). */
   private readonly segmentSolid: string[];
   private lastDeath: DeathRecord | null = null;
+  private lastContacts: readonly ContactSnapshot[] = [];
 
   // Controller state (reset each attempt).
   private axis = 0;
@@ -148,7 +160,7 @@ export class Simulation {
   private ropeActions: ('press' | 'release')[] = [];
 
   constructor(
-    private readonly tuning: SimTuning,
+    private tuning: SimTuning,
     private readonly physics: PhysicsAdapter,
     private readonly level: LevelDef,
   ) {
@@ -180,6 +192,15 @@ export class Simulation {
   }
 
   /** Back to the authored initial state inside the same physics world. */
+  /**
+   * Dev tuning panel only (GMR-28): swap tuning values live. Breaks replay equivalence with
+   * earlier inputs, so never call it from gameplay code.
+   */
+  retune(tuning: SimTuning): void {
+    this.tuning = tuning;
+    this.physics.setGravity(vec2(0, tuning.gravity));
+  }
+
   reset(): void {
     this.physics.resetBodies();
     this.physics.drainContacts();
@@ -214,6 +235,7 @@ export class Simulation {
       ),
       aim: this.aim,
       lastDeath: this.lastDeath,
+      contacts: this.lastContacts,
       target: this.target(s.position, anchors),
     };
   }
@@ -540,6 +562,12 @@ export class Simulation {
   private afterPhysics(): void {
     const s = this.physics.bodyState(this.body);
     const contacts = this.physics.drainContacts();
+    this.lastContacts = contacts.map((c) => ({
+      solid: this.segmentSolid[c.segment] ?? '?',
+      kind: c.kind,
+      normal: c.normal,
+      speed: c.speed,
+    }));
     if (s.grounded && !this.wasGrounded) {
       // The solver has already removed the impact velocity; contacts carry the closing speed.
       const speed = contacts.reduce(

@@ -2,6 +2,8 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m, vec2, type Vec2 } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
+import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
+import { DebugOverlay } from '../debug/DebugOverlay';
 import { dashedInk, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
@@ -34,6 +36,8 @@ export interface GameSceneOptions {
   readonly source: FrameSource;
   /** Subscribe to simulation events (feedback effects only; never gameplay). */
   readonly onEvents: (listener: (events: readonly SimEvent[]) => void) => () => void;
+  /** Build the development overlay (dev builds or ?debug). Production presentation omits it. */
+  readonly debug?: boolean;
 }
 
 /**
@@ -45,12 +49,11 @@ export class GameScene extends Phaser.Scene {
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
-  private debug!: Phaser.GameObjects.Text;
-  private showDebug = false;
+  private overlay: DebugOverlay | null = null;
   private splats: Splat[] = [];
   private unsubscribe: (() => void) | null = null;
-  private camX = 0;
-  private camY = 0;
+  /** Camera center in world meters (render/camera.ts). */
+  private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
 
   constructor(private readonly opts: GameSceneOptions) {
@@ -84,20 +87,9 @@ export class GameScene extends Phaser.Scene {
       .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
-    this.debug = this.add
-      .text(12, 0, '', {
-        fontFamily: 'monospace',
-        fontSize: '12px',
-        color: '#16161a',
-        backgroundColor: '#f3efe6cc',
-      })
-      .setScrollFactor(0)
-      .setVisible(false);
-    this.input.keyboard?.on('keydown-BACKTICK', () => {
-      this.showDebug = !this.showDebug;
-      this.debug.setVisible(this.showDebug);
-    });
+    if (this.opts.debug) this.overlay = new DebugOverlay(this);
     this.unsubscribe = this.opts.onEvents((events) => {
+      this.overlay?.onEvents(events);
       for (const e of events) {
         if (e.type === 'death')
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
@@ -109,8 +101,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.fitCamera();
     const spawn = this.opts.level.spawn;
-    this.camX = m(spawn.x);
-    this.camY = m(spawn.y);
+    this.camCenter = spawn;
   }
 
   override update(time: number, deltaMs: number): void {
@@ -124,33 +115,26 @@ export class GameScene extends Phaser.Scene {
 
   // --- camera ----------------------------------------------------------------------------------
 
-  /** Show about 12 m of world height on any screen; aspect ratio changes framing only (doc 03). */
+  /**
+   * Zoom depends only on the viewport (no dynamic zoom during play, GMR-25): ~12 m of world
+   * height, widened on narrow screens so anchors at full rope range ahead stay visible.
+   */
   private fitCamera(): void {
     const cam = this.cameras.main;
-    cam.setZoom(this.scale.height / m(12));
+    cam.setZoom(cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA) / m(1));
     const b = this.opts.level.bounds;
     cam.setBounds(m(b.minX), m(b.minY), m(b.maxX - b.minX), m(b.maxY - b.minY));
   }
 
   private followCamera({ previous, current, alpha }: RenderFrame, dt: number): void {
-    const p = lerpV(
-      previous.player.position,
-      current.player.position,
-      this.blend(previous, current, alpha),
-    );
-    const v = current.player.velocity;
-    // Gentle lookahead in the direction of travel so required anchors appear early (doc 03).
-    const targetX = p.x + m(Math.max(-3, Math.min(3, v.x * 0.35)));
-    const targetY = p.y + m(Math.max(-1.5, Math.min(2, v.y * 0.12))) - m(1);
-    const k = 1 - Math.exp(-dt * 6);
-    if (current.attemptTick < previous.attemptTick || current.attemptTick <= 1) {
-      this.camX = targetX;
-      this.camY = targetY;
-    } else {
-      this.camX += (targetX - this.camX) * k;
-      this.camY += (targetY - this.camY) * k;
-    }
-    this.cameras.main.centerOn(this.camX, this.camY);
+    const t = this.blend(previous, current, alpha);
+    const p = previous.player.position;
+    const c = current.player.position;
+    const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
+    const target = cameraTarget(position, current.player.velocity, DEFAULT_CAMERA);
+    const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
+    this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);
+    this.cameras.main.centerOn(m(this.camCenter.x), m(this.camCenter.y));
   }
 
   private blend(previous: SimSnapshot, current: SimSnapshot, alpha: number): number {
@@ -512,7 +496,8 @@ export class GameScene extends Phaser.Scene {
 
   // --- HUD (drawn on the page, fixed to the screen) ---------------------------------------------
 
-  private drawHud({ current, stats }: RenderFrame): void {
+  private drawHud(frame: RenderFrame): void {
+    const { current } = frame;
     const w = this.scale.width;
     const g = this.hud;
     g.clear();
@@ -537,45 +522,6 @@ export class GameScene extends Phaser.Scene {
       .setText(`${String(mm).padStart(2, '0')}:${ss.toFixed(2).padStart(5, '0')}`);
     this.title.setPosition(w / 2, 14);
 
-    if (this.showDebug) {
-      const p = current.player;
-      this.debug
-        .setPosition(12, this.scale.height - 212)
-        .setText(
-          [
-            `sim ${String(stats.simHz)} Hz | steps/frame ${String(stats.stepsLastFrame)} | alpha ${stats.alpha.toFixed(2)}`,
-            `frame ${stats.frameMsAvg.toFixed(1)} ms avg / ${stats.frameMsMax.toFixed(1)} max | sim ${stats.simStepMsAvg.toFixed(3)} ms`,
-            `tick ${String(stats.tick)} attempt ${String(stats.attemptTick)} resets ${String(stats.resets)} deaths ${String(current.deaths)}`,
-            `pos ${p.position.x.toFixed(2)}, ${p.position.y.toFixed(2)}  vel ${p.velocity.x.toFixed(2)}, ${p.velocity.y.toFixed(2)}  ${p.mode}`,
-            current.rope
-              ? `rope anchor ${String(current.rope.anchor)} r ${current.rope.length.toFixed(3)} m pivot ${current.rope.point.x.toFixed(2)}, ${current.rope.point.y.toFixed(2)} ${current.rope.locked ? 'locked' : 'paying out'} ${current.rope.taut ? 'taut' : 'slack'} speed ${Math.hypot(p.velocity.x, p.velocity.y).toFixed(2)}`
-              : 'rope —',
-            targetLine(current.target),
-            anchorLine(current),
-            current.lastDeath
-              ? `last death ${current.lastDeath.cause}${current.lastDeath.solid ? ` (${current.lastDeath.solid})` : ''} at ${current.lastDeath.at.x.toFixed(2)}, ${current.lastDeath.at.y.toFixed(2)} speed ${Math.hypot(current.lastDeath.velocity.x, current.lastDeath.velocity.y).toFixed(1)}${current.lastDeath.rope ? ' tethered' : ''}`
-              : 'last death —',
-            `bodies ${String(stats.bodies)} joints ${String(stats.joints)}  [\`] toggle`,
-          ].join('\n'),
-        );
-    }
+    this.overlay?.draw(frame);
   }
-}
-
-function targetLine(t: SimSnapshot['target']): string {
-  if (!t) return 'target —';
-  const where = t.impact ? ` impact ${t.impact.x.toFixed(2)}, ${t.impact.y.toFixed(2)}` : '';
-  const dist = t.distance === null ? '' : ` dist ${t.distance.toFixed(3)} m`;
-  const anchor = t.anchor === null ? '' : ` anchor ${String(t.anchor)}`;
-  return `target ${t.valid ? 'valid' : t.reason}${anchor}${where}${dist}`;
-}
-
-/** Path state of the anchor in play (rope, else target), for GMR-26 moving-anchor debugging. */
-function anchorLine(s: SimSnapshot): string {
-  const i = s.rope?.anchor ?? s.target?.anchor ?? null;
-  if (i === null) return 'anchor —';
-  const a = s.anchors[i];
-  const v = s.anchorVelocities[i];
-  if (!a || !v) return 'anchor —';
-  return `anchor ${String(i)} at ${a.x.toFixed(2)}, ${a.y.toFixed(2)} v ${v.x.toFixed(2)}, ${v.y.toFixed(2)} (${Math.hypot(v.x, v.y).toFixed(2)} m/s)`;
 }

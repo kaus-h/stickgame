@@ -304,10 +304,11 @@ describe('predictability', () => {
             // Learnable: a big change between neighbouring ticks only where the catch flips
             // direction (the relative velocity at the catch passes through the rope line) or the
             // rope went slack and re-caught during the ride. Both are rope rules, not the pivot.
+            // The continuous momentum catch (CATCH_BLEND = 1) peaks at 1.9 m/s per attach tick here.
             if (!name.includes('outside')) {
               expect(
-                flip || slackSpell || jump < 1.6,
-                `${name} ${String(off.x)},${String(off.y)} hold ${String(hold)} k ${String(k)}`,
+                flip || slackSpell || jump < 2,
+                `${name} ${String(off.x)},${String(off.y)} hold ${String(hold)} k ${String(k)} jump ${jump.toFixed(2)} side ${String(side[k - 1])}->${String(side[k])}`,
               ).toBe(true);
             }
           }

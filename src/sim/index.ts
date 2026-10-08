@@ -9,6 +9,7 @@ export type { AnchorPathState } from './anchorPath';
 export { hashSnapshot } from './hash';
 export { Simulation } from './Simulation';
 export type {
+  ContactSnapshot,
   DeathCause,
   DeathRecord,
   PlayerMode,

@@ -659,3 +659,24 @@ describe('death and reset loop', () => {
     expect(perReset).toBeLessThan(0.1);
   });
 });
+
+describe('debug instrumentation', () => {
+  it('reports contacts begun this tick with the level solid id', () => {
+    const sim = make({ ...level, spawn: vec2(2, 6) });
+    let contacts: readonly { solid: string; normal: { y: number } }[] = [];
+    for (let i = 0; i < 60 && contacts.length === 0; i++) {
+      sim.step([]);
+      contacts = sim.snapshot().contacts;
+    }
+    expect(contacts[0]?.solid).toBe('floor-a');
+    expect(contacts[0]?.normal.y).toBeLessThan(-0.7);
+  });
+
+  it('retune applies new values live (dev panel)', () => {
+    const sim = make();
+    run(sim, 30);
+    sim.retune({ ...tuning, player: { ...tuning.player, runSpeed: 3 } });
+    run(sim, 60, () => [{ type: 'move', axis: 1 }]);
+    expect(sim.snapshot().player.velocity.x).toBeCloseTo(3, 9);
+  });
+});

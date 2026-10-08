@@ -648,10 +648,18 @@ function sweepCircleSegment(
   return best;
 }
 
+/** Sideways speed, as a share of the outward speed, needed for the full momentum redirect. */
+const CATCH_BLEND = 1;
+
 /**
- * Remove the outward radial component vr of a relative velocity at a taut catch. With retention
- * k, the tangential speed becomes sqrt(vt² + (k·vr)²) in the direction already travelled, so k = 1
- * keeps the speed (momentum turns into swing) and k = 0 is the plain inelastic catch.
+ * Remove the outward radial component vr of a relative velocity at a taut catch and, with
+ * retention k, turn part of it into swing in the direction already travelled.
+ *
+ * The redirected amount blends in with the sideways speed: kept = k·vr·min(1, |steer| / vr), steer = vt + horizontal velocity along the tangent.
+ * A catch with clear sideways motion keeps its speed (k = 1: momentum becomes swing, owner
+ * direction 2026-10-07). A catch moving straight along the rope gets the plain inelastic catch,
+ * so there is no arbitrary left/right choice and the outcome is continuous in the attach timing
+ * (GMR-26 found a 4–5 m/s release jump per tick without this blend on moving anchors).
  */
 function catchTaut(
   rvx: number,
@@ -664,10 +672,16 @@ function catchTaut(
   const tx = -ny;
   const ty = nx;
   const vt = rvx * tx + rvy * ty;
-  if (k <= 0) return [rvx - vr * nx, rvy - vr * ny];
-  const kept = k * vr;
-  // Straight outward with no sideways motion: keep the direction of the horizontal velocity.
-  const sign = vt !== 0 ? Math.sign(vt) : rvx * tx >= 0 ? 1 : -1;
-  const speed = Math.sqrt(vt * vt + kept * kept) * sign;
+  if (k <= 0) return [tx * vt, ty * vt];
+  // Which way the swing goes: the sideways motion plus the horizontal (run/jump) motion seen along
+  // the tangent. Running into a catch therefore swings the way you ran.
+  const steer = vt + rvx * tx;
+  if (steer === 0) return [tx * vt, ty * vt];
+  const blend = Math.min(1, Math.abs(steer) / (CATCH_BLEND * vr));
+  const kept = k * vr * blend;
+  // Add the speed gained by folding `kept` into the swing, in the steer direction. Never more
+  // energy than before the catch (|result| ≤ sqrt(vt² + kept²) ≤ incoming speed), and exactly vt
+  // when steer → 0, so the outcome is continuous in the catch state.
+  const speed = vt + Math.sign(steer) * (Math.sqrt(vt * vt + kept * kept) - Math.abs(vt));
   return [tx * speed, ty * speed];
 }

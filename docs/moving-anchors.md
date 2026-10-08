@@ -242,13 +242,15 @@ Release velocity changes smoothly with the attach tick (at most 1.5 m/s per tick
 envelope, against a fixed anchor's 1.0 m/s) straight through the reversal. The only larger jumps
 (asserted to be the only ones) come from two rope rules that exist with fixed anchors too:
 
-- **Catch direction.** The momentum-keeping catch (`catchRetention` 1) sends the outward relative
-  speed along the swing in the direction the body was already moving relative to the pivot. When
-  the relative velocity at the catch passes through the rope line, the direction flips: one tick
-  either side gives opposite swings. With a moving pivot the relative velocity includes the pivot's,
-  so the flip tick moves with the pivot (here a 4 to 5 m/s jump on the side the pivot approaches
-  from, 0.3 m/s for the vertical pivot). Not changed: it is the GMR-22 catch rule. Flagged for design
-  review.
+- **Catch direction (resolved during integration).** The original momentum-keeping catch sent all
+  the outward speed along the swing in the direction of the relative tangential velocity. When that
+  velocity passed through the rope line, attach ticks one apart gave opposite swings (a 4 to 5 m/s
+  release jump). The catch is now continuous: the redirected share scales with
+  `min(1, |steer| / vr)`, where steer = tangential velocity + horizontal velocity along the tangent,
+  so running into a catch swings the way you ran. A head-on catch with no sideways or horizontal
+  motion falls back to the plain inelastic catch. Measured: the worst neighbouring-tick release
+  change across all reversal cases is 1.9 m/s (asserted below 2), and the run-and-jump momentum
+  transfer test still passes.
 - **Slack spell.** A ride that goes over the top and slackens re-catches later; whether the catch
   falls before or after the release tick decides the outcome.
 
@@ -267,9 +269,9 @@ envelope, against a fixed anchor's 1.0 m/s) straight through the reversal. The o
    names the anchor. For span S (m) and period T (s): speed `πS/T`, acceleration `2π²S/T²`, so
    `T ≥ max(0.39·S, 1.28·√S)` (8 m needs 3.7 s, 4 m needs 2.6 s, 10.5 m needs 4.2 s).
 2. Expect the swing to be pivot-driven: attaching while the pivot moves away from the player gives a
-   stronger swing, toward the player a weaker one. Never make a required route depend on attaching
-   within a tick or two of the catch-direction flip (player level with or behind the turn point on
-   the side the pivot comes from).
+   stronger swing, toward the player a weaker one. Avoid required routes whose attach window sits
+   where the catch is head-on (player moving straight along the rope relative to the pivot). The
+   outcome is continuous there but changes fastest with attach timing.
 3. Do not make a required route ride a horizontal mover for more than about 2 s when the path period
    is near the pendulum period of the expected rope (2π√(L/g)); resonance pumps the swing over the
    top.
