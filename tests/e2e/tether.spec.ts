@@ -33,7 +33,7 @@ test.setTimeout(60_000);
 
 test('run, jump, tether to the first anchor, swing and release in the lab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus without aiming
   await page.mouse.up();
@@ -70,21 +70,22 @@ test('run, jump, tether to the first anchor, swing and release in the lab', asyn
   await page.waitForTimeout(350);
   await shot(page, 'tether-swing');
 
-  // Swing through the bottom, then let go and keep the momentum.
-  let released = false;
-  for (let i = 0; i < 120 && !released; i++) {
+  // Swing through the bottom, then let go: the first free state continues the swing velocity.
+  let lastOnRope: Snap | null = null;
+  for (let i = 0; i < 200 && !lastOnRope; i++) {
     const s = await snap(page);
-    if (s.player.position.x > anchor.x + 1 && s.player.velocity.x > 2) {
-      await page.mouse.up();
-      released = true;
-    }
-    await page.waitForTimeout(16);
+    if (s.rope && s.player.position.x > anchor.x + 1 && s.player.velocity.x > 2) lastOnRope = s;
+    else await page.waitForTimeout(16);
   }
   await page.keyboard.up('KeyD');
-  expect(released).toBe(true);
-  await page.waitForTimeout(60);
-  const flying = await snap(page);
+  expect(lastOnRope).not.toBeNull();
+  await page.mouse.up();
+  let flying = await snap(page);
+  for (let i = 0; i < 100 && flying.rope; i++) flying = await snap(page);
   expect(flying.rope).toBeNull();
-  expect(flying.player.velocity.x).toBeGreaterThan(2);
+  // Released momentum: still moving the same way, with no canned launch (a slow CI frame may
+  // let a few ticks of swing and gravity pass between the two reads).
+  expect(flying.player.velocity.x).toBeGreaterThan(0.5);
+  expect(Math.abs(flying.player.velocity.x - (lastOnRope?.player.velocity.x ?? 0))).toBeLessThan(4);
   await shot(page, 'tether-release');
 });

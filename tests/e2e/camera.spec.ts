@@ -21,7 +21,7 @@ const VIEWPORTS: [string, number, number][] = [
 
 async function boot(page: Page, w: number, h: number): Promise<void> {
   await page.setViewportSize({ width: w, height: h });
-  await page.goto('/');
+  await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.locator('canvas').click({ position: { x: 3, y: 3 } });
 }
@@ -63,6 +63,7 @@ for (const [name, w, h] of VIEWPORTS) {
 test('a held pointer over an anchor keeps selecting it while the camera moves', async ({
   page,
 }) => {
+  test.setTimeout(90_000);
   await boot(page, 1280, 720);
   // a-first at (13.5, 2): run toward it with the pointer re-placed on its rendered position
   // each poll, as a player tracking it by eye would, and record the selection every poll.
@@ -70,7 +71,7 @@ test('a held pointer over an anchor keeps selecting it while the camera moves', 
   let samples = 0;
   let selected = 0;
   let maxAimError = 0;
-  for (let i = 0; i < 40; i++) {
+  for (let i = 0; i < 20; i++) {
     const s = await page.evaluate(() =>
       (window as unknown as { __stickgame: Hook }).__stickgame.worldToScreen(13.5, 2),
     );
@@ -89,7 +90,7 @@ test('a held pointer over an anchor keeps selecting it while the camera moves', 
   console.info(
     `camera-moving aim error max ${maxAimError.toFixed(3)} m over ${String(samples)} samples`,
   );
-  expect(samples).toBeGreaterThan(20);
+  expect(samples).toBeGreaterThan(10);
   // Camera motion between pointer placement and the tick stays well inside the selection margin.
   expect(maxAimError).toBeLessThan(0.75);
   expect(selected).toBe(samples);

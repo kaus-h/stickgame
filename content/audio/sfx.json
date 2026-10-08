@@ -1,0 +1,114 @@
+{
+  "$comment": "Procedural SFX parameter sets (GMR-41). Rendered by src/audio/synth.ts at load. Edit freely: every sound must stay short, crisp and never delay retry. Each event also has a visual equivalent (doc 08).",
+  "jump": {
+    "wave": "square",
+    "duty": 0.3,
+    "freq": 300,
+    "slide": 900,
+    "attack": 0.004,
+    "sustain": 0.04,
+    "release": 0.06,
+    "gain": 0.32,
+    "lowpass": 4000
+  },
+  "land": {
+    "wave": "noise",
+    "freq": 900,
+    "attack": 0.002,
+    "sustain": 0.02,
+    "release": 0.07,
+    "gain": 0.45,
+    "lowpass": 1400,
+    "seed": 7
+  },
+  "ropeShot": {
+    "wave": "noise",
+    "freq": 6000,
+    "slide": -30000,
+    "attack": 0.001,
+    "sustain": 0.03,
+    "release": 0.04,
+    "gain": 0.28,
+    "lowpass": 7000,
+    "seed": 3
+  },
+  "ropeConnect": {
+    "wave": "triangle",
+    "freq": 880,
+    "attack": 0.002,
+    "sustain": 0.03,
+    "release": 0.12,
+    "gain": 0.4,
+    "noiseMix": 0.15,
+    "jumpAt": 0.03,
+    "jumpBy": 1.5,
+    "seed": 11
+  },
+  "ropeInvalid": {
+    "wave": "square",
+    "duty": 0.5,
+    "freq": 220,
+    "slide": -400,
+    "attack": 0.002,
+    "sustain": 0.05,
+    "release": 0.06,
+    "gain": 0.22,
+    "lowpass": 1800
+  },
+  "ropeTaut": {
+    "wave": "saw",
+    "freq": 140,
+    "slide": -60,
+    "attack": 0.002,
+    "sustain": 0.02,
+    "release": 0.16,
+    "gain": 0.3,
+    "vibratoDepth": 0.03,
+    "vibratoRate": 30,
+    "lowpass": 2200
+  },
+  "ropeRelease": {
+    "wave": "noise",
+    "freq": 3000,
+    "slide": 4000,
+    "attack": 0.001,
+    "sustain": 0.01,
+    "release": 0.05,
+    "gain": 0.22,
+    "lowpass": 5000,
+    "seed": 5
+  },
+  "death": {
+    "wave": "noise",
+    "freq": 400,
+    "slide": -600,
+    "attack": 0.001,
+    "sustain": 0.05,
+    "release": 0.18,
+    "gain": 0.55,
+    "lowpass": 2500,
+    "seed": 13
+  },
+  "retry": {
+    "wave": "sine",
+    "freq": 520,
+    "attack": 0.003,
+    "sustain": 0.02,
+    "release": 0.05,
+    "gain": 0.18,
+    "jumpAt": 0.025,
+    "jumpBy": 1.26
+  },
+  "exit": {
+    "wave": "triangle",
+    "freq": 523,
+    "attack": 0.004,
+    "sustain": 0.12,
+    "release": 0.3,
+    "gain": 0.38,
+    "jumpAt": 0.12,
+    "jumpBy": 1.5,
+    "vibratoDepth": 0.01,
+    "vibratoRate": 6
+  }
+}
