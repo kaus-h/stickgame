@@ -9,4 +9,4 @@ Prompt (verbatim):
 Notes:
 
 - The generator drew the eyes as solid black ovals, not hollow. This is up for owner review.
-- Candidate reference for the in-game procedural hero: scarf, boots, stitched mouth.
+- Superseded by 0007: the owner rejected the scarf (2026-10-07).

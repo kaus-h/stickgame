@@ -48,11 +48,11 @@ This bible is the reference for every prompt, procedural renderer and asset revi
 
 **Decision (2026-10-07).** AI-generated terrain tiles (sheet 0005 v1/v2) are dropped. Even with explicit "pure ink" prompts they drift back to grey dungeon stone, which reads goth, not paper.
 
-## 5. The hero (reference: `assets/concepts/0006-hero-pose-sheet.png`)
+## 5. The hero (reference: `assets/concepts/0007-hero-pose-sheet.png`, superseding 0006, which had a scarf)
 
 - **Head.** Round, slightly lumpy skull drawn in one wobbly line. Two eye holes and a short stitched mouth (3–4 cross-stitches). The tearless eyes are the signature mark from 07A 2C.
 - **Body.** Single-line neck and limbs, tiny round hands, small solid-black boots.
-- **Scarf.** Short, two fluttering tails. It is the motion indicator: it trails velocity, so speed is readable at a glance.
+- **No scarf, cape or accessories** (owner, 2026-10-07). Motion reads from the pose and a few short speed strokes behind the body.
 - **Silhouette test.** The hero must read at 40 px tall on a phone.
 - **Open question for owner review.** Hollow outlined eyes or solid black ovals? 0006 drew solid ovals, which read better at small size.
 
