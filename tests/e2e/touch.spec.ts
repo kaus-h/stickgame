@@ -264,17 +264,20 @@ test.describe('real touch input (CDP)', () => {
     await down(3, 520, 90);
     const roles = (await touchState(page)).touches.map((t) => t.role).sort();
     expect(roles).toEqual(['jump', 'move', 'rope']);
-    const aimOk = await page.evaluate(() => {
-      const g = (window as unknown as Hook).__stickgame as unknown as {
-        snapshot(): { aim: { x: number; y: number } | null };
-        screenToWorld(x: number, y: number): { x: number; y: number };
-      };
-      const aim = g.snapshot().aim;
-      const want = g.screenToWorld(520, 90);
-      // The aim is re-projected each tick; the camera may move a little between tick and read.
-      return aim !== null && Math.hypot(aim.x - want.x, aim.y - want.y) < 0.5;
-    });
-    expect(aimOk).toBe(true);
+    // The aim is applied on the next simulation tick (and re-projected every tick); wait for it.
+    await page.waitForFunction(
+      () => {
+        const g = (window as unknown as Hook).__stickgame as unknown as {
+          snapshot(): { aim: { x: number; y: number } | null };
+          screenToWorld(x: number, y: number): { x: number; y: number };
+        };
+        const aim = g.snapshot().aim;
+        const want = g.screenToWorld(520, 90);
+        return aim !== null && Math.hypot(aim.x - want.x, aim.y - want.y) < 0.5;
+      },
+      undefined,
+      { polling: 'raf', timeout: 5000 },
+    );
     // Lifting every finger leaves nothing held.
     points.clear();
     await send('touchEnd');
