@@ -83,6 +83,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   private readonly ropes = new Map<number, Rope>();
   private nextRope = 1;
   private contacts: ContactEvent[] = [];
+  private motionStartFraction = 0;
+  private motionDurationFraction = 1;
+  private contactFraction = 0;
 
   setGeometry(segments: readonly Segment[]): void {
     this.segments = segments.slice();
@@ -136,6 +139,13 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const b = this.body(id);
     b.vx = velocity.x;
     b.vy = velocity.y;
+  }
+
+  setBodyPosition(id: number, position: Vec2): void {
+    const b = this.body(id);
+    b.x = position.x;
+    b.y = position.y;
+    b.grounded = this.isGrounded(b);
   }
 
   createKinematicAnchor(position: Vec2): number {
@@ -224,6 +234,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const touchedThisStep = this.bodies.map(() => new Set<number>());
     this.applyPivotAcceleration(dt);
     for (let k = 0; k < n; k++) {
+      this.motionStartFraction = k / n;
+      this.motionDurationFraction = 1 / n;
+      this.contactFraction = k / n;
       for (const a of this.anchors) {
         a.x += a.vx * h;
         a.y += a.vy * h;
@@ -327,8 +340,11 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   }
 
   private substepBody(index: number, h: number, touched: Set<number>): void {
+    this.contactFraction = this.motionStartFraction;
     const b = this.bodies[index] as Body;
+    const beforeCorrection = vec2(b.x, b.y);
     this.depenetrate(b, touched, index);
+    this.recordCorrection(b, beforeCorrection, this.motionStartFraction);
 
     const rope = this.ropeFor(index);
     const x0 = b.x;
@@ -336,6 +352,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const traceStart = b.motion.length;
     if (rope && this.swingStep(b, rope, h, touched, index, x0, y0)) {
       this.clipRopeMotion(b, rope, traceStart);
+      this.finishMotion(b, vec2(x0, y0));
       return;
     }
 
@@ -347,6 +364,28 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       this.enforceRopeLimit(b, rope, touched, index, x0, y0, h);
       this.clipRopeMotion(b, rope, traceStart);
     }
+    this.finishMotion(b, vec2(x0, y0));
+  }
+
+  private finishMotion(b: Body, initial: Vec2): void {
+    const last = b.motion[b.motion.length - 1];
+    this.recordCorrection(
+      b,
+      last?.to ?? initial,
+      this.motionStartFraction + this.motionDurationFraction,
+    );
+  }
+
+  private recordCorrection(b: Body, from: Vec2, fraction: number): void {
+    if (from.x === b.x && from.y === b.y) return;
+    b.motion.push({
+      from,
+      to: vec2(b.x, b.y),
+      velocity: vec2(b.vx, b.vy),
+      startFraction: fraction,
+      endFraction: fraction,
+      correction: true,
+    });
   }
 
   /** Metadata only: provisional free flight outside a satisfied leash is not a real crossing. */
@@ -374,6 +413,12 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       const high = Math.min(1, (-bb + root) / (2 * aa));
       if (low > high || high <= 0 || low >= 1) continue;
       b.motion[write++] = {
+        startFraction:
+          (segment.startFraction ?? 0) +
+          ((segment.endFraction ?? 1) - (segment.startFraction ?? 0)) * low,
+        endFraction:
+          (segment.startFraction ?? 0) +
+          ((segment.endFraction ?? 1) - (segment.startFraction ?? 0)) * high,
         from: low === 0 ? segment.from : vec2(segment.from.x + dx * low, segment.from.y + dy * low),
         to: high === 1 ? segment.to : vec2(segment.from.x + dx * high, segment.from.y + dy * high),
         velocity: segment.velocity,
@@ -491,17 +536,23 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
   ): void {
     let rx = dx;
     let ry = dy;
+    let time = this.motionStartFraction;
+    let duration = this.motionDurationFraction;
     for (let slide = 0; slide < MAX_SLIDES; slide++) {
       if (rx * rx + ry * ry < 1e-18) return;
       const hit = this.firstHit(b.x, b.y, rx, ry, b.r);
       if (!hit) {
-        if (affectVelocity) this.recordMotion(b, b.x + rx, b.y + ry);
+        if (affectVelocity) this.recordMotion(b, b.x + rx, b.y + ry, time, time + duration);
         b.x += rx;
         b.y += ry;
         return;
       }
       // Record the physical trajectory to contact, before either skin separation or impulse.
-      if (affectVelocity) this.recordMotion(b, b.x + rx * hit.t, b.y + ry * hit.t);
+      if (affectVelocity)
+        this.recordMotion(b, b.x + rx * hit.t, b.y + ry * hit.t, time, time + duration * hit.t);
+      time += duration * hit.t;
+      duration *= 1 - hit.t;
+      this.contactFraction = time;
       b.x += rx * hit.t + hit.nx * SKIN;
       b.y += ry * hit.t + hit.ny * SKIN;
       this.touch(b, hit.segment, hit.nx, hit.ny, touched, bodyIndex);
@@ -522,9 +573,21 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     }
   }
 
-  private recordMotion(b: Body, x: number, y: number): void {
+  private recordMotion(
+    b: Body,
+    x: number,
+    y: number,
+    startFraction: number,
+    endFraction: number,
+  ): void {
     if (x === b.x && y === b.y) return;
-    b.motion.push({ from: vec2(b.x, b.y), to: vec2(x, y), velocity: vec2(b.vx, b.vy) });
+    b.motion.push({
+      from: vec2(b.x, b.y),
+      to: vec2(x, y),
+      velocity: vec2(b.vx, b.vy),
+      startFraction,
+      endFraction,
+    });
   }
 
   /** Earliest time of impact in [0, 1] of a circle moving by (dx, dy) against all segments. */
@@ -589,6 +652,7 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     if (!touched.has(segment) && !b.touching.has(segment)) {
       const s = this.segments[segment] as Segment;
       this.contacts.push({
+        fraction: this.contactFraction,
         body: bodyIndex,
         segment,
         kind: s.kind,

@@ -1,0 +1,40 @@
+{
+  "version": 2,
+  "id": "lab-goon-stress",
+  "name": "Patroller Lab / Rebound Candidates",
+  "spawn": [2, 7.65],
+  "bounds": { "minX": 0, "minY": -8, "maxX": 38, "maxY": 12 },
+  "killY": 13,
+  "solids": [{ "id": "floor", "rect": { "x": 0, "y": 8, "w": 38, "h": 2 } }],
+  "anchors": [
+    { "id": "anchor-low", "position": [10, 2] },
+    { "id": "anchor-middle", "position": [20, 1] },
+    { "id": "anchor-high", "position": [30, -1] }
+  ],
+  "enemies": [
+    {
+      "id": "goon-rebound-12-5",
+      "kind": "patroller",
+      "position": [7, 7.5],
+      "size": [1.6, 1],
+      "path": { "to": [9, 7.5], "period": 6, "phase": 0 },
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 12.5, "topInset": 0.12 }
+    },
+    {
+      "id": "goon-rebound-15",
+      "kind": "patroller",
+      "position": [17, 7.5],
+      "size": [1.6, 1],
+      "path": { "to": [19, 7.5], "period": 6, "phase": 0.25 },
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 15, "topInset": 0.12 }
+    },
+    {
+      "id": "goon-rebound-18",
+      "kind": "patroller",
+      "position": [27, 7.5],
+      "size": [1.6, 1],
+      "path": { "to": [29, 7.5], "period": 6, "phase": 0.5 },
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 18, "topInset": 0.12 }
+    }
+  ]
+}

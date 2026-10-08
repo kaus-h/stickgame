@@ -4,7 +4,7 @@ import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
-import { parseAssistMode, vec2, type Intent } from '../../core';
+import { parseAssistMode, vec2, type Intent, type Vec2 } from '../../core';
 import {
   bindDom,
   bindTouchDom,
@@ -15,6 +15,7 @@ import {
   type SafeAreaInsets,
   type TouchScheme,
 } from '../../input';
+import type { SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
 import { GameScene } from '../../render';
@@ -22,6 +23,7 @@ import { GameRuntime } from '../runtime/GameRuntime';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
 import chapterJson from '../../../content/chapters/chapter-1.json';
 import stringsEn from '../../../content/strings/en.json';
+import { enemyTelemetry } from '../../telemetry/enemyTelemetry';
 import { levelSources } from './level-catalog';
 import { GameFlowUi } from './ui/GameFlowUi';
 import { parseChapter, playOrder } from './ui/flow';
@@ -65,6 +67,14 @@ async function start(): Promise<void> {
   let levelRevision = 0;
   let levelError: string | null = null;
   const intents = new IntentQueue();
+  // Dev evidence compares release with the exact pre-tick velocity, independent of browser latency.
+  const releaseTrace = import.meta.env.DEV
+    ? {
+        before: new Map<number, Vec2>(),
+        evidence: null as
+          (Extract<SimEvent, { type: 'ropeRelease' }> & { before: Vec2 | undefined }) | null,
+      }
+    : null;
   let scene: GameScene | null = null;
   // The pause intent (Esc, P, touch pause) opens the menu; it never reaches the simulation.
   let flow: GameFlowUi | null = null;
@@ -139,15 +149,28 @@ async function start(): Promise<void> {
     beforeTick: () => {
       mapper.beforeTick();
       touch.beforeTick();
-      sfx.onFrame(runtime.sim.snapshot());
+      const state = runtime.sim.snapshot();
+      if (releaseTrace) {
+        releaseTrace.before.set(state.tick, state.player.velocity);
+        if (releaseTrace.before.size > 128) {
+          const first = releaseTrace.before.keys().next().value;
+          if (first !== undefined) releaseTrace.before.delete(first);
+        }
+      }
+      sfx.onFrame(state);
     },
     assist: { mode: assistMode, ...tuning.assist },
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
     for (const e of events) {
+      if (releaseTrace && e.type === 'ropeRelease')
+        releaseTrace.evidence = { ...e, before: releaseTrace.before.get(e.tick) };
+      if (releaseTrace && e.type === 'reset') releaseTrace.evidence = null;
       const telemetry = exitTelemetry(level, e);
       if (telemetry) platform.analytics.track(telemetry);
+      const enemy = enemyTelemetry(level, e);
+      if (enemy) platform.analytics.track(enemy);
       if (e.type === 'death') runDeaths++;
       else if (e.type === 'exit') {
         const previousBest = save.current.levels[level.id]?.bestTicks ?? null;
@@ -323,6 +346,12 @@ async function start(): Promise<void> {
           flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
         },
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
+        releaseEvidence: () => releaseTrace?.evidence ?? null,
+        enemyPresentation: () => {
+          const label = devScene.children.getByName('enemy-cause') as
+            Phaser.GameObjects.Text | undefined;
+          return { ready: !!label, visible: label?.visible ?? false, text: label?.text ?? '' };
+        },
         level: () => ({
           id: level.id,
           revision: levelRevision,

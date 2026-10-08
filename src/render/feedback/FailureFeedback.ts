@@ -1,5 +1,7 @@
 import type { DeathCause, SimEvent, SimSnapshot } from '../../sim';
 import type { Vec2 } from '../../core';
+import { causeText } from './causeText';
+export { causeText } from './causeText';
 
 /** One attempt as feedback remembers it: where the hero went and where ropes connected. */
 export interface AttemptTrace {
@@ -113,13 +115,4 @@ export class FailureFeedback {
     this.impacts = [];
     this.lastRopeTick = -1;
   }
-}
-
-/** Plain-language cause, written the way a margin note would be. */
-export function causeText(cause: DeathCause, solid: string | null): string {
-  if (cause === 'out-of-bounds') return 'fell off the page';
-  const id = (solid ?? '').toLowerCase();
-  if (id.includes('thorn') || id.includes('spike') || id.includes('teeth')) return 'spikes!';
-  if (id.includes('floor') || id.includes('lava') || id.includes('pit')) return 'red ink = danger';
-  return 'touched red ink';
 }

@@ -25,6 +25,7 @@
     "killY": { "type": "number" },
     "solids": { "type": "array", "items": { "$ref": "#/definitions/solid" } },
     "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
+    "enemies": { "type": "array", "items": { "$ref": "#/definitions/patroller" } },
     "exit": { "oneOf": [{ "$ref": "#/definitions/region" }, { "$ref": "#/definitions/exit" }] },
     "section": { "$ref": "#/definitions/id" },
     "telemetry": {
@@ -88,10 +89,42 @@
   "allOf": [
     {
       "if": { "properties": { "version": { "const": 1 } } },
-      "then": { "properties": { "exit": { "$ref": "#/definitions/region" } } }
+      "then": { "properties": { "exit": { "$ref": "#/definitions/region" }, "enemies": false } }
     }
   ],
   "definitions": {
+    "patroller": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind", "position", "size", "stomp"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "kind": { "const": "patroller" },
+        "position": { "$ref": "#/definitions/point" },
+        "size": { "$ref": "#/definitions/point" },
+        "path": { "$ref": "#/definitions/path" },
+        "stomp": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["minDownSpeed", "reboundSpeed", "topInset"],
+          "properties": {
+            "minDownSpeed": { "type": "number", "exclusiveMinimum": 0 },
+            "reboundSpeed": { "type": "number", "exclusiveMinimum": 0 },
+            "topInset": { "type": "number", "minimum": 0 }
+          }
+        }
+      }
+    },
+    "path": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["to", "period"],
+      "properties": {
+        "to": { "$ref": "#/definitions/point" },
+        "period": { "type": "number", "exclusiveMinimum": 0 },
+        "phase": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
+      }
+    },
     "exit": {
       "type": "object",
       "additionalProperties": false,
@@ -213,16 +246,7 @@
         "position": { "$ref": "#/definitions/point" },
         "requiredFrom": { "$ref": "#/definitions/point" },
         "radius": { "type": "number", "exclusiveMinimum": 0 },
-        "path": {
-          "type": "object",
-          "additionalProperties": false,
-          "required": ["to", "period"],
-          "properties": {
-            "to": { "$ref": "#/definitions/point" },
-            "period": { "type": "number", "exclusiveMinimum": 0 },
-            "phase": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
-          }
-        }
+        "path": { "$ref": "#/definitions/path" }
       }
     }
   }

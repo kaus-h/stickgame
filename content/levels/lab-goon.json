@@ -1,0 +1,20 @@
+{
+  "version": 2,
+  "id": "lab-goon",
+  "name": "Patroller Lab / Stomp to Anchor",
+  "spawn": [2, 7.65],
+  "bounds": { "minX": 0, "minY": -4, "maxX": 24, "maxY": 12 },
+  "killY": 13,
+  "solids": [{ "id": "floor", "rect": { "x": 0, "y": 8, "w": 24, "h": 2 } }],
+  "anchors": [{ "id": "next-anchor", "position": [11, 2], "radius": 0.4 }],
+  "enemies": [
+    {
+      "id": "goon-first",
+      "kind": "patroller",
+      "position": [7, 7.5],
+      "size": [1.2, 1],
+      "path": { "to": [9, 7.5], "period": 6 },
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 15, "topInset": 0.12 }
+    }
+  ]
+}

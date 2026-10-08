@@ -35,6 +35,7 @@ export interface AnchorPathDef {
 }
 
 export interface LevelDef {
+  readonly enemies?: readonly PatrollerDef[];
   readonly id: string;
   readonly name: string;
   readonly spawn: Vec2;
@@ -67,6 +68,20 @@ export interface LevelDef {
   readonly tunnels?: readonly { readonly id: string; readonly region: LevelRegion }[];
   /** Typed compartments use swept entry rules; bare regions preserve legacy lab behavior. */
   readonly exit?: ExitDef | LevelRegion;
+}
+
+export interface PatrollerDef {
+  readonly id: string;
+  readonly kind: 'patroller';
+  readonly position: Vec2;
+  /** Full collision width/height, meters. */
+  readonly size: Vec2;
+  readonly path?: AnchorPathDef;
+  readonly stomp: {
+    readonly minDownSpeed: number;
+    readonly reboundSpeed: number;
+    readonly topInset: number;
+  };
 }
 
 export type ExitFamily = 'wide' | 'slot' | 'shaft';

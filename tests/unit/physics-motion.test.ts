@@ -91,7 +91,7 @@ describe('kinematic integrated motion trace', () => {
     });
     physics.step(1 / 60, 4);
     expect(physics.bodyState(id).position.y).toBeLessThan(0.9);
-    expect(physics.bodyMotion(id)).toEqual([]);
+    expect(physics.bodyMotion(id).filter((segment) => !segment.correction)).toEqual([]);
     physics.dispose();
   });
 });

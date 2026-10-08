@@ -21,6 +21,9 @@ export class SfxDirector {
         case 'jump':
           this.sink.play('jump');
           break;
+        case 'stomp':
+          this.sink.play('stomp');
+          break;
         case 'land':
           // Soft landings are silent; hard ones thud. Speed is the real closing speed.
           if (e.speed > 2) {

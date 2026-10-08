@@ -11,6 +11,18 @@
     "gain": 0.32,
     "lowpass": 4000
   },
+  "stomp": {
+    "wave": "triangle",
+    "freq": 180,
+    "slide": 1100,
+    "attack": 0.002,
+    "sustain": 0.035,
+    "release": 0.09,
+    "gain": 0.42,
+    "noiseMix": 0.18,
+    "lowpass": 3200,
+    "seed": 23
+  },
   "land": {
     "wave": "noise",
     "freq": 900,
