@@ -99,6 +99,16 @@ module.exports = {
       to: { path: layer('app') },
     },
     {
+      name: 'platform-sdks-only-in-platform-adapters',
+      comment:
+        'ADR-002: Capacitor, RevenueCat, portal SDKs and Steamworks bindings are imported only by src/platform/<adapter> App code wires adapters but never calls an SDK directly.',
+      severity: 'error',
+      from: { pathNot: '^src/platform/[^/]+/' },
+      to: {
+        path: '(^|node_modules/)(@capacitor|@capacitor-community|@revenuecat|@crazygames|@poki|@discord|steamworks|greenworks|electron)',
+      },
+    },
+    {
       name: 'phaser-only-in-render-app-tools',
       severity: 'error',
       from: {

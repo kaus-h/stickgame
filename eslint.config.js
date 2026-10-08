@@ -3,7 +3,20 @@ import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
 export default tseslint.config(
-  { ignores: ['dist', 'coverage', 'test-results', 'playwright-report', 'native', 'desktop'] },
+  {
+    ignores: [
+      'dist',
+      'scripts', // plain node tooling scripts (.mjs), not part of the TS project
+      'src/content/level-validator.generated.js', // checked Ajv output, never hand-edited
+      'coverage',
+      'test-results',
+      'playwright-report',
+      'native',
+      'desktop',
+      '.claude',
+      'vendor/.build', // generated slim Phaser bundle (GMR-99)
+    ],
+  },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {
@@ -11,7 +24,7 @@ export default tseslint.config(
       globals: { ...globals.browser },
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.cjs', 'scripts/*/*.mjs'],
+          allowDefaultProject: ['*.js', '*.cjs', 'vendor/*.js', 'scripts/*/*.mjs'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
@@ -30,6 +43,24 @@ export default tseslint.config(
       'no-restricted-properties': [
         'error',
         { object: 'Math', property: 'random', message: 'Use the seeded RNG from core.' },
+        ...[
+          'sin',
+          'cos',
+          'tan',
+          'asin',
+          'acos',
+          'atan',
+          'atan2',
+          'hypot',
+          'pow',
+          'exp',
+          'log',
+          'cbrt',
+        ].map((property) => ({
+          object: 'Math',
+          property,
+          message: 'Engine-dependent result; use the deterministic helpers in core/dmath (GMR-32).',
+        })),
         { object: 'Date', property: 'now', message: 'Use simulation ticks, not wall-clock time.' },
         {
           object: 'performance',

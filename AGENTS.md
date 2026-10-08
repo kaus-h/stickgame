@@ -4,7 +4,7 @@ Instructions for every coding agent on this repository (Codex reads this file na
 
 ## The game
 
-Precision Tether Platformer (working repo name: StickGame) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. When the rope connects, the player-to-impact distance at that exact moment becomes the rope length and swing radius. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is Chapter 1: 3 sections × 3 levels + a finale boss level (10 levels).
+Precision Tether Platformer (working repo name: StickGame) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. The rope length is the player-to-impact distance when it locks: on the connection tick if airborne, or on the take-off tick if it connected while grounded (it pays out while running). Run and jump momentum carries into the swing. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is Chapter 1: 3 sections × 3 levels + a finale boss level (10 levels).
 
 ## Source of truth
 

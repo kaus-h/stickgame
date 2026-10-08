@@ -1,0 +1,25 @@
+{
+  "format": 1,
+  "level": "lab-collision",
+  "solved": false,
+  "start": "spawn",
+  "totalTicks": null,
+  "chambers": [
+    {
+      "id": "level",
+      "problem": null,
+      "challengeFamily": null,
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": false,
+      "endTick": null,
+      "ticks": null,
+      "plan": [],
+      "windows": [],
+      "tightestWindow": null,
+      "search": { "expansions": 11250, "simTicks": 6000291, "deathsEncountered": 2762 }
+    }
+  ],
+  "notes": ["Chamber level: no route found within 6000000 simulated ticks."],
+  "replay": null
+}

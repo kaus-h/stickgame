@@ -10,3 +10,7 @@
 *.woff binary
 *.woff2 binary
 *.ttf binary
+# Keep native build scripts LF so they run on macOS and Linux (GMR-33)
+native/android/gradlew text eol=lf
+native/android/gradlew.bat text eol=crlf
+native/**/*.jar binary

@@ -1,43 +1,60 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+import lab01 from '../../content/levels/lab-01.json';
 import runtimeJson from '../../content/tuning/runtime.json';
 import { GameRuntime } from '../../src/app/runtime/GameRuntime';
-import { parseRuntimeTuning } from '../../src/content';
-import { SeededRng } from '../../src/core';
-import { IntentQueue } from '../../src/input';
-import { NullPhysicsAdapter } from '../../src/physics/backends/null/NullPhysicsAdapter';
-import { NullPlatformServices, type PlatformServices } from '../../src/platform';
+import { parseLevel, parseRuntimeTuning } from '../../src/content';
+import { SeededRng, type Intent, type IntentSource } from '../../src/core';
+import { KinematicPhysicsAdapter } from '../../src/physics/backends/kinematic/KinematicPhysicsAdapter';
+import {
+  MockPlatformServices,
+  NullPlatformServices,
+  type PlatformServices,
+} from '../../src/platform';
 import { Simulation, type SimSnapshot } from '../../src/sim';
 
 const tuning = parseRuntimeTuning(runtimeJson);
+const level = parseLevel(lab01);
 
-function makeRuntime(platform: PlatformServices = new NullPlatformServices()) {
-  const intents = new IntentQueue();
-  const runtime = new GameRuntime({
+/** Intents keyed by tick, like a replay: independent of frame timing. */
+const script: IntentSource = {
+  poll(tick: number): readonly Intent[] {
+    if (tick === 5) return [{ type: 'move', axis: 1 }];
+    if (tick === 60) return [{ type: 'jumpPress' }];
+    if (tick === 75) return [{ type: 'jumpRelease' }];
+    if (tick === 120) return [{ type: 'move', axis: -1 }];
+    if (tick === 200) return [{ type: 'move', axis: 0 }];
+    return [];
+  },
+};
+
+function makeRuntime(
+  platform: PlatformServices = new NullPlatformServices(),
+  intents: IntentSource = script,
+) {
+  return new GameRuntime({
     tuning,
-    physics: new NullPhysicsAdapter(),
+    level,
+    physics: new KinematicPhysicsAdapter(),
     intents,
     platform,
     now: () => 0,
   });
-  return { runtime, intents };
 }
 
-/** Drive the runtime with a frame-time pattern until at least `ticks` steps have run. */
 function runFor(ticks: number, nextDelta: () => number): SimSnapshot {
-  const { runtime } = makeRuntime();
+  const runtime = makeRuntime();
   while (runtime.sim.snapshot().tick < ticks) runtime.frame(nextDelta());
   return runtime.sim.snapshot();
 }
 
-/** The same number of fixed steps with no frame timing involved at all. */
 function referenceAt(ticks: number): SimSnapshot {
-  const sim = new Simulation(tuning.sim, new NullPhysicsAdapter());
-  for (let i = 0; i < ticks; i++) sim.step([]);
+  const sim = new Simulation(tuning.sim, new KinematicPhysicsAdapter(), level);
+  for (let i = 0; i < ticks; i++) sim.step(script.poll(sim.snapshot().tick));
   return sim.snapshot();
 }
 
 describe('GameRuntime timing policy', () => {
-  it('produces identical simulation states at 30, 60, 144 Hz and under jittery frame times', () => {
+  it('produces identical gameplay at 30, 60, 144 Hz and under jittery frame times', () => {
     const jitter = new SeededRng(1234);
     const patterns: Record<string, () => number> = {
       '30 Hz': () => 1 / 30,
@@ -45,15 +62,14 @@ describe('GameRuntime timing policy', () => {
       '144 Hz': () => 1 / 144,
       jitter: () => 0.004 + jitter.next() * 0.04,
     };
-
     for (const [name, delta] of Object.entries(patterns)) {
-      const state = runFor(600, delta); // 10 simulated seconds
+      const state = runFor(600, delta);
       expect(state, name).toEqual(referenceAt(state.tick));
     }
   });
 
   it('interpolation alpha stays in [0, 1)', () => {
-    const { runtime } = makeRuntime();
+    const runtime = makeRuntime();
     for (let i = 0; i < 500; i++) {
       const { alpha } = runtime.frame(0.007);
       expect(alpha).toBeGreaterThanOrEqual(0);
@@ -61,19 +77,25 @@ describe('GameRuntime timing policy', () => {
     }
   });
 
-  it('does not accumulate state across 1,000 resets', () => {
-    const { runtime, intents } = makeRuntime();
+  it('does not accumulate state across 1,000 restarts', () => {
+    let pendingRestart = false;
+    const intents: IntentSource = {
+      poll: () => {
+        if (!pendingRestart) return [];
+        pendingRestart = false;
+        return [{ type: 'restart' }];
+      },
+    };
+    const runtime = makeRuntime(new NullPlatformServices(), intents);
     const unsubscribe = runtime.onEvents(() => {});
     runtime.frame(1 / 60);
     const baseline = runtime.stats();
     const listeners = runtime.listenerCount;
-
     for (let i = 0; i < 1000; i++) {
       for (let f = 0; f < 5; f++) runtime.frame(1 / 60);
-      intents.push({ type: 'restart' });
+      pendingRestart = true;
       runtime.frame(1 / 60);
     }
-
     const after = runtime.stats();
     expect(after.resets).toBe(1000);
     expect(after.entities).toBe(baseline.entities);
@@ -85,15 +107,11 @@ describe('GameRuntime timing policy', () => {
   });
 
   it('pauses on visibility loss without bursting catch-up steps on resume', () => {
-    let notify: (visible: boolean) => void = () => {};
-    const platform: PlatformServices = {
-      name: 'test',
-      onVisibilityChange: (listener) => {
-        notify = listener;
-        return () => {};
-      },
+    const platform = new MockPlatformServices();
+    const notify = (visible: boolean): void => {
+      platform.setVisible(visible);
     };
-    const { runtime } = makeRuntime(platform);
+    const runtime = makeRuntime(platform);
     runtime.frame(1 / 60);
     notify(false);
     const tickBefore = runtime.sim.snapshot().tick;
@@ -101,5 +119,74 @@ describe('GameRuntime timing policy', () => {
     expect(runtime.sim.snapshot().tick).toBe(tickBefore);
     notify(true);
     expect(runtime.frame(1 / 60).stats.stepsLastFrame).toBe(1);
+  });
+});
+
+describe('GameRuntime level replacement', () => {
+  it('resets controller, events and interpolation to the new spawn without disposing physics', () => {
+    const physics = new KinematicPhysicsAdapter();
+    const dispose = vi.spyOn(physics, 'dispose');
+    const runtime = new GameRuntime({
+      tuning,
+      level,
+      physics,
+      intents: { poll: () => [] },
+      platform: new NullPlatformServices(),
+      now: () => 0,
+    });
+    const unsubscribe = runtime.onEvents(() => {});
+    runtime.sim.step([
+      { type: 'move', axis: -1 },
+      { type: 'ropeAim', target: { x: 4, y: -4 } },
+      { type: 'ropePress' },
+    ]);
+    runtime.frame(0.01);
+    const changed = {
+      ...level,
+      spawn: { x: level.spawn.x + 1, y: level.spawn.y },
+      anchors: level.anchors.slice(0, 1),
+    };
+    runtime.replaceLevel(changed);
+    const frame = runtime.frame(0);
+    expect(frame.current.player.position).toEqual(changed.spawn);
+    expect(frame.current.player.velocity).toEqual({ x: 0, y: 0 });
+    expect(frame.current.player.facing).toBe(1);
+    expect(frame.current.aim).toBeNull();
+    expect(frame.current.rope).toBeNull();
+    expect(frame.current.tick).toBe(0);
+    expect(frame.previous).toEqual(frame.current);
+    expect(frame.alpha).toBe(0);
+    expect(frame.stats.stepsLastFrame).toBe(0);
+    expect(runtime.sim.stats().pendingEvents).toBe(0);
+    expect(runtime.listenerCount).toBe(1);
+    expect(dispose).not.toHaveBeenCalled();
+    expect(runtime.frame(0.007).current.tick).toBe(0);
+    runtime.frame(0.01);
+    expect(runtime.sim.snapshot().player.velocity.x).toBe(0);
+    runtime.sim.reset();
+    expect(runtime.sim.snapshot().player.position).toEqual(changed.spawn);
+    unsubscribe();
+    runtime.dispose();
+  });
+
+  it('does not accumulate bodies or anchors across repeated level replacements', () => {
+    const physics = new KinematicPhysicsAdapter();
+    const runtime = new GameRuntime({
+      tuning,
+      level,
+      physics,
+      intents: { poll: () => [] },
+      platform: new NullPlatformServices(),
+      now: () => 0,
+    });
+    for (let i = 0; i < 100; i++) {
+      const changed = { ...level, anchors: level.anchors.slice(0, i % 2) };
+      runtime.replaceLevel(changed);
+      expect(runtime.stats().bodies).toBe(1);
+      expect(runtime.stats().entities).toBe(1 + changed.anchors.length);
+      expect(runtime.stats().joints).toBe(0);
+      expect(runtime.sim.snapshot().anchors).toHaveLength(changed.anchors.length);
+    }
+    runtime.dispose();
   });
 });

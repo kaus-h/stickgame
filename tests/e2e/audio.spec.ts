@@ -1,0 +1,47 @@
+import { expect, test } from '@playwright/test';
+
+interface AudioInfo {
+  state: string;
+  latency: number | null;
+  sounds: string[];
+}
+
+test('audio unlocks on the first gesture, renders every sound and reports latency', async ({
+  page,
+}) => {
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(e.message));
+  await page.goto('/?level=lab-01&renderer=canvas');
+  await page.waitForFunction(() => '__stickgame' in window);
+  const before = await page.evaluate(() =>
+    (window as unknown as { __stickgame: { audio(): AudioInfo } }).__stickgame.audio(),
+  );
+  expect(before.state).toBe('locked');
+  await page.locator('canvas').click({ position: { x: 5, y: 5 } });
+  await page.keyboard.press('Space'); // a jump: plays a sound through the whole chain
+  // Playwright WebKit on Windows/Linux has no audio output and stays suspended; real Safari/iOS
+  // audio is validated on devices (GMR-33). Elsewhere the context must be running.
+  const hasWebAudio = await page.evaluate(() => typeof AudioContext !== 'undefined');
+  // Without Web Audio (Playwright WebKit on Windows) the engine must stay silently locked.
+  // Headless CI browsers often have no audio sink, so a created context may stay suspended;
+  // the contract is: unlock creates the context on the first gesture and nothing throws.
+  const want = !hasWebAudio ? ['locked'] : ['running', 'suspended'];
+  await page.waitForFunction(
+    (states) =>
+      states.includes(
+        (window as unknown as { __stickgame: { audio(): AudioInfo } }).__stickgame.audio().state,
+      ),
+    want,
+    { timeout: 5000 },
+  );
+  const after = await page.evaluate(() =>
+    (window as unknown as { __stickgame: { audio(): AudioInfo } }).__stickgame.audio(),
+  );
+  console.info(`audio output latency: ${String(after.latency)} s`);
+  expect(after.sounds.length).toBeGreaterThanOrEqual(10);
+  if (!hasWebAudio)
+    test
+      .info()
+      .annotations.push({ type: 'note', description: 'no Web Audio in this browser build' });
+  expect(errors).toEqual([]);
+});

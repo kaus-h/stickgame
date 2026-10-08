@@ -3,15 +3,26 @@ import type { RuntimeTuning } from '../../content';
 import type { PhysicsAdapter } from '../../physics';
 import type { PlatformServices } from '../../platform';
 import type { FrameSource, RenderFrame, RuntimeStats } from '../../render';
-import { Simulation, type SimEvent, type SimSnapshot } from '../../sim';
+import {
+  Simulation,
+  type LevelDef,
+  type SimEvent,
+  type SimSnapshot,
+  type TargetAssist,
+} from '../../sim';
 
 export interface GameRuntimeDeps {
   readonly tuning: RuntimeTuning;
+  readonly level: LevelDef;
   readonly physics: PhysicsAdapter;
   readonly intents: IntentSource;
   readonly platform: PlatformServices;
   /** Wall-clock milliseconds, used only to measure cost. Never fed into the simulation. */
   readonly now: () => number;
+  /** Called before each simulation tick, e.g. so device adapters can re-aim under a moving camera. */
+  readonly beforeTick?: () => void;
+  /** Opt-in aim assist (GMR-27); omitted = standard. */
+  readonly assist?: TargetAssist;
 }
 
 const FRAME_WINDOW = 120;
@@ -26,6 +37,8 @@ export class GameRuntime implements FrameSource {
   private previous: SimSnapshot;
   private current: SimSnapshot;
   private paused = false;
+  /** Why the game is paused (tab hidden, pause menu, title screen); runs only when empty. */
+  private readonly pauseReasons = new Set<string>();
   private readonly unsubscribe: () => void;
   private readonly eventListeners = new Set<(events: readonly SimEvent[]) => void>();
 
@@ -38,12 +51,17 @@ export class GameRuntime implements FrameSource {
   private lastAlpha = 0;
 
   constructor(private readonly deps: GameRuntimeDeps) {
-    this.sim = new Simulation(deps.tuning.sim, deps.physics);
+    this.sim = new Simulation(
+      deps.tuning.sim,
+      deps.physics,
+      deps.level,
+      deps.assist ? { assist: deps.assist } : {},
+    );
     this.clock = new FixedStepClock({ dt: SIM_DT, ...deps.tuning.clock });
     this.current = this.sim.snapshot();
     this.previous = this.current;
     this.unsubscribe = deps.platform.onVisibilityChange((visible) => {
-      this.setPaused(!visible);
+      this.pause('hidden', !visible);
     });
   }
 
@@ -76,8 +94,29 @@ export class GameRuntime implements FrameSource {
 
   /** Pause stops the clock without accumulating time, so resuming never bursts through catch-up steps. */
   setPaused(paused: boolean): void {
+    this.pause('manual', paused);
+  }
+
+  /**
+   * Pause for a named reason. The runtime runs only when no reason holds, so returning to a visible
+   * tab cannot resume a game the player paused from the menu (GMR-47).
+   */
+  pause(reason: string, on: boolean): void {
+    if (on) this.pauseReasons.add(reason);
+    else this.pauseReasons.delete(reason);
+    const paused = this.pauseReasons.size > 0;
+    if (paused !== this.paused) this.clock.reset();
     this.paused = paused;
+  }
+
+  /** Reload level data in the same simulation/physics world, with no stale interpolation. */
+  replaceLevel(level: LevelDef): void {
+    this.sim.replaceLevel(level);
     this.clock.reset();
+    this.current = this.sim.snapshot();
+    this.previous = this.current;
+    this.lastSteps = 0;
+    this.lastAlpha = 0;
   }
 
   onEvents(listener: (events: readonly SimEvent[]) => void): () => void {
@@ -121,6 +160,7 @@ export class GameRuntime implements FrameSource {
   private step(): void {
     const start = this.deps.now();
     this.previous = this.current;
+    this.deps.beforeTick?.();
     this.sim.step(this.deps.intents.poll(this.sim.snapshot().tick));
     this.current = this.sim.snapshot();
     this.simStepMsTotal += this.deps.now() - start;

@@ -1,0 +1,165 @@
+import type { Intent, Vec2 } from '../core';
+
+/** Converts a screen point (CSS pixels) to a world point (meters) using the current camera. */
+export type ScreenToWorld = (screenX: number, screenY: number) => Vec2;
+
+/** Desktop bindings (doc 03 §Desktop): remappable later via settings (GMR-50). */
+export interface DesktopBindings {
+  readonly left: readonly string[];
+  readonly right: readonly string[];
+  readonly jump: readonly string[];
+  readonly restart: readonly string[];
+  readonly pause: readonly string[];
+}
+
+export const DEFAULT_DESKTOP_BINDINGS: DesktopBindings = {
+  left: ['KeyA', 'ArrowLeft'],
+  right: ['KeyD', 'ArrowRight'],
+  jump: ['Space', 'KeyW', 'ArrowUp'],
+  restart: ['KeyR'],
+  pause: ['Escape', 'KeyP'],
+};
+
+/**
+ * Keyboard + mouse → hardware-agnostic intents. Takes normalized device events, so it is fully
+ * testable without a DOM; `bindDom` wires it to real events. Gameplay never sees device events.
+ */
+export class DesktopInputMapper {
+  private readonly held = new Set<string>();
+  private axis = 0;
+  private pointer: { x: number; y: number } | null = null;
+  private lastAim: Vec2 | null = null;
+  private ropeHeld = false;
+
+  constructor(
+    private readonly emit: (intent: Intent) => void,
+    private readonly screenToWorld: ScreenToWorld,
+    private readonly bindings: DesktopBindings = DEFAULT_DESKTOP_BINDINGS,
+  ) {}
+
+  keyDown(code: string, repeat = false): void {
+    if (repeat) return;
+    this.held.add(code);
+    if (this.bindings.jump.includes(code)) this.emit({ type: 'jumpPress' });
+    if (this.bindings.restart.includes(code)) this.emit({ type: 'restart' });
+    if (this.bindings.pause.includes(code)) this.emit({ type: 'pause' });
+    this.updateAxis();
+  }
+
+  keyUp(code: string): void {
+    this.held.delete(code);
+    if (this.bindings.jump.includes(code) && !this.anyHeld(this.bindings.jump)) {
+      this.emit({ type: 'jumpRelease' });
+    }
+    this.updateAxis();
+  }
+
+  pointerMove(screenX: number, screenY: number): void {
+    this.pointer = { x: screenX, y: screenY };
+  }
+
+  pointerDown(screenX: number, screenY: number, button: number): void {
+    if (button !== 0) return;
+    this.pointer = { x: screenX, y: screenY };
+    this.emitAim(true);
+    if (!this.ropeHeld) {
+      this.ropeHeld = true;
+      this.emit({ type: 'ropePress' });
+    }
+  }
+
+  pointerUp(button: number): void {
+    if (button !== 0 || !this.ropeHeld) return;
+    this.ropeHeld = false;
+    this.emit({ type: 'ropeRelease' });
+  }
+
+  /** Window lost focus: release everything so no input stays stuck. */
+  blur(): void {
+    const jumpWasHeld = this.anyHeld(this.bindings.jump);
+    this.held.clear();
+    if (jumpWasHeld) this.emit({ type: 'jumpRelease' });
+    if (this.ropeHeld) {
+      this.ropeHeld = false;
+      this.emit({ type: 'ropeRelease' });
+    }
+    this.updateAxis();
+  }
+
+  /** Call once per simulation tick: the aim point moves when the pointer or the camera moves. */
+  beforeTick(): void {
+    this.emitAim(false);
+  }
+
+  private emitAim(force: boolean): void {
+    if (!this.pointer) return;
+    const target = this.screenToWorld(this.pointer.x, this.pointer.y);
+    if (!force && this.lastAim && this.lastAim.x === target.x && this.lastAim.y === target.y)
+      return;
+    this.lastAim = target;
+    this.emit({ type: 'ropeAim', target });
+  }
+
+  private updateAxis(): void {
+    const axis =
+      (this.anyHeld(this.bindings.right) ? 1 : 0) - (this.anyHeld(this.bindings.left) ? 1 : 0);
+    if (axis !== this.axis) {
+      this.axis = axis;
+      this.emit({ type: 'move', axis });
+    }
+  }
+
+  private anyHeld(codes: readonly string[]): boolean {
+    return codes.some((c) => this.held.has(c));
+  }
+}
+
+/**
+ * Attach the mapper to DOM events. Returns a function that removes every listener. Touch pointers
+ * are left to the TouchInputMapper (GMR-27); mouse and pen drive the desktop mapper.
+ */
+export function bindDom(target: HTMLElement, mapper: DesktopInputMapper): () => void {
+  const onKeyDown = (e: KeyboardEvent): void => {
+    if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    mapper.keyDown(e.code, e.repeat);
+  };
+  const onKeyUp = (e: KeyboardEvent): void => {
+    mapper.keyUp(e.code);
+  };
+  const onMove = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
+    const r = target.getBoundingClientRect();
+    mapper.pointerMove(e.clientX - r.left, e.clientY - r.top);
+  };
+  const onDown = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
+    const r = target.getBoundingClientRect();
+    mapper.pointerDown(e.clientX - r.left, e.clientY - r.top, e.button);
+  };
+  const onUp = (e: PointerEvent): void => {
+    if (e.pointerType === 'touch') return;
+    mapper.pointerUp(e.button);
+  };
+  const onBlur = (): void => {
+    mapper.blur();
+  };
+  const onContext = (e: Event): void => {
+    e.preventDefault();
+  };
+  window.addEventListener('keydown', onKeyDown);
+  window.addEventListener('keyup', onKeyUp);
+  target.addEventListener('pointermove', onMove);
+  target.addEventListener('pointerdown', onDown);
+  window.addEventListener('pointerup', onUp);
+  window.addEventListener('blur', onBlur);
+  target.addEventListener('contextmenu', onContext);
+  return () => {
+    window.removeEventListener('keydown', onKeyDown);
+    window.removeEventListener('keyup', onKeyUp);
+    target.removeEventListener('pointermove', onMove);
+    target.removeEventListener('pointerdown', onDown);
+    window.removeEventListener('pointerup', onUp);
+    window.removeEventListener('blur', onBlur);
+    target.removeEventListener('contextmenu', onContext);
+  };
+}

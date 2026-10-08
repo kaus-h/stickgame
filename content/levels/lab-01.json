@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "id": "lab-01",
+  "name": "Movement and Rope Lab",
+  "spawn": [3, 7.65],
+  "bounds": { "minX": -1, "minY": -8, "maxX": 63, "maxY": 13 },
+  "killY": 14,
+  "solids": [
+    { "id": "wall-left", "rect": { "x": -1, "y": -8, "w": 1, "h": 21 } },
+    { "id": "wall-right", "rect": { "x": 62, "y": -8, "w": 1, "h": 21 } },
+    { "id": "lethal-floor", "kind": "hazard", "rect": { "x": 0, "y": 11.4, "w": 62, "h": 1.6 } },
+
+    { "id": "start", "rect": { "x": 0, "y": 8, "w": 11, "h": 3.4 } },
+    { "id": "step-1m", "rect": { "x": 5, "y": 7, "w": 1.2, "h": 1 } },
+    { "id": "step-2m", "rect": { "x": 7.4, "y": 6, "w": 1.6, "h": 2 } },
+    { "id": "low-ceiling", "rect": { "x": 1.4, "y": 4.2, "w": 2.6, "h": 0.5 } },
+
+    { "id": "pillar-1", "rect": { "x": 17, "y": 7, "w": 3, "h": 4.4 } },
+    {
+      "id": "thorns-1",
+      "kind": "hazard",
+      "points": [
+        [23, 8.2],
+        [24, 8.2],
+        [23.5, 7.3]
+      ]
+    },
+    { "id": "pillar-2", "rect": { "x": 22, "y": 8.2, "w": 3, "h": 3.2 } },
+    { "id": "ceiling-1", "rect": { "x": 26, "y": -1.2, "w": 8, "h": 0.6 } },
+    { "id": "pillar-3", "rect": { "x": 31, "y": 6, "w": 3, "h": 5.4 } },
+
+    { "id": "ledge-end", "rect": { "x": 49, "y": 7, "w": 13, "h": 4.4 } },
+    { "id": "exit-roof", "rect": { "x": 56, "y": 3.2, "w": 6, "h": 0.6 } },
+    { "id": "exit-lip", "rect": { "x": 56, "y": 6.2, "w": 0.5, "h": 0.8 } }
+  ],
+  "anchors": [
+    { "id": "a-first", "position": [13.5, 2] },
+    { "id": "a-high", "position": [21, -1.5] },
+    { "id": "a-under-ceiling", "position": [28.5, 0.2] },
+    { "id": "a-moving", "position": [37, 1], "path": { "to": [45, 1], "period": 4 } }
+  ],
+  "exit": { "min": [56.6, 3.8], "max": [62, 7] }
+}
