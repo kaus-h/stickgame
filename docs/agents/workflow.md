@@ -71,7 +71,12 @@ The inbox folder is `D:\tmp\inbox` (override with `--inbox` or `STICKGAME_INBOX`
 3. The inbox applies it as a fix round.
 4. After **two** failed rounds, the task goes to Codex.
 
-**Getting downloads into the inbox:** set the browser's download folder to `D:\tmp\inbox`. Otherwise, save the file there with the task name. Partial downloads (`.crdownload`, `.tmp`) are skipped until they finish.
+**Getting downloads into the inbox:** nothing to set up. The Claude desktop in-app browser saves downloads to the root of `D:\` as GUID-named `.tmp` files and loses the filename. Every sweep therefore checks `D:\` and `~/Downloads` (override with `--downloads "<dir>;<dir>"` or `STICKGAME_DOWNLOADS`, disable with `--no-downloads`) for files from the last 48 h that start with a TASK line:
+
+- `===== TASK: GMR-123-short-name =====` for bundles
+- `TASK: GMR-123-short-name` for patches
+
+Matching files are moved into the inbox under that name. Other files are never touched, and only their first 4 KB is read. Files saved straight into the inbox work too. Partial downloads (`.crdownload`, `.part`) are skipped until they finish.
 
 ## Talking to each tool cheaply
 
@@ -80,11 +85,15 @@ The inbox folder is `D:\tmp\inbox` (override with `--inbox` or `STICKGAME_INBOX`
 - **GitHub:** use `gh … --json … --jq …` one-liners, and `gh pr checks --watch` in the background.
 - **Linear (Opus):** request only the `fields` needed. BrowserGPT writes issues and comments; Linear's GitHub integration moves statuses.
 
+## Browser agent context
+
+Browser agents start from [`CONTEXT.md`](CONTEXT.md), the context pack. It lives in the BrowserGPT project "StickGame" (instructions field plus an uploaded file), and in Muse the same way if Muse supports projects. Otherwise it is pasted as the first message of each chat. Never prompt a bare chat for project work. Regenerate the pack at each milestone and re-upload it when its date line changes. The reusable version of this whole setup for other projects is [orchestrator-system-prompt.md](orchestrator-system-prompt.md).
+
 ## Milestones and fresh sessions
 
 Long sessions get compacted, which is expensive. At the end of each milestone, Opus:
 
-1. Updates [`HANDOFF.md`](HANDOFF.md): state, open PRs, next issues, decisions.
+1. Updates [`HANDOFF.md`](HANDOFF.md) (state, open PRs, next issues, decisions) and regenerates [`CONTEXT.md`](CONTEXT.md).
 2. Records durable rules in memory and canon decisions in the canon docs.
 3. Starts a fresh session with a one-time scheduled task (`create_scheduled_task`, run now) whose prompt is: "Read AGENTS.md, docs/agents/workflow.md and docs/agents/HANDOFF.md; continue the roadmap as head of design and orchestration (Opus 5.5)."
 4. Ends the current session.

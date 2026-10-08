@@ -25,6 +25,7 @@ export function parseBundle(text) {
   const del = /^={3,}\s*DELETE:\s*(.+?)\s*={3,}\s*$/;
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i] ?? '';
+    if (/^={3,}\s*TASK:/.test(line)) continue; // header for downloads pickup (detectTask)
     const d = del.exec(line);
     if (d) {
       deletes.push(cleanPath(d[1] ?? ''));
@@ -141,6 +142,31 @@ export function extractErrors(log, max = 120) {
   return body.length > max
     ? [...body.slice(0, max), `… (${body.length - max} more lines)`].join('\n')
     : body.join('\n');
+}
+
+/**
+ * Recognise an inbox task in a downloaded file whose name was lost (the in-app browser saves
+ * downloads as GUID-named .tmp files). The file must start with a TASK line, within its first
+ * few lines:
+ *   ===== TASK: GMR-123-short-name =====      (bundles)
+ *   TASK: GMR-123-short-name                  (patches; git apply ignores text before the diff)
+ * @param {string} head the first few KB of the file
+ * @returns {{ name: string, ext: string } | null}
+ */
+export function detectTask(head) {
+  const lines = head.replace(/\r\n/g, '\n').split('\n').slice(0, 8);
+  let name = null;
+  for (const l of lines) {
+    const m = /^(?:={3,}\s*)?TASK:\s*([A-Za-z0-9][\w.-]{0,80}?)\s*(?:={3,})?\s*$/.exec(l.trim());
+    if (m) {
+      name = m[1] ?? null;
+      break;
+    }
+  }
+  if (!name) return null;
+  if (/^={3,}\s*FILE:/m.test(head)) return { name, ext: '.bundle.txt' };
+  if (/^(diff --git |--- )/m.test(head)) return { name, ext: '.patch' };
+  return null;
 }
 
 /** Task folder/file name → { id, issue, slug }. `GMR-123-add-spikes` → issue GMR-123. */

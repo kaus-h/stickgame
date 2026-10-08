@@ -12,3 +12,4 @@ export declare function parseTaskName(name: string): {
   issue: string | null;
   slug: string;
 };
+export declare function detectTask(head: string): { name: string; ext: string } | null;
