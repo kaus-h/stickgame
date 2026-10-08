@@ -2,7 +2,9 @@ import * as Phaser from 'phaser';
 import lab01 from '../../../content/levels/lab-01.json';
 import labCollision from '../../../content/levels/lab-collision.json';
 import labMoving from '../../../content/levels/lab-moving.json';
+import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
+import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { parseLevel, parseRuntimeTuning } from '../../content';
 import { parseAssistMode, vec2 } from '../../core';
 import {
@@ -16,12 +18,32 @@ import {
   type TouchScheme,
 } from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
-import { WebPlatformServices } from '../../platform';
+import { createPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 
 // Composition root for the browser build.
 async function start(): Promise<void> {
+  const params = new URLSearchParams(window.location.search);
+  // Native Capacitor shell or plain web, decided once at startup (ADR-002, GMR-33).
+  const platform = await createPlatformServices();
+
+  // ?scene=device-lab (or a `--mode device-lab` build, used for the native shell) runs the on-device
+  // validation lab instead of the game. ?duration=SECONDS shortens the 15 minute frame-time run.
+  if (
+    (params.get('scene') ?? (import.meta.env.MODE === 'device-lab' ? 'device-lab' : '')) ===
+    'device-lab'
+  ) {
+    const { mountDeviceLab, DEFAULT_DURATION_SEC } = await import('../../tools/device-lab');
+    const duration = Number(params.get('duration') ?? DEFAULT_DURATION_SEC);
+    mountDeviceLab({
+      root: document.body,
+      platform,
+      durationSec: duration > 0 ? duration : DEFAULT_DURATION_SEC,
+    });
+    return;
+  }
+
   // The handwriting font must be ready before Phaser rasterizes HUD text.
   await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
 
@@ -31,7 +53,6 @@ async function start(): Promise<void> {
     'lab-collision': labCollision,
     'lab-moving': labMoving,
   };
-  const params = new URLSearchParams(window.location.search);
   const levelName = params.get('level') ?? 'lab-01';
   const level = parseLevel(levels[levelName] ?? lab01);
   const intents = new IntentQueue();
@@ -67,18 +88,34 @@ async function start(): Promise<void> {
   // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
   const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
   const tuning = parseRuntimeTuning(runtimeTuning);
+  // Audio (GMR-41): procedural SFX rendered at unlock; fire-and-forget, never delays play.
+  const audio = new AudioEngine(parseSfxBank(sfxBank));
+  const sfx = new SfxDirector(audio);
+  const unlockAudio = (): void => {
+    audio.unlock();
+  };
+  for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
+    window.addEventListener(type, unlockAudio, { capture: true, passive: true });
+  }
+  platform.onVisibilityChange((visible) => {
+    audio.setVisible(visible);
+  });
   const runtime = new GameRuntime({
     tuning,
     level,
     physics: new KinematicPhysicsAdapter(),
     intents,
-    platform: new WebPlatformServices(),
+    platform,
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();
       touch.beforeTick();
+      sfx.onFrame(runtime.sim.snapshot());
     },
     assist: { mode: assistMode, ...tuning.assist },
+  });
+  runtime.onEvents((events) => {
+    sfx.onEvents(events);
   });
   scene = new GameScene({
     level,
@@ -133,6 +170,7 @@ async function start(): Promise<void> {
             touch.setScheme(s);
           },
         },
+        audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
       },
     });
   }

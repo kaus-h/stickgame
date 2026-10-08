@@ -27,13 +27,13 @@ export interface TouchControlsViewState {
 /**
  * Notebook-ink touch controls: inked circles doodled on the page. Idle controls are drawn in
  * pencil (they recede), pressed ones get a highlighter swipe and full black ink. Fixed to the
- * screen and drawn at 1:1 CSS px whatever the camera zoom.
+ * screen and drawn at 1:1 CSS px (GameScene renders scroll-factor-0 objects through its unzoomed UI camera).
  */
 export class TouchControlsView {
   private readonly g: Phaser.GameObjects.Graphics;
 
-  constructor(private readonly scene: Phaser.Scene) {
-    this.g = scene.add.graphics().setScrollFactor(0).setDepth(90);
+  constructor(scene: Phaser.Scene) {
+    this.g = scene.add.graphics().setScrollFactor(0).setDepth(95);
   }
 
   draw(state: TouchControlsViewState | null): void {
@@ -44,7 +44,6 @@ export class TouchControlsView {
       return;
     }
     g.setVisible(true);
-    this.cancelZoom();
 
     for (const [i, c] of state.controls.entries()) {
       const p = { x: c.x, y: c.y };
@@ -81,15 +80,6 @@ export class TouchControlsView {
         g.lineBetween(r.x + sx * k, r.y + sy * k, r.x + sx * k, r.y + sy * k * 0.45);
       }
     }
-  }
-
-  /** Scroll-factor-0 objects still scale with camera zoom about the centre; undo that. */
-  private cancelZoom(): void {
-    const cam = this.scene.cameras.main;
-    const z = cam.zoom || 1;
-    const cx = cam.width * cam.originX;
-    const cy = cam.height * cam.originY;
-    this.g.setScale(1 / z).setPosition(cx * (1 - 1 / z), cy * (1 - 1 / z));
   }
 
   private icon(
