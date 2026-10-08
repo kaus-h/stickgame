@@ -7,6 +7,7 @@ export type { AnchorDef, LevelDef, SolidDef } from './level';
 export { Simulation } from './Simulation';
 export type {
   DeathCause,
+  DeathRecord,
   PlayerMode,
   PlayerSnapshot,
   RopeInvalidReason,

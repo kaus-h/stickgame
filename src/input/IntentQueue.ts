@@ -13,6 +13,7 @@ export interface IntentLogEntry {
 export class IntentQueue implements IntentSource {
   private pending: Intent[] = [];
   private readonly log: IntentLogEntry[] = [];
+  private overflowed = false;
 
   constructor(private readonly logLimit = 100_000) {}
 
@@ -25,6 +26,7 @@ export class IntentQueue implements IntentSource {
     const out = this.pending;
     this.pending = [];
     if (this.log.length < this.logLimit) this.log.push({ tick, intents: out });
+    else this.overflowed = true;
     return out;
   }
 
@@ -33,8 +35,14 @@ export class IntentQueue implements IntentSource {
     return this.log;
   }
 
+  /** True once intents were dropped from the log: entries() is then not a valid replay. */
+  get truncated(): boolean {
+    return this.overflowed;
+  }
+
   clearLog(): void {
     this.log.length = 0;
+    this.overflowed = false;
   }
 
   clear(): void {

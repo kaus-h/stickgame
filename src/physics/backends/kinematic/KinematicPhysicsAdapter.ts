@@ -93,6 +93,9 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       grounded: false,
       touching: new Set(),
     });
+    const body = this.bodies[this.bodies.length - 1] as Body;
+    // A body authored resting on the floor is grounded from tick 0 (jump works immediately).
+    body.grounded = this.isGrounded(body);
     return this.bodies.length - 1;
   }
 
@@ -205,8 +208,8 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
       b.y = b.def.position.y;
       b.vx = b.def.velocity.x;
       b.vy = b.def.velocity.y;
-      b.grounded = false;
       b.touching = new Set();
+      b.grounded = this.isGrounded(b);
     }
     for (const a of this.anchors) {
       a.x = a.initial.x;
