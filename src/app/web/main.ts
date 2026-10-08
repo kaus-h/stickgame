@@ -2,7 +2,9 @@ import * as Phaser from 'phaser';
 import lab01 from '../../../content/levels/lab-01.json';
 import labCollision from '../../../content/levels/lab-collision.json';
 import labMoving from '../../../content/levels/lab-moving.json';
+import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
+import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { parseLevel, parseRuntimeTuning } from '../../content';
 import { vec2 } from '../../core';
 import { bindDom, DesktopInputMapper, IntentQueue } from '../../input';
@@ -35,16 +37,33 @@ async function start(): Promise<void> {
   // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
   const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
   const tuning = parseRuntimeTuning(runtimeTuning);
+  const platform = new WebPlatformServices();
+  // Audio (GMR-41): procedural SFX rendered at unlock; fire-and-forget, never delays play.
+  const audio = new AudioEngine(parseSfxBank(sfxBank));
+  const sfx = new SfxDirector(audio);
+  const unlockAudio = (): void => {
+    audio.unlock();
+  };
+  for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
+    window.addEventListener(type, unlockAudio, { capture: true, passive: true });
+  }
+  platform.onVisibilityChange((visible) => {
+    audio.setVisible(visible);
+  });
   const runtime = new GameRuntime({
     tuning,
     level,
     physics: new KinematicPhysicsAdapter(),
     intents,
-    platform: new WebPlatformServices(),
+    platform,
     now: () => performance.now(),
     beforeTick: () => {
       mapper.beforeTick();
+      sfx.onFrame(runtime.sim.snapshot());
     },
+  });
+  runtime.onEvents((events) => {
+    sfx.onEvents(events);
   });
   scene = new GameScene({
     level,
@@ -90,6 +109,7 @@ async function start(): Promise<void> {
         snapshot: () => runtime.sim.snapshot(),
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
+        audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
       },
     });
   }
