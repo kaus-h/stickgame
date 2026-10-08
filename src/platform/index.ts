@@ -24,3 +24,25 @@ export type {
 } from './PlatformServices';
 export { WebPlatformServices } from './web/WebPlatformServices';
 export { createPlatformServices, isCapacitorNative } from './createPlatformServices';
+export { SaveStore } from './save/SaveStore';
+export {
+  DEFAULT_SETTINGS,
+  decodeSave,
+  emptySave,
+  encodeSave,
+  migrate,
+  MIGRATIONS,
+  recordRun,
+  sanitize,
+  SAVE_VERSION,
+  SaveVersionError,
+} from './save/saveData';
+export type {
+  LevelRecord,
+  Migration,
+  ReducedMotion,
+  RunResult,
+  SaveData,
+  Settings,
+} from './save/saveData';
+export { memoryStorage } from './web/webStorage';
