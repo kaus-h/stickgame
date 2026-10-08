@@ -7,6 +7,8 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: ci,
   retries: ci ? 1 : 0,
+  // Three browsers plus the dev server saturate a dev machine; more workers cause boot timeouts.
+  workers: 2,
   // CI keeps an HTML report (uploaded as an artifact on failure) next to the console list.
   reporter: ci ? [['list'], ['html', { open: 'never' }]] : 'list',
   use: {
