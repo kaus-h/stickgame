@@ -52,6 +52,21 @@ Every chamber has one stated problem, written as the `problem` field in the leve
 
 A high anchor above C6's ceiling, reachable only from C5's far ledge with a late, short connection (expert window). It skips C6's chain and drops straight into C7's compartment. It's worth a time medal (GMR-65), never required.
 
+## Route solver results (GMR-101)
+
+`npm run levels:solve -- 1-1` solves the whole level from the spawn in 4.9 s (route 960 ticks, 16.0 s). The solution replay is committed as `content/solutions/1-1.json`, and the fixture test replays it on every `npm run test`.
+
+| Chamber  | Tightest input on the solver route | Window   | Band     | Target   | Note                                                                                                                                                                                                             |
+| -------- | ---------------------------------- | -------- | -------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| C1       | jump press                         | 26 ticks | generous | generous |                                                                                                                                                                                                                  |
+| C2 (+C3) | rope press on a2                   | 18 ticks | generous | generous | The solver goal for C2 is checkpoint A, which sits on C3's ledge, so the a3 rope (33-tick press window) is counted here. The recovery anchor r3 only matters after a short swing; the clean route never uses it. |
+| C4       | rope press on a4                   | 13 ticks | generous | standard | The window start is clipped by the chamber boundary, so 13 is a lower bound.                                                                                                                                     |
+| C5       | rope release on a5                 | 9 ticks  | standard | standard | The solver found a re-grab route on a5, not the intended single long rope. Both reach the far ledge.                                                                                                             |
+| C6       | rope press on a6a                  | 17 ticks | generous | tight    | Lower bound (clipped start).                                                                                                                                                                                     |
+| C7       | none                               | none     | none     | standard | Running only: the swing out of C6 carries the player into the compartment.                                                                                                                                       |
+
+**Decision:** C4 and C6 measure easier than their proposed targets, and for the first level of the game that is kept on purpose. The connection still has to be timed (13–17 ticks is about a quarter second), and tightening before a human playtest would be tuning blind. If playtests show the first clear is too easy, tighten C6 first by lowering the ceiling or raising the pool.
+
 ## Death causes the player must be able to explain
 
 - **red ink** (fell into the floor). The GMR-43 label after repeats reads "red ink = danger".
