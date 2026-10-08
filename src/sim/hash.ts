@@ -29,6 +29,7 @@ export function hashSnapshot(s: SimSnapshot): string {
   int32(s.attemptTick);
   int32(s.resets);
   int32(s.deaths);
+  int32(s.checkpoint);
   int32(MODES[s.player.mode]);
   int32(s.player.facing);
   f64(s.player.position.x);

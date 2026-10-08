@@ -43,9 +43,9 @@ describe('debug overlay formatting', () => {
     expect(miss).toContain('slot-a slot angle at 1.00, 2.00');
     expect(miss).toContain('v(3.00, 4.00) 5.00 m/s cos 0.600 alignment 0.400');
     const accepted = { ...attempt, accepted: true, reason: null };
-    expect(formatEvent({ type: 'exit', tick: 11, attemptTicks: 120, attempt: accepted })).toContain(
-      'slot-a slot accepted',
-    );
+    expect(
+      formatEvent({ type: 'exit', tick: 11, attemptTicks: 120, runTicks: 120, attempt: accepted }),
+    ).toContain('slot-a slot accepted');
     const sim = new Simulation(
       parseRuntimeTuning(runtimeJson).sim,
       new KinematicPhysicsAdapter(),
@@ -54,7 +54,7 @@ describe('debug overlay formatting', () => {
     const lines = formatOverlay(
       {
         ...sim.snapshot(),
-        completion: { ...accepted, tick: 11, attemptTicks: 120 },
+        completion: { ...accepted, tick: 11, attemptTicks: 120, runTicks: 120 },
         lastExitAttempt: { ...attempt, tick: 10 },
       },
       stats,
@@ -79,7 +79,7 @@ describe('debug overlay formatting', () => {
         attemptTicks: 100,
         rope: { anchor: 0, point: vec2(0, 0), length: 5 },
       },
-      { type: 'exit', tick: 5, attemptTicks: 120 },
+      { type: 'exit', tick: 5, attemptTicks: 120, runTicks: 120 },
       { type: 'ropeAttach', tick: 6, anchor: 1, length: 4.5 },
       { type: 'ropeLock', tick: 7, length: 4.25 },
       { type: 'ropeRelease', tick: 8, velocity: vec2(6, -8) },

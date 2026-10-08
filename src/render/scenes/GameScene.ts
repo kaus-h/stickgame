@@ -492,6 +492,7 @@ export class GameScene extends Phaser.Scene {
       if (v) this.drawAnchorHeading(g, p, v, i);
     });
 
+    this.drawCheckpoints(current.checkpoint);
     this.drawPreviousAttempt(current, frame);
 
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
@@ -595,6 +596,27 @@ export class GameScene extends Phaser.Scene {
       }
       g.strokePath();
     }
+  }
+
+  /**
+   * Checkpoints as little flags doodled on the page (GMR-100): pencil until reached, then inked and
+   * filled, so the player always knows where the next life starts.
+   */
+  private drawCheckpoints(active: number): void {
+    const g = this.dynamic;
+    (this.opts.level.checkpoints ?? []).forEach((cp, i) => {
+      const reached = i <= active;
+      const base = { x: m(cp.position.x), y: m(cp.position.y + 0.35) };
+      const top = { x: base.x, y: base.y - m(1.1) };
+      const tone = reached ? INK : PENCIL;
+      g.lineStyle(2.2 * this.lineScale(), tone, reached ? 1 : 0.7);
+      g.lineBetween(base.x, base.y, top.x, top.y);
+      const p0 = { x: top.x, y: top.y };
+      const p1 = { x: top.x + m(0.5), y: top.y + m(0.16) };
+      const p2 = { x: top.x, y: top.y + m(0.34) };
+      if (reached) g.fillStyle(INK, 0.9).fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+      else strokeInk(g, [p0, p1, p2, p0], 1.8 * this.lineScale(), PENCIL, 0.8, i);
+    });
   }
 
   /**
@@ -754,7 +776,7 @@ export class GameScene extends Phaser.Scene {
       else g.lineBetween(gx - 4, gy + 18, gx + 24, gy + 4);
     }
 
-    const secs = current.attemptTick / 60;
+    const secs = current.runTick / 60;
     const mm = Math.floor(secs / 60);
     const ss = secs - mm * 60;
     this.timer
@@ -769,7 +791,7 @@ export class GameScene extends Phaser.Scene {
       this.exitResult
         .setPosition(w / 2, this.scale.height / 2)
         .setText(
-          `Exit complete\n${(completion.attemptTicks / 60).toFixed(2)} s · ${String(current.deaths)} ${current.deaths === 1 ? 'death' : 'deaths'}`,
+          `Exit complete\n${(completion.runTicks / 60).toFixed(2)} s · ${String(current.deaths)} ${current.deaths === 1 ? 'death' : 'deaths'}`,
         );
     }
 

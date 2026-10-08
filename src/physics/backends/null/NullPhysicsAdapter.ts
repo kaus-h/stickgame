@@ -36,6 +36,8 @@ export class NullPhysicsAdapter implements PhysicsAdapter {
     this.steps++;
   }
 
+  teleportBody(): void {}
+
   resetBodies(): void {}
 
   clearLevel(): void {}

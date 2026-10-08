@@ -78,7 +78,7 @@ describe('SfxDirector', () => {
       { type: 'ropeAttach', tick: 4, anchor: 0, length: 6 },
       { type: 'ropeInvalid', tick: 5, reason: 'too-far', at: vec2(0, 0) },
       { type: 'ropeRelease', tick: 6, velocity: vec2(5, 0) },
-      { type: 'exit', tick: 7, attemptTicks: 100 },
+      { type: 'exit', tick: 7, attemptTicks: 100, runTicks: 100 },
       { type: 'reset', tick: 8 },
     ];
     d.onEvents(events);
