@@ -96,6 +96,16 @@ export class GameRuntime implements FrameSource {
     this.clock.reset();
   }
 
+  /** Reload level data in the same simulation/physics world, with no stale interpolation. */
+  replaceLevel(level: LevelDef): void {
+    this.sim.replaceLevel(level);
+    this.clock.reset();
+    this.current = this.sim.snapshot();
+    this.previous = this.current;
+    this.lastSteps = 0;
+    this.lastAlpha = 0;
+  }
+
   onEvents(listener: (events: readonly SimEvent[]) => void): () => void {
     this.eventListeners.add(listener);
     return () => this.eventListeners.delete(listener);

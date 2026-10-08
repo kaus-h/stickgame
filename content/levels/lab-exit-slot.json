@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "id": "lab-exit-slot",
+  "name": "Compartment Lab / Slot",
+  "spawn": [2, 7.65],
+  "bounds": { "minX": 0, "minY": -2, "maxX": 18, "maxY": 12 },
+  "killY": 13,
+  "solids": [
+    { "id": "floor", "rect": { "x": 0, "y": 8, "w": 18, "h": 2 } },
+    { "id": "slot-roof", "rect": { "x": 10, "y": 5.8, "w": 5, "h": 1.2 } }
+  ],
+  "anchors": [],
+  "exit": {
+    "id": "slot-door",
+    "family": "slot",
+    "min": [10, 7],
+    "max": [15, 8],
+    "entry": {
+      "side": "left",
+      "angle": { "min": 0, "max": 12 },
+      "speed": { "min": 3, "max": 7.5 },
+      "alignment": { "min": 0.35, "max": 0.65 }
+    }
+  }
+}

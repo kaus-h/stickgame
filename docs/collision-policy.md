@@ -56,10 +56,10 @@ minimum (doc 04) must stay in `Simulation` and is a hard rule, not tuning.
 all measured from the body center, and a circle keeps that exact; (2) a circle slides over tile
 seams, 1 mm steps and convex corners without the ghost-contact snags a flat-bottomed capsule shows
 (measured: 99.9% of speed kept on seams); (3) the sweep stays a closed-form circle versus segment
-test with deterministic arithmetic; (4) the 0.7 m diameter is the single tunnel-width rule for level
-authors. A capsule would only be justified by a feel problem (standing on one-pixel ledges), and
-that should be judged in the movement lab, not here. Art may still draw a taller figure over the
-circle.
+test with deterministic arithmetic; (4) the 0.7 m diameter provides a consistent basis for the
+0.8 m production tunnel-clearance rule below. A capsule would only be justified by a feel problem
+(standing on one-pixel ledges), and that should be judged in the movement lab, not here. Art may
+still draw a taller figure over the circle.
 
 **Constraint versus solid priority: collision wins.** If the rope wants the body inside a solid, the
 solid keeps the body out and the rope is left violated (stretched) for as long as the geometry
@@ -111,8 +111,11 @@ Derived from the measurements; the numbers include a margin over what was verifi
 1. **Wall and floor thickness.** Any thickness collides correctly (0.02 m was tested at 80 m/s). Author
    at least 0.1 m so art, collision and the player's eye agree; use 0.25 m or more for anything the
    player is meant to read as a wall. Collision is authored data, art aligns to it (doc 07A).
-2. **Tunnel and gap width.** The body is 0.7 m across. A passage must be at least 0.8 m clear to be
-   passable (0.75 m is the verified minimum, and 0.72 m passes); anything under 0.65 m is a wall.
+2. **Tunnel and gap width.** The body is 0.7 m across. Production passages must have at least
+   **0.8 m clear width**, enforced for v2 declared tunnels by `npm run levels:validate` in the
+   [level authoring pipeline](level-pipeline.md) (GMR-39). The measured 0.72 m clearance in the
+   stress lab demonstrates collision behavior; it is not the production authoring target.
+   Anything under 0.65 m is a wall.
    Never author 0.66 to 0.74 m: the outcome depends on a 1e-4 m skin and the approach angle.
    Add 0.1 m of headroom if the player is expected to run (not crawl) through.
 3. **Seams.** Abutting tiles are safe. Prefer merging collinear tiles into one solid, and keep steps

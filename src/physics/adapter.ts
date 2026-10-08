@@ -28,6 +28,13 @@ export interface BodyState {
   readonly grounded: boolean;
 }
 
+/** Chronological integrated motion, with velocity before the next collision impulse. */
+export interface BodyMotionSegment {
+  readonly from: Vec2;
+  readonly to: Vec2;
+  readonly velocity: Vec2;
+}
+
 export type RopeAnchor =
   | { readonly kind: 'static'; readonly point: Vec2 }
   | { readonly kind: 'kinematic'; readonly anchor: number; readonly offset: Vec2 };
@@ -68,6 +75,8 @@ export interface PhysicsAdapter {
 
   createBody(def: BodyDef): number;
   bodyState(body: number): BodyState;
+  /** Optional precise path for gameplay crossings; excludes depenetration/position corrections. */
+  bodyMotion?(body: number): readonly BodyMotionSegment[];
   setBodyVelocity(body: number, velocity: Vec2): void;
 
   /** A pivot whose motion the sim scripts (moving anchors). */
@@ -89,6 +98,8 @@ export interface PhysicsAdapter {
   step(dt: number, substeps: number): void;
   /** Restore every body and anchor to its creation state and remove all ropes, inside the same world. */
   resetBodies(): void;
+  /** Remove level bodies, anchors, ropes and geometry without replacing the persistent world. */
+  clearLevel(): void;
   stats(): PhysicsStats;
   dispose(): void;
 }

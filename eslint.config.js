@@ -7,6 +7,7 @@ export default tseslint.config(
     ignores: [
       'dist',
       'scripts', // plain node tooling scripts (.mjs), not part of the TS project
+      'src/content/level-validator.generated.js', // checked Ajv output, never hand-edited
       'coverage',
       'test-results',
       'playwright-report',

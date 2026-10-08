@@ -9,6 +9,7 @@ import { drawHero } from '../hero/drawHero';
 import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
+import { entryMarks, exitMissMessage } from '../exit';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -50,6 +51,8 @@ export class GameScene extends Phaser.Scene {
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
+  private exitResult!: Phaser.GameObjects.Text;
+  private exitMiss!: Phaser.GameObjects.Text;
   private overlay: DebugOverlay | null = null;
   private touchView: TouchControlsView | null = null;
   private frameG!: Phaser.GameObjects.Graphics;
@@ -65,8 +68,14 @@ export class GameScene extends Phaser.Scene {
   private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
 
-  constructor(private readonly opts: GameSceneOptions) {
+  constructor(private opts: GameSceneOptions) {
     super('game');
+  }
+
+  /** Rebuild authored art and cameras; the source retains the persistent simulation world. */
+  replaceLevel(level: LevelDef): void {
+    this.opts = { ...this.opts, level };
+    this.scene.restart();
   }
 
   /** Convert a canvas point (CSS px) to world meters with the current camera. Used by input. */
@@ -83,6 +92,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.splats = [];
+    this.lastTime = 0;
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
     // Previous-attempt ghost layer: drawn with the normal hero code, faded as a whole.
@@ -108,7 +119,32 @@ export class GameScene extends Phaser.Scene {
       .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
-    if (this.opts.debug) this.overlay = new DebugOverlay(this);
+    this.exitResult = this.add
+      .text(0, 0, '', {
+        ...hand,
+        fontSize: '32px',
+        align: 'center',
+        backgroundColor: '#f3efe6',
+        padding: { x: 24, y: 16 },
+      })
+      .setName('exit-result')
+      .setScrollFactor(0)
+      .setDepth(100)
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.exitMiss = this.add
+      .text(0, 0, '', {
+        ...hand,
+        fontSize: '22px',
+        color: '#c5302a',
+        backgroundColor: '#f3efe6',
+        padding: { x: 5, y: 2 },
+      })
+      .setName('exit-miss')
+      .setDepth(20)
+      .setOrigin(0.5, 1)
+      .setVisible(false);
+    if (this.opts.debug) this.overlay = new DebugOverlay(this, this.opts.level);
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
@@ -118,14 +154,21 @@ export class GameScene extends Phaser.Scene {
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
       }
     });
-    this.events.once('shutdown', () => this.unsubscribe?.());
     // HUD and page frame render through their own unzoomed camera; the world camera zooms.
     this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.routeCameras();
-    this.scale.on('resize', () => {
+    const resize = (): void => {
       drawFrame(this.frameG, this.scale.height);
       this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
+    };
+    this.scale.on('resize', resize);
+    this.events.once('shutdown', () => {
+      this.unsubscribe?.();
+      this.unsubscribe = null;
+      this.scale.off('resize', resize);
+      this.overlay?.destroy();
+      this.overlay = null;
     });
     this.fitCamera();
     const spawn = this.opts.level.spawn;
@@ -261,6 +304,8 @@ export class GameScene extends Phaser.Scene {
       if (s.kind === 'solid') this.drawWalkableEdges(g, s.points, seed);
     });
 
+    this.drawCompartment(g);
+
     // Bake everything static into world-space texture tiles (a few quads per frame).
     const pad = 4;
     bakeGraphics(
@@ -274,6 +319,90 @@ export class GameScene extends Phaser.Scene {
       },
       -50,
     );
+  }
+
+  /** Pencil compartment outline and an inward ink arrow expose the authored opening. */
+  private drawCompartment(g: Phaser.GameObjects.Graphics): void {
+    const exit = this.opts.level.exit;
+    if (!exit) return;
+    const { min, max } = exit;
+    const entry = 'entry' in exit ? exit.entry : null;
+    const side = entry?.side ?? 'left';
+    const corners = [min, vec2(max.x, min.y), max, vec2(min.x, max.y)];
+    const sides = ['top', 'right', 'bottom', 'left'];
+    corners.forEach((p, i) => {
+      if (sides[i] === side) return;
+      const next = corners[(i + 1) % 4] as Vec2;
+      strokeInk(
+        g,
+        [
+          { x: m(p.x), y: m(p.y) },
+          { x: m(next.x), y: m(next.y) },
+        ],
+        1.8,
+        PENCIL,
+        0.7,
+        i + 91,
+      );
+    });
+    const horizontal = side === 'left' || side === 'right';
+    const marks = 'entry' in exit ? entryMarks(exit) : null;
+    const midpoint = vec2(
+      marks
+        ? (marks[0].x + marks[1].x) / 2
+        : horizontal
+          ? side === 'left'
+            ? min.x
+            : max.x
+          : (min.x + max.x) / 2,
+      marks
+        ? (marks[0].y + marks[1].y) / 2
+        : horizontal
+          ? (min.y + max.y) / 2
+          : side === 'top'
+            ? min.y
+            : max.y,
+    );
+    const normal = vec2(
+      side === 'left' ? 1 : side === 'right' ? -1 : 0,
+      side === 'top' ? 1 : side === 'bottom' ? -1 : 0,
+    );
+    // Short ink ticks mark the allowed center band, never a fictitious collision wall.
+    for (const mark of marks ?? []) {
+      strokeInk(
+        g,
+        [
+          { x: m(mark.x - normal.x * 0.18), y: m(mark.y - normal.y * 0.18) },
+          { x: m(mark.x + normal.x * 0.18), y: m(mark.y + normal.y * 0.18) },
+        ],
+        3,
+        INK,
+        0.9,
+        103,
+      );
+    }
+    const start = vec2(midpoint.x - normal.x * 0.65, midpoint.y - normal.y * 0.65);
+    const tip = vec2(midpoint.x + normal.x * 0.45, midpoint.y + normal.y * 0.45);
+    g.lineStyle(2.5, INK, 0.9).lineBetween(m(start.x), m(start.y), m(tip.x), m(tip.y));
+    for (const sign of [-1, 1])
+      g.lineBetween(
+        m(tip.x),
+        m(tip.y),
+        m(tip.x - normal.x * 0.25 - normal.y * sign * 0.18),
+        m(tip.y - normal.y * 0.25 + normal.x * sign * 0.18),
+      );
+    const label = entry
+      ? `${'family' in exit && exit.family === 'slot' ? 'Slot' : 'family' in exit && exit.family === 'shaft' ? 'Shaft' : 'Wide exit'}\n${String(entry.speed.min)}–${String(entry.speed.max)} m/s · ${String(entry.angle.min)}–${String(entry.angle.max)}°\nStay within the entry marks`
+      : 'Exit';
+    this.add
+      .text(m((min.x + max.x) / 2), m(min.y - 0.3), label, {
+        fontFamily: '"Caveat", "Patrick Hand", cursive',
+        fontSize: '21px',
+        color: '#5a5a5a',
+        align: 'center',
+      })
+      .setOrigin(0.5, 1)
+      .setDepth(-10);
   }
 
   /**
@@ -392,6 +521,24 @@ export class GameScene extends Phaser.Scene {
     }
 
     this.drawPlayer(g, player, current, frame);
+
+    const miss = current.lastExitAttempt;
+    const missAge = miss ? current.tick - miss.tick : Infinity;
+    const visibleMiss =
+      miss !== null && !miss.accepted && missAge >= 0 && missAge < 90 && !current.completion;
+    this.exitMiss.setVisible(visibleMiss);
+    if (visibleMiss) {
+      const at = { x: m(miss.at.x), y: m(miss.at.y) };
+      const fade = Math.min(1, (90 - missAge) / 30);
+      g.lineStyle(2.5, RED_PEN, fade);
+      const r = m(0.16);
+      g.lineBetween(at.x - r, at.y - r, at.x + r, at.y + r);
+      g.lineBetween(at.x - r, at.y + r, at.x + r, at.y - r);
+      this.exitMiss
+        .setPosition(at.x, at.y - m(0.35))
+        .setAlpha(fade)
+        .setText(exitMissMessage(miss, this.opts.level.exit));
+    }
 
     // Aim reticle: pencil when nothing is selected, ink when a rope press would connect, red pen
     // when an anchor is selected but the shot is invalid. The impact point gets a small cross.
@@ -609,6 +756,15 @@ export class GameScene extends Phaser.Scene {
       .setPosition(w - 20, 12)
       .setText(`${String(mm).padStart(2, '0')}:${ss.toFixed(2).padStart(5, '0')}`);
     this.title.setPosition(w / 2, 14);
+    const completion = current.completion;
+    this.exitResult.setVisible(completion !== null && completion.accepted);
+    if (completion?.accepted) {
+      this.exitResult
+        .setPosition(w / 2, this.scale.height / 2)
+        .setText(
+          `Exit complete\n${(completion.attemptTicks / 60).toFixed(2)} s · ${String(current.deaths)} ${current.deaths === 1 ? 'death' : 'deaths'}`,
+        );
+    }
 
     this.overlay?.draw(frame);
     this.touchView?.draw(this.opts.touchControls?.() ?? null);

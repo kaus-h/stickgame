@@ -1,8 +1,9 @@
 import { vec2, type Vec2 } from '../core';
 import type { AnchorDef, LevelDef, SolidDef } from '../sim';
+import schemaValidator from './level-validator.generated.js';
 
 /** Level JSON schema version understood by this build (doc 32). */
-export const LEVEL_SCHEMA_VERSION = 1;
+export const LEVEL_SCHEMA_VERSION = 2;
 
 /** Anchor impact radius when level data omits one, m. */
 export const DEFAULT_ANCHOR_RADIUS = 0.4;
@@ -31,6 +32,44 @@ export function anchorPathPeaks(
 }
 
 export class LevelError extends Error {}
+
+/** The checked migration output preserves authoring point spelling and optional metadata. */
+export type AuthoringLevelV2 = Record<string, unknown> & { version: 2 };
+
+function schemaPath(pointer: string): string {
+  return pointer
+    .split('/')
+    .slice(1)
+    .reduce((path, part) => {
+      const key = part.replaceAll('~1', '/').replaceAll('~0', '~');
+      return /^\d+$/.test(key) ? `${path}[${key}]` : `${path}.${key}`;
+    }, 'level');
+}
+
+/** Validate against the shipped draft-07 schema, including unknown-field rejection. */
+export function validateLevelSchema(json: unknown): void {
+  if (schemaValidator(json)) return;
+  const messages = (schemaValidator.errors ?? []).map((error) => {
+    let path = schemaPath(error.instancePath);
+    if (error.keyword === 'required') path += `.${String(error.params.missingProperty)}`;
+    if (error.keyword === 'additionalProperties')
+      path += `.${String(error.params.additionalProperty)}`;
+    return `${path}: ${error.message ?? 'invalid schema value'}`;
+  });
+  throw new LevelError(messages.join('\n'));
+}
+
+/** Pure v1 → v2 migration. Stable authored IDs and geometry are never regenerated. */
+export function migrateLevel(json: unknown): AuthoringLevelV2 {
+  validateLevelSchema(json);
+  if (!isRecord(json)) fail('level', 'must be an object');
+  return {
+    ...structuredClone(json),
+    version: 2,
+    telemetry: structuredClone(json.telemetry ?? { levelId: json.id }),
+    anchors: structuredClone(json.anchors ?? []),
+  };
+}
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === 'object' && v !== null && !Array.isArray(v);
@@ -76,7 +115,18 @@ function solid(v: unknown, path: string): SolidDef {
   } else {
     return fail(path, 'needs "rect" or "points"');
   }
-  return { id: str(v.id, `${path}.id`), kind, points };
+  return {
+    id: str(v.id, `${path}.id`),
+    kind,
+    points,
+    ...(Array.isArray(v.visualPoints)
+      ? {
+          visualPoints: v.visualPoints.map((p, i) =>
+            point(p, `${path}.visualPoints[${String(i)}]`),
+          ),
+        }
+      : {}),
+  };
 }
 
 function anchor(v: unknown, path: string): AnchorDef {
@@ -87,6 +137,9 @@ function anchor(v: unknown, path: string): AnchorDef {
     id: str(v.id, `${path}.id`),
     position: point(v.position, `${path}.position`),
     radius,
+    ...(v.requiredFrom === undefined
+      ? {}
+      : { requiredFrom: point(v.requiredFrom, `${path}.requiredFrom`) }),
   };
   if (v.path === undefined) return base;
   if (!isRecord(v.path)) fail(`${path}.path`, 'must be an object');
@@ -114,11 +167,8 @@ function anchor(v: unknown, path: string): AnchorDef {
 }
 
 /** Validate untrusted level JSON. Errors name the offending path. */
-export function parseLevel(json: unknown): LevelDef {
-  if (!isRecord(json)) fail('level', 'must be an object');
-  if (json.version !== LEVEL_SCHEMA_VERSION) {
-    fail('level.version', `must be ${String(LEVEL_SCHEMA_VERSION)}`);
-  }
+export function compileLevel(source: unknown): LevelDef {
+  const json = migrateLevel(source);
   if (!isRecord(json.bounds)) fail('level.bounds', 'must be an object');
   const b = json.bounds;
   const solids = Array.isArray(json.solids)
@@ -139,18 +189,112 @@ export function parseLevel(json: unknown): LevelDef {
     killY: num(json.killY, 'level.killY'),
     solids: solids.map((s, i) => solid(s, `level.solids[${String(i)}]`)),
     anchors: anchors.map((a, i) => anchor(a, `level.anchors[${String(i)}]`)),
+    ...authoringMetadata(json),
     ...(isRecord(json.exit)
       ? {
-          exit: {
-            min: point(json.exit.min, 'level.exit.min'),
-            max: point(json.exit.max, 'level.exit.max'),
-          },
+          exit: compileExit(json.exit),
         }
       : {}),
   };
-  for (const item of [...level.solids, ...level.anchors]) {
+  for (const item of [
+    ...level.solids,
+    ...level.anchors,
+    ...(level.chambers ?? []),
+    ...(level.checkpoints ?? []),
+    ...(level.cameraHints ?? []),
+    ...(level.tunnels ?? []),
+  ]) {
     if (ids.has(item.id)) fail('level', `duplicate id "${item.id}"`);
     ids.add(item.id);
   }
+  if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
+    fail('level.exit.id', `duplicate id "${level.exit.id}"`);
   return level;
 }
+
+function compileExit(raw: Record<string, unknown>): NonNullable<LevelDef['exit']> {
+  const box = region(raw, 'level.exit');
+  if (raw.family === undefined) return box;
+  const family = raw.family as 'wide' | 'slot' | 'shaft';
+  const entry = raw.entry as Record<string, unknown>;
+  const side = entry.side as 'left' | 'right' | 'top' | 'bottom';
+  if (family === 'slot' && side !== 'left' && side !== 'right')
+    fail('level.exit.entry.side', 'slot exits require left or right entry');
+  if (family === 'shaft' && side !== 'top' && side !== 'bottom')
+    fail('level.exit.entry.side', 'shaft exits require top or bottom entry');
+  const window = (key: string): { min: number; max: number } => {
+    const rawWindow = entry[key] as Record<string, unknown>;
+    const min = num(rawWindow.min, `level.exit.entry.${key}.min`);
+    const max = num(rawWindow.max, `level.exit.entry.${key}.max`);
+    if (min > max) fail(`level.exit.entry.${key}`, 'min must not exceed max');
+    return { min, max };
+  };
+  return {
+    ...box,
+    id: str(raw.id, 'level.exit.id'),
+    family,
+    entry: { side, angle: window('angle'), speed: window('speed'), alignment: window('alignment') },
+  };
+}
+
+function region(v: unknown, path: string): { min: Vec2; max: Vec2 } {
+  if (!isRecord(v)) fail(path, 'must be an object');
+  const min = point(v.min, `${path}.min`);
+  const max = point(v.max, `${path}.max`);
+  if (min.x >= max.x || min.y >= max.y) fail(path, 'min must be below max on both axes');
+  return { min, max };
+}
+
+function entries(v: unknown): Record<string, unknown>[] {
+  return Array.isArray(v) ? v.filter(isRecord) : [];
+}
+
+function authoringMetadata(json: AuthoringLevelV2): Partial<LevelDef> {
+  return {
+    telemetry: {
+      levelId: str(
+        isRecord(json.telemetry) ? json.telemetry.levelId : undefined,
+        'level.telemetry.levelId',
+      ),
+    },
+    ...(json.section === undefined ? {} : { section: str(json.section, 'level.section') }),
+    ...(json.chambers === undefined
+      ? {}
+      : {
+          chambers: entries(json.chambers).map((c, i) => ({
+            id: str(c.id, `level.chambers[${String(i)}].id`),
+            region: region(c.region, `level.chambers[${String(i)}].region`),
+            problem: str(c.problem, `level.chambers[${String(i)}].problem`),
+            challengeFamily: str(c.challengeFamily, `level.chambers[${String(i)}].challengeFamily`),
+          })),
+        }),
+    ...(json.checkpoints === undefined
+      ? {}
+      : {
+          checkpoints: entries(json.checkpoints).map((c, i) => ({
+            id: str(c.id, `level.checkpoints[${String(i)}].id`),
+            position: point(c.position, `level.checkpoints[${String(i)}].position`),
+          })),
+        }),
+    ...(json.cameraHints === undefined
+      ? {}
+      : {
+          cameraHints: entries(json.cameraHints).map((c, i) => ({
+            id: str(c.id, `level.cameraHints[${String(i)}].id`),
+            region: region(c.region, `level.cameraHints[${String(i)}].region`),
+            focus: point(c.focus, `level.cameraHints[${String(i)}].focus`),
+          })),
+        }),
+    ...(json.tunnels === undefined
+      ? {}
+      : {
+          tunnels: entries(json.tunnels).map((c, i) => ({
+            id: str(c.id, `level.tunnels[${String(i)}].id`),
+            region: region(c.region, `level.tunnels[${String(i)}].region`),
+          })),
+        }),
+  };
+}
+
+/** Backward-compatible loader entry point. */
+export const parseLevel = compileLevel;

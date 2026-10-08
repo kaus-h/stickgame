@@ -54,6 +54,8 @@ export class SfxDirector {
           this.sink.play('exit');
           break;
         case 'ropeLock':
+        case 'exitMiss':
+          // Spatial red-pen feedback carries the miss; reserve the exit cue for success.
           break;
       }
     }
