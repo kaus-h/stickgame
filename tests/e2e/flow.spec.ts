@@ -86,5 +86,5 @@ test('results card: time, deaths, new best; Next starts level 1-2', async ({ pag
     () =>
       (window as unknown as { __stickgame: { level(): { id: string } } }).__stickgame.level().id,
   );
-  expect(levelId).toBe('lab-exit-wide');
+  expect(levelId).toBe('1-2');
 });

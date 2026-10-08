@@ -38,21 +38,21 @@ describe('game flow model (GMR-47)', () => {
 
   it('unlocks the first level, then each level after a clear; cleared levels stay open', () => {
     expect(isUnlocked(chapter, '1-1', {})).toBe(true);
-    expect(isUnlocked(chapter, 'lab-exit-wide', {})).toBe(false);
-    expect(isUnlocked(chapter, 'lab-exit-wide', { '1-1': cleared })).toBe(true);
+    expect(isUnlocked(chapter, '1-2', {})).toBe(false);
+    expect(isUnlocked(chapter, '1-2', { '1-1': cleared })).toBe(true);
     expect(isUnlocked(chapter, 'lab-moving', { '1-1': cleared })).toBe(false);
     expect(isUnlocked(chapter, 'not-in-chapter', {})).toBe(false);
   });
 
   it('continues at the first unlocked, uncleared level', () => {
     expect(continueLevel(chapter, {}).id).toBe('1-1');
-    expect(continueLevel(chapter, { '1-1': cleared }).id).toBe('lab-exit-wide');
-    const all = { '1-1': cleared, 'lab-exit-wide': cleared, 'lab-moving': cleared };
+    expect(continueLevel(chapter, { '1-1': cleared }).id).toBe('1-2');
+    const all = { '1-1': cleared, '1-2': cleared, 'lab-moving': cleared };
     expect(continueLevel(chapter, all).id).toBe('lab-moving');
   });
 
   it('knows the next level and the end of the chapter', () => {
-    expect(nextLevel(chapter, '1-1')?.id).toBe('lab-exit-wide');
+    expect(nextLevel(chapter, '1-1')?.id).toBe('1-2');
     expect(nextLevel(chapter, 'lab-moving')).toBeNull();
   });
 
