@@ -28,5 +28,9 @@
       "steerEnergyHeight": 0.6,
       "catchRetention": 1
     }
+  },
+  "assist": {
+    "wideSelectRadius": 1.8,
+    "snapRadius": 2.6
   }
 }

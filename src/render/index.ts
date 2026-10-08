@@ -3,3 +3,5 @@
 export type { FrameSource, RenderFrame, RuntimeStats } from './frame';
 export { GameScene } from './scenes/GameScene';
 export type { GameSceneOptions } from './scenes/GameScene';
+export { TouchControlsView } from './TouchControlsView';
+export type { TouchControlsViewState } from './TouchControlsView';

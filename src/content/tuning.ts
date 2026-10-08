@@ -4,7 +4,20 @@ import type { SimTuning } from '../sim';
 export interface RuntimeTuning {
   readonly clock: { readonly maxStepsPerFrame: number; readonly maxFrameDelta: number };
   readonly sim: SimTuning;
+  /** Radii for the opt-in aim-assist tiers (GMR-27). The tier itself is a player setting. */
+  readonly assist: AssistTuning;
 }
+
+/** PROTOTYPE REQUIRED (GMR-27/33): set on devices with the touch lab. */
+export interface AssistTuning {
+  /** Selection radius for the `wide-select` tier, m. */
+  readonly wideSelectRadius: number;
+  /** Snap radius for the `snap` tier, m. */
+  readonly snapRadius: number;
+}
+
+/** Used when a tuning file predates the assist section. */
+export const DEFAULT_ASSIST_TUNING: AssistTuning = { wideSelectRadius: 1.8, snapRadius: 2.6 };
 
 export class TuningError extends Error {}
 
@@ -34,6 +47,7 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
   const rope = rec(sim, 'rope', 'tuning.sim');
   const P = 'tuning.sim.player';
   const R = 'tuning.sim.rope';
+  const assist = json.assist === undefined ? null : rec(json, 'assist', 'tuning');
 
   return {
     clock: {
@@ -66,5 +80,11 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
         catchRetention: num(rope, 'catchRetention', R, 0),
       },
     },
+    assist: assist
+      ? {
+          wideSelectRadius: num(assist, 'wideSelectRadius', 'tuning.assist', 0),
+          snapRadius: num(assist, 'snapRadius', 'tuning.assist', 0),
+        }
+      : DEFAULT_ASSIST_TUNING,
   };
 }

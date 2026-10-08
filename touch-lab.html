@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <title>Touch lab</title>
+    <style>
+      :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        overflow: hidden;
+        background: #f3efe6;
+        font: 14px monospace;
+        color: #16161a;
+      }
+      #lab {
+        position: fixed;
+        inset: 0;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      #panel {
+        position: fixed;
+        top: calc(8px + var(--safe-top));
+        left: calc(8px + var(--safe-left));
+        right: calc(8px + var(--safe-right));
+        max-height: 80vh;
+        overflow: auto;
+        background: #f3efe6ee;
+        border: 1.5px solid #16161a;
+        padding: 8px 10px;
+        z-index: 2;
+      }
+      #panel label {
+        margin-right: 10px;
+        white-space: nowrap;
+      }
+      #panel input {
+        width: 4em;
+      }
+      #panel button,
+      #panel select,
+      #panel input {
+        font: inherit;
+        min-height: 32px;
+      }
+      #out {
+        width: 100%;
+        height: 6em;
+        font: 11px monospace;
+      }
+      #summary {
+        white-space: pre-wrap;
+        margin: 6px 0;
+      }
+      #safe-area-probe {
+        position: fixed;
+        visibility: hidden;
+        pointer-events: none;
+        padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="lab"></canvas>
+    <div id="panel">
+      <strong>Touch lab (GMR-27)</strong> — hold the phone in landscape, pick a scheme, press Start,
+      then hit each red-ringed anchor with the rope.<br />
+      <label
+        >scheme
+        <select id="scheme"></select
+      ></label>
+      <label
+        >move
+        <select id="move"></select
+      ></label>
+      <label
+        >assist
+        <select id="assist"></select
+      ></label>
+      <label>trials <input id="trials" type="number" min="1" max="200" /></label>
+      <label>seed <input id="seed" type="number" min="0" /></label>
+      <label>finger px <input id="occlusion" type="number" min="8" value="24" /></label>
+      <button id="start">Start</button>
+      <button id="export">Export JSON</button>
+      <pre id="summary"></pre>
+      <textarea id="out" readonly placeholder="results JSON appears here after a run"></textarea>
+    </div>
+    <div id="safe-area-probe"></div>
+    <script type="module" src="/src/tools/touch-lab/main.ts"></script>
+  </body>
+</html>

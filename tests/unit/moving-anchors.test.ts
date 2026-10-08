@@ -5,7 +5,13 @@
  */
 import { afterAll, describe, expect, it } from 'vitest';
 import labMovingJson from '../../content/levels/lab-moving.json';
-import { anchorPathPeaks, MAX_ANCHOR_ACCEL, MAX_ANCHOR_SPEED, parseLevel } from '../../src/content';
+import {
+  anchorPathPeaks,
+  DEFAULT_ASSIST_TUNING,
+  MAX_ANCHOR_ACCEL,
+  MAX_ANCHOR_SPEED,
+  parseLevel,
+} from '../../src/content';
 import { SeededRng, SIM_DT, vec2, type Intent, type IntentSource, type Vec2 } from '../../src/core';
 import { KinematicPhysicsAdapter } from '../../src/physics/backends/kinematic/KinematicPhysicsAdapter';
 import { anchorPathState, hashSnapshot, Simulation, type SimSnapshot } from '../../src/sim';
@@ -395,7 +401,11 @@ describe('lab-moving level', () => {
     const fixture = { level, tuning: { sim: M.tuning } } as unknown as Fixture;
     const fixtureFull: Fixture = {
       ...fixture,
-      tuning: { clock: { maxStepsPerFrame: 5, maxFrameDelta: 0.25 }, sim: M.tuning },
+      tuning: {
+        clock: { maxStepsPerFrame: 5, maxFrameDelta: 0.25 },
+        sim: M.tuning,
+        assist: DEFAULT_ASSIST_TUNING,
+      },
     };
     const rng = new SeededRng(26);
     expect(hashRunFramed(fixtureFull, source, 600, () => 0.003 + rng.next() * 0.045)).toEqual(

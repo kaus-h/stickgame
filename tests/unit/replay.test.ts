@@ -206,6 +206,19 @@ describe('replay codec', () => {
     expect(text.length).toBeLessThan(300);
   });
 
+  it('carries the assist tier only when it is not standard (GMR-27)', () => {
+    const snap: Replay = { ...sample, assist: 'snap' };
+    const text = encodeReplay(snap);
+    expect(decodeReplay(text, 'abc123').replay).toEqual(snap);
+    expect(encodeReplay({ ...sample, assist: 'standard' })).toBe(encodeReplay(sample));
+    expect(decodeReplay(encodeReplay({ ...sample, assist: 'standard' }), 'abc123').replay).toEqual(
+      sample,
+    );
+    const raw = JSON.parse(text) as Record<string, unknown>;
+    raw.as = 'aimbot';
+    expect(() => decodeReplay(JSON.stringify(raw), 'abc123')).toThrow(ReplayError);
+  });
+
   const errorPath = (text: string): string => {
     try {
       decodeReplay(text, 'abc123');

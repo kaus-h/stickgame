@@ -11,6 +11,13 @@
       rel="stylesheet"
     />
     <style>
+      /* Safe-area insets for the touch controls (GMR-27): read by the app as numbers. */
+      :root {
+        --safe-top: env(safe-area-inset-top, 0px);
+        --safe-right: env(safe-area-inset-right, 0px);
+        --safe-bottom: env(safe-area-inset-bottom, 0px);
+        --safe-left: env(safe-area-inset-left, 0px);
+      }
       html,
       body {
         margin: 0;
@@ -21,11 +28,23 @@
       #game {
         width: 100vw;
         height: 100vh;
+        touch-action: none;
+        user-select: none;
+        -webkit-user-select: none;
+        -webkit-touch-callout: none;
+      }
+      /* Custom properties are not resolved by getComputedStyle; padding is. */
+      #safe-area-probe {
+        position: fixed;
+        visibility: hidden;
+        pointer-events: none;
+        padding: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left);
       }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="safe-area-probe"></div>
     <script type="module" src="/src/app/web/main.ts"></script>
   </body>
 </html>

@@ -7,6 +7,7 @@ import { DebugOverlay } from '../debug/DebugOverlay';
 import { drawHero } from '../hero/drawHero';
 import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
+import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -35,6 +36,8 @@ export interface GameSceneOptions {
   readonly onEvents: (listener: (events: readonly SimEvent[]) => void) => () => void;
   /** Build the development overlay (dev builds or ?debug). Production presentation omits it. */
   readonly debug?: boolean;
+  /** On-screen touch controls this frame (GMR-27); null or inactive hides them. */
+  readonly touchControls?: () => TouchControlsViewState | null;
 }
 
 /**
@@ -47,6 +50,7 @@ export class GameScene extends Phaser.Scene {
   private timer!: Phaser.GameObjects.Text;
   private title!: Phaser.GameObjects.Text;
   private overlay: DebugOverlay | null = null;
+  private touchView: TouchControlsView | null = null;
   private frameG!: Phaser.GameObjects.Graphics;
   private uiCamera!: Phaser.Cameras.Scene2D.Camera;
   private readonly routed = new WeakSet<Phaser.GameObjects.GameObject>();
@@ -90,6 +94,7 @@ export class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
     if (this.opts.debug) this.overlay = new DebugOverlay(this);
+    if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
       for (const e of events) {
@@ -380,6 +385,14 @@ export class GameScene extends Phaser.Scene {
       g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
       g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
     }
+    // Snap assist (GMR-27, opt-in): never silent. A highlighter swipe and a pencil dashed line
+    // from the aim to the snapped impact point show that the assist chose the anchor.
+    if (target?.snapped && target.impact && current.aim) {
+      const from = { x: m(current.aim.x), y: m(current.aim.y) };
+      const to = { x: m(target.impact.x), y: m(target.impact.y) };
+      g.lineStyle(m(0.16), HIGHLIGHTER, 0.5).lineBetween(from.x, from.y, to.x, to.y);
+      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : RED_PEN);
+    }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
       const r = m(0.18);
@@ -524,5 +537,6 @@ export class GameScene extends Phaser.Scene {
     this.title.setPosition(w / 2, 14);
 
     this.overlay?.draw(frame);
+    this.touchView?.draw(this.opts.touchControls?.() ?? null);
   }
 }

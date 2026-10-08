@@ -1,4 +1,4 @@
-import { distance, vec2, type Vec2 } from '../core';
+import { distance, vec2, type AssistMode, type Vec2 } from '../core';
 import type { RayHit } from '../physics';
 import type { RopeTuning } from './tuning';
 
@@ -9,6 +9,24 @@ export interface TargetAnchor {
   readonly position: Vec2;
   readonly radius: number;
 }
+
+/**
+ * Explicit aim-assist configuration (GMR-27). `standard` ignores the radii, so the canonical
+ * selection rule is untouched unless a player opts in. Radii come from content tuning.
+ */
+export interface TargetAssist {
+  readonly mode: AssistMode;
+  /** Selection radius used by `wide-select`, m (never smaller than rope.selectRadius). */
+  readonly wideSelectRadius: number;
+  /** Fallback snap radius used by `snap` when nothing is inside rope.selectRadius, m. */
+  readonly snapRadius: number;
+}
+
+export const STANDARD_ASSIST: TargetAssist = {
+  mode: 'standard',
+  wideSelectRadius: 0,
+  snapRadius: 0,
+};
 
 /**
  * The result of resolving an aim point against the anchors (GMR-21). Valid results carry
@@ -24,6 +42,8 @@ export type TargetResolution =
       readonly offset: Vec2;
       /** Player reference point to impact point, m. */
       readonly distance: number;
+      /** Selected by the `snap` assist (outside the standard radius): render must show it. */
+      readonly snapped: boolean;
     }
   | {
       readonly valid: false;
@@ -31,6 +51,7 @@ export type TargetResolution =
       readonly anchor: number | null;
       readonly impact: Vec2 | null;
       readonly distance: number | null;
+      readonly snapped: boolean;
     };
 
 /** Below this, a ray hit counts as reaching the impact point rather than being blocked. */
@@ -42,6 +63,10 @@ const LOS_EPSILON = 1e-6;
  * The impact point is still exact: the aim point itself when it is on the disc, otherwise the
  * nearest point on the disc rim. There is no fixed centre-point grapple and no auto-targeting:
  * aim far from every anchor and nothing is selected.
+ *
+ * Assists (explicit, opt-in): `wide-select` widens the selection radius; `snap` falls back to the
+ * nearest anchor within `snapRadius` when nothing is inside the standard radius and flags the
+ * result `snapped` so the snap is drawn. Under `standard` the result is exactly the canonical one.
  */
 export function resolveTarget(
   player: Vec2,
@@ -49,23 +74,28 @@ export function resolveTarget(
   anchors: readonly TargetAnchor[],
   rope: RopeTuning,
   raycast: (from: Vec2, to: Vec2) => RayHit | null,
+  assist: TargetAssist = STANDARD_ASSIST,
 ): TargetResolution {
-  let best = -1;
-  let bestGap = Infinity;
-  let bestCentre = Infinity;
-  anchors.forEach((a, i) => {
-    const d = distance(aim, a.position);
-    const gap = Math.max(0, d - a.radius);
-    if (gap > rope.selectRadius) return;
-    if (gap < bestGap || (gap === bestGap && d < bestCentre)) {
-      best = i;
-      bestGap = gap;
-      bestCentre = d;
-    }
-  });
+  const select =
+    assist.mode === 'wide-select'
+      ? Math.max(rope.selectRadius, assist.wideSelectRadius)
+      : rope.selectRadius;
+  let { best, bestCentre } = closest(aim, anchors, select);
+  let snapped = false;
+  if (best < 0 && assist.mode === 'snap' && assist.snapRadius > select) {
+    ({ best, bestCentre } = closest(aim, anchors, assist.snapRadius));
+    snapped = best >= 0;
+  }
 
   if (best < 0)
-    return { valid: false, reason: 'no-anchor', anchor: null, impact: null, distance: null };
+    return {
+      valid: false,
+      reason: 'no-anchor',
+      anchor: null,
+      impact: null,
+      distance: null,
+      snapped: false,
+    };
 
   const a = anchors[best] as TargetAnchor;
   const dx = aim.x - a.position.x;
@@ -81,11 +111,34 @@ export function resolveTarget(
     anchor: best,
     impact,
     distance: length,
+    snapped,
   });
   if (length < rope.minLength) return invalid('too-close');
   if (length > rope.maxLength) return invalid('too-far');
   const hit = raycast(player, impact);
   if (hit && hit.distance < length - LOS_EPSILON) return invalid('blocked');
 
-  return { valid: true, anchor: best, impact, offset, distance: length };
+  return { valid: true, anchor: best, impact, offset, distance: length, snapped };
+}
+
+/** Closest anchor disc within `radius` of the aim (ties: closer centre, then lower index). */
+function closest(
+  aim: Vec2,
+  anchors: readonly TargetAnchor[],
+  radius: number,
+): { best: number; bestCentre: number } {
+  let best = -1;
+  let bestGap = Infinity;
+  let bestCentre = Infinity;
+  anchors.forEach((a, i) => {
+    const d = distance(aim, a.position);
+    const gap = Math.max(0, d - a.radius);
+    if (gap > radius) return;
+    if (gap < bestGap || (gap === bestGap && d < bestCentre)) {
+      best = i;
+      bestGap = gap;
+      bestCentre = d;
+    }
+  });
+  return { best, bestCentre };
 }

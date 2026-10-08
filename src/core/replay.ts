@@ -1,3 +1,4 @@
+import { parseAssistMode, type AssistMode } from './assist';
 import type { Intent, IntentSource } from './intents';
 import { vec2 } from './vec2';
 
@@ -21,6 +22,11 @@ export interface Replay {
   /** Level id. */
   readonly level: string;
   readonly seed: number;
+  /**
+   * Aim-assist tier the run was played with (GMR-27). Absent means `standard`. Playback must use
+   * the same tier, since assists change which anchor a press selects.
+   */
+  readonly assist?: AssistMode;
   /** Simulation ticks the run lasted, counted from tick 0. */
   readonly ticks: number;
   /** Ascending by tick, one entry per tick that had intents. */
@@ -62,6 +68,7 @@ export function encodeReplay(replay: Replay): string {
     b: replay.build,
     l: replay.level,
     s: replay.seed,
+    ...(replay.assist && replay.assist !== 'standard' ? { as: replay.assist } : {}),
     n: replay.ticks,
     i: replay.inputs.map((input) => [input.tick, ...input.intents.map(encodeIntent)]),
   });
@@ -83,6 +90,11 @@ export function decodeReplay(text: string, currentBuild: string): DecodedReplay 
   const build = str(root.b, 'b');
   const level = str(root.l, 'l');
   const seed = int(root.s, 's');
+  let assist: AssistMode | null = null;
+  if (root.as !== undefined) {
+    assist = parseAssistMode(str(root.as, 'as'));
+    if (!assist) throw new ReplayError('as', `unknown assist ${JSON.stringify(root.as)}`);
+  }
   const ticks = int(root.n, 'n');
   const list = arr(root.i, 'i');
   const inputs: ReplayInput[] = [];
@@ -99,7 +111,15 @@ export function decodeReplay(text: string, currentBuild: string): DecodedReplay 
     inputs.push({ tick, intents });
   });
   return {
-    replay: { version: REPLAY_VERSION, build, level, seed, ticks, inputs },
+    replay: {
+      version: REPLAY_VERSION,
+      build,
+      level,
+      seed,
+      ...(assist && assist !== 'standard' ? { assist } : {}),
+      ticks,
+      inputs,
+    },
     buildMatches: build === currentBuild,
   };
 }
@@ -133,7 +153,13 @@ export class RecordingIntentSource implements IntentSource {
   }
 
   /** Finishes the recording; `ticks` is the number of simulation ticks that were run. */
-  finish(meta: { build: string; level: string; seed: number; ticks: number }): Replay {
+  finish(meta: {
+    build: string;
+    level: string;
+    seed: number;
+    ticks: number;
+    assist?: AssistMode;
+  }): Replay {
     return { version: REPLAY_VERSION, ...meta, inputs: this.inputs.slice() };
   }
 }
