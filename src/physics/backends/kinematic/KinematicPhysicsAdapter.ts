@@ -601,6 +601,8 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     const reach = b.r + GROUND_PROBE;
     for (const i of this.grid.candidates(b.x - reach, b.y - reach, b.x + reach, b.y + reach)) {
       const s = this.segments[i] as Segment;
+      // A hazard is never standing ground: touching it kills, it never grants a jump (GMR-102).
+      if (s.kind === 'hazard') continue;
       const [qx, qy] = closestPoint(b.x, b.y, s.a.x, s.a.y, s.b.x, s.b.y);
       const dx = b.x - qx;
       const dy = b.y - qy;

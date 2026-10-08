@@ -1,22 +1,9 @@
 import type { Intent, Vec2 } from '../../core';
 import type { RuntimeTuning } from '../../content';
-import type { BodyState, PhysicsAdapter, Segment } from '../../physics';
+import type { BodyState, PhysicsAdapter } from '../../physics';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { SegmentGrid } from '../../physics/backends/kinematic/SegmentGrid';
-import {
-  levelSegments,
-  Simulation,
-  type LevelDef,
-  type SimEvent,
-  type SimSnapshot,
-} from '../../sim';
-
-/**
- * Routes may not pass closer than this to a hazard (m). The simulation counts a hazard within
- * its 1 cm ground probe as standing ground without a contact, so a route could jump off a lethal
- * floor it never touches; the solver treats such grazes as deaths instead of exploiting them.
- */
-export const HAZARD_MARGIN = 0.02;
+import { Simulation, type LevelDef, type SimEvent, type SimSnapshot } from '../../sim';
 
 /** Supplies a tick's intents; `before` builds the snapshot just before the tick (on demand). */
 export interface TickSource {
@@ -35,8 +22,6 @@ export class World {
     readonly sim: Simulation,
     private readonly shared: ReadonlySet<object>,
     tick: number,
-    private readonly hazards: readonly Segment[],
-    private readonly radius: number,
   ) {
     this.tickCount = tick;
   }
@@ -48,37 +33,11 @@ export class World {
     const shared = new Set<object>([level, tuning, tuning.sim]);
     const segments: unknown = Reflect.get(physics, 'segments');
     if (Array.isArray(segments)) shared.add(segments);
-    const hazards = levelSegments(level).filter((seg) => seg.kind === 'hazard');
-    return new World(sim, shared, 0, hazards, tuning.sim.player.radius);
+    return new World(sim, shared, 0);
   }
 
   fork(): World {
-    return new World(
-      deepClone(this.sim, this.shared),
-      this.shared,
-      this.tickCount,
-      this.hazards,
-      this.radius,
-    );
-  }
-
-  /** True if the player is within HAZARD_MARGIN of a hazard surface (see HAZARD_MARGIN). */
-  grazesHazard(): boolean {
-    const p = this.body().position;
-    const reach = this.radius + HAZARD_MARGIN;
-    for (const seg of this.hazards) {
-      const ex = seg.b.x - seg.a.x;
-      const ey = seg.b.y - seg.a.y;
-      const len2 = ex * ex + ey * ey;
-      const u =
-        len2 > 0
-          ? Math.max(0, Math.min(1, ((p.x - seg.a.x) * ex + (p.y - seg.a.y) * ey) / len2))
-          : 0;
-      const dx = p.x - (seg.a.x + ex * u);
-      const dy = p.y - (seg.a.y + ey * u);
-      if (dx * dx + dy * dy <= reach * reach) return true;
-    }
-    return false;
+    return new World(deepClone(this.sim, this.shared), this.shared, this.tickCount);
   }
 
   /** Simulation tick the next step will run (tick 0 = level start). */
@@ -119,8 +78,7 @@ export interface RunResult {
 
 /**
  * Step `world` with `source` from its current tick up to `until` (exclusive). `stop` sees the
- * events of every tick after it is stepped; returning true ends the run there. A death or a
- * hazard graze (HAZARD_MARGIN) ends it as a death.
+ * events of every tick after it is stepped; returning true ends the run there. A death ends it.
  */
 export function runPlan(
   world: World,
@@ -130,7 +88,7 @@ export function runPlan(
 ): RunResult {
   while (world.tick < until) {
     const events = world.step(source);
-    if (events.some((e) => e.type === 'death') || world.grazesHazard())
+    if (events.some((e) => e.type === 'death'))
       return { tick: world.tick, died: true, stopped: false };
     if (stop(world, events)) return { tick: world.tick, died: false, stopped: true };
   }
