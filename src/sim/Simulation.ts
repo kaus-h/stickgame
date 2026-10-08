@@ -129,10 +129,10 @@ export class Simulation {
   private deathCount = 0;
   private events: SimEvent[] = [];
 
-  private readonly body: number;
-  private readonly anchorIds: number[];
+  private body!: number;
+  private anchorIds: number[] = [];
   /** Level solid id for each physics segment (levelSegments keeps solid order). */
-  private readonly segmentSolid: string[];
+  private segmentSolid: string[] = [];
   private lastDeath: DeathRecord | null = null;
   private lastContacts: readonly ContactSnapshot[] = [];
 
@@ -162,9 +162,37 @@ export class Simulation {
   constructor(
     private tuning: SimTuning,
     private readonly physics: PhysicsAdapter,
-    private readonly level: LevelDef,
+    private level: LevelDef,
   ) {
     physics.setGravity(vec2(0, tuning.gravity));
+    this.createLevelBodies();
+  }
+
+  /** Authoring reload: discard all attempt state while retaining the physics world and tuning. */
+  replaceLevel(level: LevelDef): void {
+    this.physics.clearLevel();
+    this.level = level;
+    this.tickCount = 0;
+    this.attemptTicks = 0;
+    this.resetCount = 0;
+    this.deathCount = 0;
+    this.events = [];
+    this.lastDeath = null;
+    this.lastContacts = [];
+    this.axis = 0;
+    this.facing = 1;
+    this.lastGroundedTick = -1_000;
+    this.jumpBufferedTick = -1_000;
+    this.jumpHeld = false;
+    this.wasGrounded = false;
+    this.aim = null;
+    this.rope = null;
+    this.ropeActions = [];
+    this.createLevelBodies();
+  }
+
+  private createLevelBodies(): void {
+    const { physics, level, tuning } = this;
     physics.setGeometry(levelSegments(level));
     this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({

@@ -1,17 +1,16 @@
 import * as Phaser from 'phaser';
-import lab01 from '../../../content/levels/lab-01.json';
-import labCollision from '../../../content/levels/lab-collision.json';
-import labMoving from '../../../content/levels/lab-moving.json';
 import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
-import { parseLevel, parseRuntimeTuning } from '../../content';
+import { parseRuntimeTuning } from '../../content';
+import { LevelRegistry } from '../../content/level-registry';
 import { vec2 } from '../../core';
 import { bindDom, DesktopInputMapper, IntentQueue } from '../../input';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
+import { levelSources } from './level-catalog';
 
 // Composition root for the browser build.
 async function start(): Promise<void> {
@@ -39,13 +38,11 @@ async function start(): Promise<void> {
   await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
 
   // ?level=lab-collision (GMR-24) or ?level=lab-moving (GMR-26) loads a lab (default: lab-01).
-  const levels: Record<string, unknown> = {
-    'lab-01': lab01,
-    'lab-collision': labCollision,
-    'lab-moving': labMoving,
-  };
+  const registry = new LevelRegistry(levelSources);
   const levelName = params.get('level') ?? 'lab-01';
-  const level = parseLevel(levels[levelName] ?? lab01);
+  let level = registry.load(levelName);
+  let levelRevision = 0;
+  let levelError: string | null = null;
   const intents = new IntentQueue();
   let scene: GameScene | null = null;
   const mapper = new DesktopInputMapper(
@@ -120,6 +117,31 @@ async function start(): Promise<void> {
     game.canvas.style.cursor = 'none';
   });
 
+  // Accept the catalog boundary: JSON updates travel here without reloading the document.
+  // Compile first; malformed edits leave the running attempt intact until the file is fixed.
+  if (import.meta.hot) {
+    import.meta.hot.accept('./level-catalog', (catalog) => {
+      if (!catalog) return;
+      try {
+        const nextRegistry = new LevelRegistry(
+          catalog.levelSources as Readonly<Record<string, unknown>>,
+        );
+        const next = nextRegistry.load(levelName);
+        mapper.blur();
+        intents.clear();
+        intents.clearLog();
+        runtime.replaceLevel(next);
+        level = next;
+        scene.replaceLevel(next);
+        levelRevision++;
+        levelError = null;
+      } catch (error) {
+        levelError = error instanceof Error ? error.message : String(error);
+        console.warn(`Level reload rejected: ${levelError}`);
+      }
+    });
+  }
+
   // Dev-only hook for e2e tests: read state and map world points to the screen. Not in builds.
   if (import.meta.env.DEV) {
     const devScene = scene;
@@ -129,6 +151,12 @@ async function start(): Promise<void> {
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
+        level: () => ({
+          id: level.id,
+          revision: levelRevision,
+          spawn: level.spawn,
+          error: levelError,
+        }),
       },
     });
   }

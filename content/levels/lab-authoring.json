@@ -1,0 +1,40 @@
+{
+  "$schema": "../level.schema.json",
+  "version": 2,
+  "id": "lab-authoring",
+  "name": "Collision-first Authoring Lab",
+  "section": "authoring-labs",
+  "telemetry": { "levelId": "lab-authoring" },
+  "spawn": [3, 7.65],
+  "bounds": { "minX": 0, "minY": 0, "maxX": 20, "maxY": 10 },
+  "killY": 11,
+  "solids": [
+    { "id": "floor", "rect": { "x": 0, "y": 8, "w": 20, "h": 2 } },
+    {
+      "id": "teeth",
+      "kind": "hazard",
+      "rect": { "x": 8, "y": 7.5, "w": 1, "h": 0.5 },
+      "visualPoints": [
+        [8, 8],
+        [8.25, 7.5],
+        [8.5, 8],
+        [8.75, 7.5],
+        [9, 8]
+      ]
+    }
+  ],
+  "anchors": [{ "id": "required-shot", "position": [7, 3], "requiredFrom": [3, 7.65] }],
+  "chambers": [
+    {
+      "id": "chamber-1",
+      "region": { "min": [0, 0], "max": [20, 8] },
+      "problem": "Jump and tether across a small hazard, then release onto the floor.",
+      "challengeFamily": "swing-and-release"
+    }
+  ],
+  "checkpoints": [{ "id": "checkpoint-note", "position": [15, 7.65] }],
+  "cameraHints": [
+    { "id": "camera-note", "region": { "min": [0, 0], "max": [20, 8] }, "focus": [7, 4] }
+  ],
+  "exit": { "min": [17, 6.5], "max": [19, 8] }
+}

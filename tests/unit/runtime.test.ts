@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import lab01 from '../../content/levels/lab-01.json';
 import runtimeJson from '../../content/tuning/runtime.json';
 import { GameRuntime } from '../../src/app/runtime/GameRuntime';
@@ -119,5 +119,74 @@ describe('GameRuntime timing policy', () => {
     expect(runtime.sim.snapshot().tick).toBe(tickBefore);
     notify(true);
     expect(runtime.frame(1 / 60).stats.stepsLastFrame).toBe(1);
+  });
+});
+
+describe('GameRuntime level replacement', () => {
+  it('resets controller, events and interpolation to the new spawn without disposing physics', () => {
+    const physics = new KinematicPhysicsAdapter();
+    const dispose = vi.spyOn(physics, 'dispose');
+    const runtime = new GameRuntime({
+      tuning,
+      level,
+      physics,
+      intents: { poll: () => [] },
+      platform: new NullPlatformServices(),
+      now: () => 0,
+    });
+    const unsubscribe = runtime.onEvents(() => {});
+    runtime.sim.step([
+      { type: 'move', axis: -1 },
+      { type: 'ropeAim', target: { x: 4, y: -4 } },
+      { type: 'ropePress' },
+    ]);
+    runtime.frame(0.01);
+    const changed = {
+      ...level,
+      spawn: { x: level.spawn.x + 1, y: level.spawn.y },
+      anchors: level.anchors.slice(0, 1),
+    };
+    runtime.replaceLevel(changed);
+    const frame = runtime.frame(0);
+    expect(frame.current.player.position).toEqual(changed.spawn);
+    expect(frame.current.player.velocity).toEqual({ x: 0, y: 0 });
+    expect(frame.current.player.facing).toBe(1);
+    expect(frame.current.aim).toBeNull();
+    expect(frame.current.rope).toBeNull();
+    expect(frame.current.tick).toBe(0);
+    expect(frame.previous).toEqual(frame.current);
+    expect(frame.alpha).toBe(0);
+    expect(frame.stats.stepsLastFrame).toBe(0);
+    expect(runtime.sim.stats().pendingEvents).toBe(0);
+    expect(runtime.listenerCount).toBe(1);
+    expect(dispose).not.toHaveBeenCalled();
+    expect(runtime.frame(0.007).current.tick).toBe(0);
+    runtime.frame(0.01);
+    expect(runtime.sim.snapshot().player.velocity.x).toBe(0);
+    runtime.sim.reset();
+    expect(runtime.sim.snapshot().player.position).toEqual(changed.spawn);
+    unsubscribe();
+    runtime.dispose();
+  });
+
+  it('does not accumulate bodies or anchors across repeated level replacements', () => {
+    const physics = new KinematicPhysicsAdapter();
+    const runtime = new GameRuntime({
+      tuning,
+      level,
+      physics,
+      intents: { poll: () => [] },
+      platform: new NullPlatformServices(),
+      now: () => 0,
+    });
+    for (let i = 0; i < 100; i++) {
+      const changed = { ...level, anchors: level.anchors.slice(0, i % 2) };
+      runtime.replaceLevel(changed);
+      expect(runtime.stats().bodies).toBe(1);
+      expect(runtime.stats().entities).toBe(1 + changed.anchors.length);
+      expect(runtime.stats().joints).toBe(0);
+      expect(runtime.sim.snapshot().anchors).toHaveLength(changed.anchors.length);
+    }
+    runtime.dispose();
   });
 });

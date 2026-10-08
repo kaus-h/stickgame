@@ -55,8 +55,14 @@ export class GameScene extends Phaser.Scene {
   private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
 
-  constructor(private readonly opts: GameSceneOptions) {
+  constructor(private opts: GameSceneOptions) {
     super('game');
+  }
+
+  /** Rebuild authored art and cameras; the source retains the persistent simulation world. */
+  replaceLevel(level: LevelDef): void {
+    this.opts = { ...this.opts, level };
+    this.scene.restart();
   }
 
   /** Convert a canvas point (CSS px) to world meters with the current camera. Used by input. */
@@ -73,6 +79,8 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.splats = [];
+    this.lastTime = 0;
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
     this.dynamic = this.add.graphics();
@@ -88,7 +96,7 @@ export class GameScene extends Phaser.Scene {
       .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
-    if (this.opts.debug) this.overlay = new DebugOverlay(this);
+    if (this.opts.debug) this.overlay = new DebugOverlay(this, this.opts.level);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
       for (const e of events) {
@@ -96,14 +104,21 @@ export class GameScene extends Phaser.Scene {
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
       }
     });
-    this.events.once('shutdown', () => this.unsubscribe?.());
     // HUD and page frame render through their own unzoomed camera; the world camera zooms.
     this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.routeCameras();
-    this.scale.on('resize', () => {
+    const resize = (): void => {
       drawFrame(this.frameG, this.scale.height);
       this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
+    };
+    this.scale.on('resize', resize);
+    this.events.once('shutdown', () => {
+      this.unsubscribe?.();
+      this.unsubscribe = null;
+      this.scale.off('resize', resize);
+      this.overlay?.destroy();
+      this.overlay = null;
     });
     this.fitCamera();
     const spawn = this.opts.level.spawn;

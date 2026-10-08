@@ -89,6 +89,8 @@ export interface PhysicsAdapter {
   step(dt: number, substeps: number): void;
   /** Restore every body and anchor to its creation state and remove all ropes, inside the same world. */
   resetBodies(): void;
+  /** Remove level bodies, anchors, ropes and geometry without replacing the persistent world. */
+  clearLevel(): void;
   stats(): PhysicsStats;
   dispose(): void;
 }

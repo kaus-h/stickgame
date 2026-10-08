@@ -248,12 +248,18 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     return { bodies: this.bodies.length, joints: this.ropes.size, contacts };
   }
 
-  dispose(): void {
+  clearLevel(): void {
     this.bodies.length = 0;
     this.anchors.length = 0;
     this.ropes.clear();
     this.segments = [];
+    this.grid = new SegmentGrid([]);
     this.contacts = [];
+    this.nextRope = 1;
+  }
+
+  dispose(): void {
+    this.clearLevel();
   }
 
   // --- internals -------------------------------------------------------------------------------

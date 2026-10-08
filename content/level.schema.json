@@ -1,0 +1,160 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://stickgame.dev/schemas/level.json",
+  "title": "StickGame level authoring v1/v2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["version", "id", "name", "spawn", "bounds", "killY", "solids"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "version": { "enum": [1, 2] },
+    "id": { "$ref": "#/definitions/id" },
+    "name": { "$ref": "#/definitions/text" },
+    "spawn": { "$ref": "#/definitions/point" },
+    "bounds": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minX", "minY", "maxX", "maxY"],
+      "properties": {
+        "minX": { "type": "number" },
+        "minY": { "type": "number" },
+        "maxX": { "type": "number" },
+        "maxY": { "type": "number" }
+      }
+    },
+    "killY": { "type": "number" },
+    "solids": { "type": "array", "items": { "$ref": "#/definitions/solid" } },
+    "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
+    "exit": { "$ref": "#/definitions/region" },
+    "section": { "$ref": "#/definitions/id" },
+    "telemetry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["levelId"],
+      "properties": { "levelId": { "$ref": "#/definitions/id" } }
+    },
+    "chambers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "region", "problem", "challengeFamily"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "region": { "$ref": "#/definitions/region" },
+          "problem": { "$ref": "#/definitions/text" },
+          "challengeFamily": { "$ref": "#/definitions/text" }
+        }
+      }
+    },
+    "checkpoints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "position"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "position": { "$ref": "#/definitions/point" }
+        }
+      }
+    },
+    "tunnels": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "region"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "region": { "$ref": "#/definitions/region" }
+        }
+      }
+    },
+    "cameraHints": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "region", "focus"],
+        "properties": {
+          "id": { "$ref": "#/definitions/id" },
+          "region": { "$ref": "#/definitions/region" },
+          "focus": { "$ref": "#/definitions/point" }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "text": { "type": "string", "minLength": 1 },
+    "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$" },
+    "point": {
+      "oneOf": [
+        { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y"],
+          "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+        }
+      ]
+    },
+    "region": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": { "$ref": "#/definitions/point" },
+        "max": { "$ref": "#/definitions/point" }
+      }
+    },
+    "solid": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id"],
+      "oneOf": [{ "required": ["rect"] }, { "required": ["points"] }],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "kind": { "enum": ["solid", "hazard"] },
+        "rect": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["x", "y", "w", "h"],
+          "properties": {
+            "x": { "type": "number" },
+            "y": { "type": "number" },
+            "w": { "type": "number", "exclusiveMinimum": 0 },
+            "h": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "points": { "type": "array", "minItems": 3, "items": { "$ref": "#/definitions/point" } },
+        "visualPoints": {
+          "type": "array",
+          "minItems": 3,
+          "items": { "$ref": "#/definitions/point" }
+        }
+      }
+    },
+    "anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position"],
+      "properties": {
+        "id": { "$ref": "#/definitions/id" },
+        "position": { "$ref": "#/definitions/point" },
+        "requiredFrom": { "$ref": "#/definitions/point" },
+        "radius": { "type": "number", "exclusiveMinimum": 0 },
+        "path": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["to", "period"],
+          "properties": {
+            "to": { "$ref": "#/definitions/point" },
+            "period": { "type": "number", "exclusiveMinimum": 0 },
+            "phase": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
+          }
+        }
+      }
+    }
+  }
+}
