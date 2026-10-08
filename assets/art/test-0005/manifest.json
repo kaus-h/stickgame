@@ -1,0 +1,226 @@
+{
+  "source": "0005-asset-sheet-v1.png",
+  "pxPerMeter1x": 64,
+  "objects": [
+    {
+      "name": "platform-left",
+      "sourceBox": {
+        "x": 21,
+        "y": 56,
+        "width": 299,
+        "height": 343
+      },
+      "sourcePxPerMeter": 161,
+      "sizeMeters": [
+        1.882,
+        2.155
+      ],
+      "size1x": [
+        120,
+        138
+      ],
+      "size2x": [
+        241,
+        276
+      ]
+    },
+    {
+      "name": "platform-mid",
+      "sourceBox": {
+        "x": 342,
+        "y": 107,
+        "width": 387,
+        "height": 157
+      },
+      "sourcePxPerMeter": 161,
+      "sizeMeters": [
+        2.429,
+        1
+      ],
+      "size1x": [
+        155,
+        64
+      ],
+      "size2x": [
+        311,
+        128
+      ]
+    },
+    {
+      "name": "platform-right",
+      "sourceBox": {
+        "x": 753,
+        "y": 77,
+        "width": 278,
+        "height": 326
+      },
+      "sourcePxPerMeter": 161,
+      "sizeMeters": [
+        1.752,
+        2.05
+      ],
+      "size1x": [
+        112,
+        131
+      ],
+      "size2x": [
+        224,
+        262
+      ]
+    },
+    {
+      "name": "platform-small",
+      "sourceBox": {
+        "x": 1045,
+        "y": 166,
+        "width": 192,
+        "height": 163
+      },
+      "sourcePxPerMeter": 161,
+      "sizeMeters": [
+        1.217,
+        1.037
+      ],
+      "size1x": [
+        78,
+        66
+      ],
+      "size2x": [
+        156,
+        133
+      ]
+    },
+    {
+      "name": "anchor-inactive",
+      "sourceBox": {
+        "x": 91,
+        "y": 462,
+        "width": 183,
+        "height": 282
+      },
+      "sourcePxPerMeter": 190,
+      "sizeMeters": [
+        0.984,
+        1.505
+      ],
+      "size1x": [
+        63,
+        96
+      ],
+      "size2x": [
+        126,
+        193
+      ]
+    },
+    {
+      "name": "anchor-active",
+      "sourceBox": {
+        "x": 384,
+        "y": 447,
+        "width": 191,
+        "height": 297
+      },
+      "sourcePxPerMeter": 190,
+      "sizeMeters": [
+        1.026,
+        1.584
+      ],
+      "size1x": [
+        66,
+        101
+      ],
+      "size2x": [
+        131,
+        203
+      ]
+    },
+    {
+      "name": "anchor-timed",
+      "sourceBox": {
+        "x": 685,
+        "y": 460,
+        "width": 189,
+        "height": 285
+      },
+      "sourcePxPerMeter": 190,
+      "sizeMeters": [
+        1.016,
+        1.521
+      ],
+      "size1x": [
+        65,
+        97
+      ],
+      "size2x": [
+        130,
+        195
+      ]
+    },
+    {
+      "name": "anchor-one-use",
+      "sourceBox": {
+        "x": 983,
+        "y": 445,
+        "width": 191,
+        "height": 299
+      },
+      "sourcePxPerMeter": 190,
+      "sizeMeters": [
+        1.026,
+        1.595
+      ],
+      "size1x": [
+        66,
+        102
+      ],
+      "size2x": [
+        131,
+        204
+      ]
+    },
+    {
+      "name": "hazard-thorns",
+      "sourceBox": {
+        "x": 8,
+        "y": 785,
+        "width": 1240,
+        "height": 156
+      },
+      "sourcePxPerMeter": 200,
+      "sizeMeters": [
+        6.22,
+        0.8
+      ],
+      "size1x": [
+        398,
+        51
+      ],
+      "size2x": [
+        796,
+        102
+      ]
+    },
+    {
+      "name": "exit-door",
+      "sourceBox": {
+        "x": 410,
+        "y": 945,
+        "width": 394,
+        "height": 275
+      },
+      "sourcePxPerMeter": 140,
+      "sizeMeters": [
+        2.843,
+        1.993
+      ],
+      "size1x": [
+        182,
+        128
+      ],
+      "size2x": [
+        364,
+        255
+      ]
+    }
+  ]
+}

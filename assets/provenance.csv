@@ -1,4 +1,11 @@
 asset_path,source,prompt_id,generated_on,human_edits,reviewer,notes
+assets/concepts/0003-notebook-first.png,ChatGPT image generation (StickGame project),0003,2026-10-07,none,owner (superseded by 0004),Concept reference only; not a shipped game asset
+assets/concepts/0004-notebook-black-ink.png,ChatGPT image generation (StickGame project),0004,2026-10-07,none,owner (direction approved),Concept reference only; not a shipped game asset
+assets/sheets/0005-asset-sheet-v1.png,ChatGPT image generation (StickGame project),0005,2026-10-07,none,pending,Pipeline test sheet
+assets/art/test-0005/*,Sliced from assets/sheets/0005-asset-sheet-v1.png by scripts/art/slice-sheet.mjs,0005,2026-10-07,automatic crop and downscale only,pending,Pipeline test assets; not final art
+assets/concepts/0006-hero-pose-sheet.png,ChatGPT image generation (StickGame project),0006,2026-10-07,none,owner review pending,Hero design reference (pose sheet); no artist names or reference images in the prompt
+assets/concepts/0007-hero-pose-sheet.png,ChatGPT image generation (GPT-6 High; StickGame project),0007,2026-10-07,none,owner review pending,Hero design reference (no scarf); supersedes 0006; no artist names or reference images in the prompt
+assets/concepts/0008-hero-parts-sheet.png,ChatGPT image generation (GPT-6 High; StickGame project),0008,2026-10-07,none,owner review pending,Hero parts sheet; heads usable as sprite candidates; limbs rejected (procedural instead)
 fonts/Caveat (Google Fonts, loaded at runtime from fonts.googleapis.com),https://fonts.google.com/specimen/Caveat,n/a (not generated),2026-10-07,none,claude,SIL Open Font License 1.1; HUD handwriting; self-host before native/offline builds
 src/render/enemy.ts,original procedural Phaser Graphics,n/a (code authored),2026-10-08,none,pending owner review,GMR-45 ink block creature; paper safe top and eyes; red only authored dangerous perimeter; no reference images or copied art
 content/audio/sfx.json#stomp,original procedural synthesizer parameters,n/a (code authored),2026-10-08,none,pending owner review,GMR-45 short rising triangle and seeded noise; generated at runtime; no recorded source
