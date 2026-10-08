@@ -47,7 +47,10 @@ const snap = (page: Page) =>
   page.evaluate(() => (window as unknown as Hook).__stickgame.snapshot());
 const race = (page: Page) => page.evaluate(() => (window as unknown as Hook).__stickgame.race());
 const play = (page: Page) =>
-  page.evaluate((text) => (window as unknown as Hook).__stickgame.playReplay(text), solution.replay);
+  page.evaluate(
+    (text) => (window as unknown as Hook).__stickgame.playReplay(text),
+    solution.replay,
+  );
 
 const CHECKPOINT_A = { x: 50, y: 5.65 };
 
@@ -115,9 +118,7 @@ test('after a PB: the split delta shows at a checkpoint and the ghost runs', asy
 
   // Second run, same inputs: the ghost replays the PB in lockstep and the split delta is even.
   await play(page);
-  await page.waitForFunction(
-    () => (window as unknown as Hook).__stickgame.race().ghost !== null,
-  );
+  await page.waitForFunction(() => (window as unknown as Hook).__stickgame.race().ghost !== null);
   await waitForCheckpoint(page, 0);
   const atSplit = await race(page);
   expect(atSplit.split).toMatchObject({ kind: 'checkpoint', index: 0 });
