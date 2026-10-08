@@ -12,7 +12,14 @@ export type Intent =
   | { readonly type: 'ropePress' }
   | { readonly type: 'ropeRelease' }
   | { readonly type: 'restart' }
-  | { readonly type: 'pause' };
+  /**
+   * Respawn at the last reached checkpoint (GMR-103, owner decision 2026-10-08): ends the current
+   * life; the run clock keeps counting. Without a reached checkpoint it acts as restart.
+   */
+  | { readonly type: 'respawn' }
+  | { readonly type: 'pause' }
+  /** Show or hide the personal-best ghost (GMR-103). Presentation only; the simulation ignores it. */
+  | { readonly type: 'ghostToggle' };
 
 /** Supplies the intents that apply to a given simulation tick. */
 export interface IntentSource {

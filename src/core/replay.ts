@@ -177,7 +177,9 @@ const CODES = {
   ropePress: 'r',
   ropeRelease: 'R',
   restart: 'x',
+  respawn: 'k',
   pause: 'p',
+  ghostToggle: 'g',
 } as const;
 type SimpleType = keyof typeof CODES;
 const SIMPLE_BY_CODE = new Map<string, SimpleType>(

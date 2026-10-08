@@ -170,7 +170,7 @@ for (const viewport of [
       const s = await touchState(page);
       expect(s.active).toBe(true);
       expect(s.controls.map((c) => c.id).sort()).toEqual(
-        ['jump', 'left', 'pause', 'restart', 'right'].sort(),
+        ['jump', 'left', 'pause', 'respawn', 'restart', 'right'].sort(),
       );
       for (const c of s.controls) {
         expect(c.x - c.r).toBeGreaterThanOrEqual(0);

@@ -39,6 +39,7 @@ export {
 } from './save/saveData';
 export type {
   LevelRecord,
+  PersonalBest,
   Migration,
   ReducedMotion,
   RunResult,

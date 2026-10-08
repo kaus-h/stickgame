@@ -177,3 +177,19 @@ describe('debug overlay formatting', () => {
     }
   });
 });
+
+describe('race overlay line (GMR-103)', () => {
+  it('shows the life clock, lives, PB splits and the ghost state', async () => {
+    const { formatRace } = await import('../../src/render/debug/format');
+    const s = { lifeTick: 42, lives: 3 } as Parameters<typeof formatRace>[0];
+    expect(formatRace(s, undefined)).toBe('race —  life 42  lives 3');
+    expect(
+      formatRace(s, {
+        pb: { ticks: 960, splits: [200, null] },
+        ghostEnabled: false,
+        ghost: null,
+        split: null,
+      }),
+    ).toBe('race life 42  lives 3  pb 960 splits [200, —]  ghost off (idle)');
+  });
+});

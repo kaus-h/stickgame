@@ -12,6 +12,7 @@ import { TouchControlsView, type TouchControlsViewState } from '../TouchControls
 import { entryMarks, exitMissMessage } from '../exit';
 import { drawPatroller } from '../enemy';
 import { causeText } from '../feedback/causeText';
+import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -48,7 +49,12 @@ export interface GameSceneOptions {
   readonly overview?: boolean;
   /** On-screen touch controls this frame (GMR-27); null or inactive hides them. */
   readonly touchControls?: () => TouchControlsViewState | null;
+  /** Externalized UI strings (content/strings); HUD labels fall back to their keys. */
+  readonly strings?: Readonly<Record<string, string>>;
 }
+
+/** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
+const PB_GHOST_ALPHA = 0.35;
 
 /**
  * The game as drawn on a notebook page (doc 07 §2, §16). Render only reads snapshots; the camera,
@@ -58,6 +64,10 @@ export class GameScene extends Phaser.Scene {
   private dynamic!: Phaser.GameObjects.Graphics;
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
+  private lifeTimer!: Phaser.GameObjects.Text;
+  private splitTime!: Phaser.GameObjects.Text;
+  private splitDelta!: Phaser.GameObjects.Text;
+  private pbGhostG!: Phaser.GameObjects.Graphics;
   private title!: Phaser.GameObjects.Text;
   private exitResult!: Phaser.GameObjects.Text;
   private exitMiss!: Phaser.GameObjects.Text;
@@ -108,6 +118,7 @@ export class GameScene extends Phaser.Scene {
     this.drawStaticPage();
     // Previous-attempt ghost layer: drawn with the normal hero code, faded as a whole.
     this.ghostG = this.add.graphics().setAlpha(0.22);
+    this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
     this.dynamic = this.add.graphics();
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
@@ -127,7 +138,26 @@ export class GameScene extends Phaser.Scene {
     this.timer = this.add
       .text(0, 14, '', { ...hand, fontSize: '34px' })
       .setScrollFactor(0)
-      .setOrigin(1, 0);
+      .setOrigin(1, 0)
+      .setName('run-timer');
+    // GMR-103: the life timer sits small under the run timer; splits flash under the title.
+    this.lifeTimer = this.add
+      .text(0, 50, '', { ...hand, fontSize: '22px', color: '#5a5a5a' })
+      .setScrollFactor(0)
+      .setOrigin(1, 0)
+      .setName('life-timer');
+    this.splitTime = this.add
+      .text(0, 44, '', { ...hand, fontSize: '26px' })
+      .setScrollFactor(0)
+      .setOrigin(0.5, 0)
+      .setName('split-time')
+      .setVisible(false);
+    this.splitDelta = this.add
+      .text(0, 72, '', { ...hand, fontSize: '30px' })
+      .setScrollFactor(0)
+      .setOrigin(0.5, 0)
+      .setName('split-delta')
+      .setVisible(false);
     this.title = this.add
       .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
       .setScrollFactor(0)
@@ -543,6 +573,7 @@ export class GameScene extends Phaser.Scene {
 
     this.drawCheckpoints(current.checkpoint);
     this.drawPreviousAttempt(current, frame);
+    this.drawPbGhost(frame);
 
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
     // that rope, so the next attempt can adjust (doc 08 candidate feedback; never blocks retry).
@@ -720,6 +751,36 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  /**
+   * The PB ghost (GMR-103): a second, headless simulation replaying the personal best in lockstep
+   * with the run clock, drawn as the hero in pencil grey. Only when a PB exists and the setting is on.
+   */
+  private drawPbGhost(frame: RenderFrame): void {
+    const g = this.pbGhostG;
+    g.clear();
+    const ghost = frame.race?.ghost;
+    if (!ghost) return;
+    const { previous, current } = ghost;
+    const t = current.runTick > previous.runTick ? frame.alpha : 1;
+    let hand: Pt | null = null;
+    const c = lerpV(previous.player.position, current.player.position, t);
+    if (current.player.mode === 'tethered' && current.rope) {
+      const anchor = lerpV(previous.rope?.point ?? current.rope.point, current.rope.point, t);
+      hand = this.handPoint(c, anchor);
+      dashedInk(g, anchor, hand, m(0.2), m(0.13), 2, PENCIL);
+    }
+    drawHero(g, {
+      c,
+      facing: current.player.facing,
+      velocity: current.player.velocity,
+      mode: current.player.mode,
+      hand,
+      time: current.tick / 60,
+      line: this.lineScale(),
+      ink: PENCIL,
+    });
+  }
+
   private highlighter(g: Phaser.GameObjects.Graphics, p: Pt, seed: number): void {
     g.fillStyle(HIGHLIGHTER, 0.55);
     for (let k = 0; k < 3; k++) {
@@ -812,6 +873,33 @@ export class GameScene extends Phaser.Scene {
 
   // --- HUD (drawn on the page, fixed to the screen) ---------------------------------------------
 
+  /**
+   * Checkpoint and exit splits (GMR-103): the run time there and, once a PB exists, the signed
+   * delta to the PB split, blue pen when faster and red pen when slower, for about 2 s.
+   */
+  private drawSplit(frame: RenderFrame): void {
+    const w = this.scale.width;
+    const split = frame.race?.split ?? null;
+    const age = split ? frame.current.tick - split.tick : Infinity;
+    const visible = split !== null && age >= 0 && age < SPLIT_VISIBLE_TICKS;
+    this.splitTime.setVisible(visible);
+    this.splitDelta.setVisible(visible && split.pbTicks !== null);
+    if (!visible) return;
+    const label = split.kind === 'exit' ? this.str('hud.finish') : this.str('hud.checkpoint');
+    this.splitTime.setPosition(w / 2, 44).setText(`${label} ${formatRaceTime(split.ticks)}`);
+    if (split.pbTicks !== null) {
+      const delta = formatDelta(split.ticks - split.pbTicks);
+      this.splitDelta
+        .setPosition(w / 2, 72)
+        .setColor(DELTA_COLOURS[delta.tone])
+        .setText(delta.text);
+    }
+  }
+
+  private str(key: string): string {
+    return this.opts.strings?.[key] ?? key;
+  }
+
   private drawHud(frame: RenderFrame): void {
     const { current } = frame;
     const w = this.scale.width;
@@ -830,12 +918,11 @@ export class GameScene extends Phaser.Scene {
       else g.lineBetween(gx - 4, gy + 18, gx + 24, gy + 4);
     }
 
-    const secs = current.runTick / 60;
-    const mm = Math.floor(secs / 60);
-    const ss = secs - mm * 60;
-    this.timer
-      .setPosition(w - 20, 12)
-      .setText(`${String(mm).padStart(2, '0')}:${ss.toFixed(2).padStart(5, '0')}`);
+    this.timer.setPosition(w - 20, 12).setText(formatRaceTime(current.runTick));
+    this.lifeTimer
+      .setPosition(w - 22, 50)
+      .setText(`${this.str('hud.life')} ${formatRaceTime(current.lifeTick)}`);
+    this.drawSplit(frame);
     this.title.setPosition(w / 2, 14);
     const completion = current.completion;
     this.exitResult.setVisible(

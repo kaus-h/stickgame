@@ -70,6 +70,7 @@ npm run check        # everything above except e2e
 
 - One Linear issue = one branch (use Linear's branch name, e.g. `kaustavkalra123/gmr-38-...`) = one PR.
 - PRs written by one agent are reviewed by the other agent. Since 2026-10-08 the orchestrating agent may merge to `main` itself once the PR is reviewed, CI is green and `npm run check` passes locally on the merged result (owner direction). Use merge commits, not squash, so stacked branches stay compatible.
+- Roles, routing between agents (Opus, BrowserGPT, Meta Muse, ChatGPT desktop/Codex, subagents), the patch inbox (`npm run inbox`) and brief templates: [docs/agents/workflow.md](docs/agents/workflow.md), [docs/agents/briefs.md](docs/agents/briefs.md). Milestone state: [docs/agents/HANDOFF.md](docs/agents/HANDOFF.md).
 - `npm run check` must pass. New sim logic needs unit tests; new state must be visible in the debug overlay.
 - Update the Linear issue with evidence before moving it to Done. Record resolved decisions in the canon docs, not only in comments.
 - Fill in the PR template checklist honestly; say what you didn't verify.

@@ -1,6 +1,6 @@
 import type { ExitAttempt, SimEvent, SimSnapshot } from '../../sim';
 import { BUILD_HASH } from '../../core';
-import type { RuntimeStats } from '../frame';
+import type { RaceView, RuntimeStats } from '../frame';
 
 const f2 = (n: number): string => n.toFixed(2);
 const v2 = (v: { x: number; y: number }): string => `${f2(v.x)}, ${f2(v.y)}`;
@@ -23,9 +23,11 @@ export function formatEvent(e: SimEvent): string {
     case 'exit':
       return `${t} exit after ${(e.attemptTicks / 60).toFixed(2)} s${e.attempt ? ` ${attemptLine(e.attempt)}` : ''}`;
     case 'checkpoint':
-      return `${t} checkpoint ${String(e.index)} (${e.id})`;
+      return `${t} checkpoint ${String(e.index)} (${e.id}) split ${(e.runTicks / 60).toFixed(2)} s`;
     case 'respawn':
-      return `${t} respawn at checkpoint ${String(e.checkpoint)}`;
+      return `${t} respawn at checkpoint ${String(e.checkpoint)}${e.voluntary ? ' (respawn key)' : ''}`;
+    case 'lifeEnd':
+      return `${t} life ${String(e.life)} ended (${e.reason}) after ${(e.lifeTicks / 60).toFixed(2)} s, run ${(e.runTicks / 60).toFixed(2)} s`;
     case 'exitMiss':
       return `${t} exit miss ${attemptLine(e.attempt)}`;
     case 'ropeAttach':
@@ -47,7 +49,7 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
   const d = s.lastDeath;
   return [
     `build ${BUILD_HASH}  sim ${String(stats.simHz)} Hz  steps/frame ${String(stats.stepsLastFrame)}  alpha ${f2(stats.alpha)}  frame ${stats.frameMsAvg.toFixed(1)}/${stats.frameMsMax.toFixed(1)} ms  step ${stats.simStepMsAvg.toFixed(3)} ms${stats.paused ? '  PAUSED' : ''}`,
-    `tick ${String(s.tick)}  run ${String(s.runTick)}  checkpoint ${String(s.checkpoint)}  attempt ${String(s.attemptTick)}  resets ${String(s.resets)}  deaths ${String(s.deaths)}  bodies ${String(stats.bodies)}  joints ${String(stats.joints)}`,
+    `tick ${String(s.tick)}  run ${String(s.runTick)}  life ${String(s.lifeTick)} (#${String(s.lives)})  level ${String(s.levelTick)}  checkpoint ${String(s.checkpoint)}  respawns ${String(s.respawns)}  attempt ${String(s.attemptTick)}  resets ${String(s.resets)}  deaths ${String(s.deaths)}  bodies ${String(stats.bodies)}  joints ${String(stats.joints)}`,
     `player ${p.mode}  pos ${v2(p.position)}  vel ${v2(p.velocity)}  |v| ${speed(p.velocity).toFixed(2)}  facing ${p.facing > 0 ? '→' : '←'}`,
     rope
       ? `rope a${String(rope.anchor)}  ${rope.locked ? 'locked' : 'paying out'} ${rope.taut ? 'taut' : 'slack'}  L ${rope.length.toFixed(3)} m  pivot ${v2(rope.point)}  since #${String(rope.attachedTick)}`
@@ -72,6 +74,16 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
       ? `last exit #${String(s.lastExitAttempt.tick)} ${attemptLine(s.lastExitAttempt)}`
       : 'last exit —',
   ];
+}
+
+/** Racing state (GMR-103): life clock, PB splits and whether the PB ghost is on. */
+export function formatRace(s: SimSnapshot, race: RaceView | undefined): string {
+  if (!race) return `race —  life ${String(s.lifeTick)}  lives ${String(s.lives)}`;
+  const pb = race.pb
+    ? `pb ${String(race.pb.ticks)} splits [${race.pb.splits.map((v) => (v === null ? '—' : String(v))).join(', ')}]`
+    : 'pb —';
+  const ghost = `ghost ${race.ghostEnabled ? 'on' : 'off'}${race.ghost ? ` @${String(race.ghost.current.runTick)}` : race.pb ? ' (idle)' : ''}`;
+  return `race life ${String(s.lifeTick)}  lives ${String(s.lives)}  ${pb}  ${ghost}`;
 }
 
 function attemptLine(a: ExitAttempt): string {
