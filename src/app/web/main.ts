@@ -57,7 +57,6 @@ async function start(): Promise<void> {
   // Debug overlay and tuning panel: dev builds, or ?debug on any build for diagnosis.
   const debug = import.meta.env.DEV || new URLSearchParams(window.location.search).has('debug');
   const tuning = parseRuntimeTuning(runtimeTuning);
-  const platform = new WebPlatformServices();
   // Audio (GMR-41): procedural SFX rendered at unlock; fire-and-forget, never delays play.
   const audio = new AudioEngine(parseSfxBank(sfxBank));
   const sfx = new SfxDirector(audio);
