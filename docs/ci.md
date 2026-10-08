@@ -18,7 +18,21 @@ Replay drift in a real browser is covered by `tests/e2e/replay-drift.spec.ts` in
 
 ## Bundle budgets
 
-`budgets.json` (proposed, not canon; raise only with evidence): initial JS gzip 450 KB, total `dist/` excluding sourcemaps 1536 KB. `npm run build && npm run bundle:report` prints a table and exits non-zero when over budget; CI also writes it to the job summary.
+`budgets.json` (proposed, not canon; raise only with evidence): initial JS gzip 235 KB, total `dist/` excluding sourcemaps 940 KB. GMR-99 measured 204.3 KB and 816.8 KB after the slim Phaser build and added ~15% headroom; before it the numbers were 374.4 KB and 1472.1 KB against budgets of 450 KB and 1536 KB. `npm run build && npm run bundle:report` prints a table and exits non-zero when over budget; CI also writes it to the job summary.
+
+### Slim Phaser build (GMR-99)
+
+The game does not ship Phaser's full prebuilt bundle (`phaser/dist/phaser.esm.js`). `vendor/phaser-custom.js` is an ESM entry over Phaser's CommonJS `src/` that exports only what `src/` uses at runtime: `Game`, `Scene`, `Scale`, `Cameras.Scene2D`, `GameObjects` (`GameObject`, `Graphics`, `Text`, `TileSprite`, `RenderTexture`) and the root constants (`AUTO`, `CANVAS`, ...). `scripts/build-phaser.mjs` bundles it with Rolldown (Vite's bundler) into `vendor/.build/phaser.mjs`, which is generated and git-ignored. It replaces Phaser's compile-time flags the way Phaser's own webpack configs do: `CANVAS_RENDERER` and `WEBGL_RENDERER` on; `WEBGL_DEBUG`, `EXPERIMENTAL`, `PLUGIN_3D`, `PLUGIN_CAMERA3D`, `PLUGIN_FBINSTANT` and `FEATURE_SOUND` off. A plugin in `vite.config.ts` rebuilds the bundle when the entry, the script or the Phaser version changes, and aliases `phaser` to it for the dev server, builds and e2e alike, so tests run the engine that ships. TypeScript still reads the full `phaser` package types. `node scripts/build-phaser.mjs` forces a rebuild.
+
+Cut: Physics (Arcade and Matter), Tilemaps, Sound (`game.sound` is `null`; our audio is `src/audio`), Tweens (`scene.tweens`), Loader (`scene.load`), the Data plugin (`scene.data`), the Lights plugin, Gamepad, camera controls, the Actions, Curves, Geom, Math, DOM, Display, Filters and Animations namespace roots, and every Game Object and `scene.add.*` factory except Graphics, Text, TileSprite and RenderTexture. Engine internals still pull in parts of these (texture and animation managers, both renderers, math helpers); only unused roots and self-registering plugins are gone.
+
+To re-add a Phaser system:
+
+1. Find what registers it in `node_modules/phaser/src`: the matching `index.js`, a `*Factory.js` for `scene.add.*`, or a `PluginCache.register` / `InputPluginCache.register` call for scene plugins.
+2. Import it in `vendor/phaser-custom.js`: a side-effect import for factories and plugins, plus an export if code uses it as `Phaser.X` at runtime. For sound, set `FEATURE_SOUND: true` in `scripts/build-phaser.mjs`.
+3. Restart `npm run dev` (the bundle rebuilds itself), then run `npm run build && npm run bundle:report`. Budgets go up only with evidence.
+
+Missing pieces type-check but are `undefined` at runtime (`scene.tweens`, `scene.load`, an unexported `Phaser.X`), so a new feature fails on first use rather than silently.
 
 ## Previews
 

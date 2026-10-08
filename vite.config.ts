@@ -2,7 +2,8 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { defineConfig } from 'vite';
+import { defineConfig, type Plugin } from 'vite';
+import { ensurePhaserBuild, phaserBuildFile } from './scripts/build-phaser.mjs';
 
 /** Every file under `dir`, sorted, so the hash does not depend on directory iteration order. */
 function listFiles(dir: string): string[] {
@@ -44,15 +45,33 @@ function computeBuildHash(): string {
   return `${sha}-${hash.digest('hex').slice(0, 8)}`;
 }
 
+/**
+ * Slim Phaser (GMR-99): `phaser` resolves to vendor/.build/phaser.mjs, built from
+ * vendor/phaser-custom.js by scripts/build-phaser.mjs (only the engine systems the game uses).
+ * The alias applies to the dev server, builds and e2e runs alike, so tests exercise the shipped
+ * engine. TypeScript keeps using the full `phaser` package types.
+ */
+function slimPhaser(): Plugin {
+  return {
+    name: 'slim-phaser',
+    async config() {
+      await ensurePhaserBuild();
+      return { resolve: { alias: [{ find: /^phaser$/, replacement: phaserBuildFile }] } };
+    },
+  };
+}
+
 export default defineConfig({
+  plugins: [slimPhaser()],
   define: {
     __BUILD_HASH__: JSON.stringify(computeBuildHash()),
   },
   build: {
     target: 'es2022',
     sourcemap: true,
-    // Phaser alone is ~1.4 MB minified; the download budget is enforced by scripts/bundle-report.mjs
-    // against budgets.json (GMR-53), so this only silences Vite's generic warning.
+    // The slim Phaser build (GMR-99) is still most of the main chunk; the download budget is
+    // enforced by scripts/bundle-report.mjs against budgets.json (GMR-53), so this only silences
+    // Vite's generic warning.
     chunkSizeWarningLimit: 1600,
     // The touch lab (GMR-27) ships with every build so preview links and the Capacitor shell can
     // open it on a phone; it is a separate page and never loads with the game.

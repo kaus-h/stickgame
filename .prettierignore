@@ -7,3 +7,4 @@ package-lock.json
 native
 assets
 .claude/worktrees/
+vendor/.build
