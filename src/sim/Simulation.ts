@@ -186,7 +186,7 @@ export class Simulation {
   } | null = null;
   /** Rope presses and releases in input order, applied once anchors are placed for the tick. */
   private ropeActions: ('press' | 'release')[] = [];
-  private readonly assist: TargetAssist;
+  private assist: TargetAssist;
 
   constructor(
     private tuning: SimTuning,
@@ -197,6 +197,14 @@ export class Simulation {
     this.assist = options.assist ?? STANDARD_ASSIST;
     physics.setGravity(vec2(0, tuning.gravity));
     this.createLevelBodies();
+  }
+
+  /**
+   * Change the opt-in aim assist (settings, GMR-47). Call only at an attempt boundary (level start
+   * or restart) so a replay's recorded tier stays true for the whole attempt.
+   */
+  setAssist(assist: TargetAssist): void {
+    this.assist = assist;
   }
 
   /** Authoring reload: discard all attempt state while retaining the physics world and tuning. */

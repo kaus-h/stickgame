@@ -38,6 +38,10 @@ export interface GameSceneOptions {
   readonly onEvents: (listener: (events: readonly SimEvent[]) => void) => () => void;
   /** Build the development overlay (dev builds or ?debug). Production presentation omits it. */
   readonly debug?: boolean;
+  /** Player setting override for reduced motion; undefined follows the system preference. */
+  readonly reducedMotion?: () => boolean | undefined;
+  /** Draw the in-canvas exit result card (labs and tests); the app menu UI replaces it. */
+  readonly showExitResult?: boolean;
   /** On-screen touch controls this frame (GMR-27); null or inactive hides them. */
   readonly touchControls?: () => TouchControlsViewState | null;
 }
@@ -105,8 +109,9 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.feedback = new FailureFeedback();
     this.reducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      this.opts.reducedMotion?.() ??
+      (typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
@@ -757,7 +762,9 @@ export class GameScene extends Phaser.Scene {
       .setText(`${String(mm).padStart(2, '0')}:${ss.toFixed(2).padStart(5, '0')}`);
     this.title.setPosition(w / 2, 14);
     const completion = current.completion;
-    this.exitResult.setVisible(completion !== null && completion.accepted);
+    this.exitResult.setVisible(
+      this.opts.showExitResult !== false && completion !== null && completion.accepted,
+    );
     if (completion?.accepted) {
       this.exitResult
         .setPosition(w / 2, this.scale.height / 2)
