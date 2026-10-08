@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m, vec2, type Vec2 } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
+import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { dashedInk, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
 
@@ -51,8 +52,8 @@ export class GameScene extends Phaser.Scene {
   private overlay: DebugOverlay | null = null;
   private splats: Splat[] = [];
   private unsubscribe: (() => void) | null = null;
-  private camX = 0;
-  private camY = 0;
+  /** Camera center in world meters (render/camera.ts). */
+  private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
 
   constructor(private readonly opts: GameSceneOptions) {
@@ -100,8 +101,7 @@ export class GameScene extends Phaser.Scene {
     });
     this.fitCamera();
     const spawn = this.opts.level.spawn;
-    this.camX = m(spawn.x);
-    this.camY = m(spawn.y);
+    this.camCenter = spawn;
   }
 
   override update(time: number, deltaMs: number): void {
@@ -115,33 +115,26 @@ export class GameScene extends Phaser.Scene {
 
   // --- camera ----------------------------------------------------------------------------------
 
-  /** Show about 12 m of world height on any screen; aspect ratio changes framing only (doc 03). */
+  /**
+   * Zoom depends only on the viewport (no dynamic zoom during play, GMR-25): ~12 m of world
+   * height, widened on narrow screens so anchors at full rope range ahead stay visible.
+   */
   private fitCamera(): void {
     const cam = this.cameras.main;
-    cam.setZoom(this.scale.height / m(12));
+    cam.setZoom(cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA) / m(1));
     const b = this.opts.level.bounds;
     cam.setBounds(m(b.minX), m(b.minY), m(b.maxX - b.minX), m(b.maxY - b.minY));
   }
 
   private followCamera({ previous, current, alpha }: RenderFrame, dt: number): void {
-    const p = lerpV(
-      previous.player.position,
-      current.player.position,
-      this.blend(previous, current, alpha),
-    );
-    const v = current.player.velocity;
-    // Gentle lookahead in the direction of travel so required anchors appear early (doc 03).
-    const targetX = p.x + m(Math.max(-3, Math.min(3, v.x * 0.35)));
-    const targetY = p.y + m(Math.max(-1.5, Math.min(2, v.y * 0.12))) - m(1);
-    const k = 1 - Math.exp(-dt * 6);
-    if (current.attemptTick < previous.attemptTick || current.attemptTick <= 1) {
-      this.camX = targetX;
-      this.camY = targetY;
-    } else {
-      this.camX += (targetX - this.camX) * k;
-      this.camY += (targetY - this.camY) * k;
-    }
-    this.cameras.main.centerOn(this.camX, this.camY);
+    const t = this.blend(previous, current, alpha);
+    const p = previous.player.position;
+    const c = current.player.position;
+    const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
+    const target = cameraTarget(position, current.player.velocity, DEFAULT_CAMERA);
+    const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
+    this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);
+    this.cameras.main.centerOn(m(this.camCenter.x), m(this.camCenter.y));
   }
 
   private blend(previous: SimSnapshot, current: SimSnapshot, alpha: number): number {
@@ -178,9 +171,44 @@ export class GameScene extends Phaser.Scene {
       const dx = a.path.to.x - a.position.x;
       const dy = a.path.to.y - a.position.y;
       const len = Math.hypot(dx, dy);
+      if (len < 1e-6) continue;
       g.fillStyle(PENCIL, 0.7);
       for (let d = 0; d <= len; d += 0.35)
         g.fillCircle(m(a.position.x + (dx * d) / len), m(a.position.y + (dy * d) / len), 1.6);
+      // Ink stop bars where the anchor turns round, and pencil chevrons just inside each end
+      // pointing at it, so the extent and the back-and-forth read before the anchor gets there.
+      const ux = dx / len;
+      const uy = dy / len;
+      const ends: [Vec2, number][] = [
+        [a.position, -1],
+        [a.path.to, 1],
+      ];
+      ends.forEach(([e, dir], k) => {
+        const bar = 0.32;
+        strokeInk(
+          g,
+          [
+            { x: m(e.x - uy * bar), y: m(e.y + ux * bar) },
+            { x: m(e.x + uy * bar), y: m(e.y - ux * bar) },
+          ],
+          2.2,
+          INK,
+          0.9,
+          k + 11,
+        );
+        const tip = { x: e.x - ux * dir * 0.45, y: e.y - uy * dir * 0.45 };
+        const back = 0.22;
+        const wing = 0.16;
+        g.lineStyle(1.8, PENCIL, 0.9);
+        for (const side of [-1, 1]) {
+          g.lineBetween(
+            m(tip.x),
+            m(tip.y),
+            m(tip.x - ux * dir * back - uy * wing * side),
+            m(tip.y - uy * dir * back + ux * wing * side),
+          );
+        }
+      });
     }
 
     solids.forEach((s, i) => {
@@ -245,6 +273,8 @@ export class GameScene extends Phaser.Scene {
       const targeted = current.target?.valid === true && current.target.anchor === i;
       if (active || targeted) this.highlighter(g, p, i);
       this.drawAnchor(g, p, i);
+      const v = current.anchorVelocities[i];
+      if (v) this.drawAnchorHeading(g, p, v, i);
     });
 
     // Last attempt: a faint red-pen cross where it ended and, if tethered, a pencil trace of
@@ -342,6 +372,32 @@ export class GameScene extends Phaser.Scene {
     g.fillStyle(INK, 1);
     g.fillRect(p.x - m(0.08), p.y - r - m(0.2), m(0.16), m(0.14));
     g.lineStyle(2.4, INK, 1).lineBetween(p.x, p.y - r - m(0.08), p.x, p.y - r);
+  }
+
+  /**
+   * Moving anchors carry a small ink arrow off the ring in the direction they travel now, growing
+   * with speed and vanishing at the turn, so the player can read where the pivot will be.
+   */
+  private drawAnchorHeading(g: Phaser.GameObjects.Graphics, p: Pt, v: Vec2, i: number): void {
+    const speed = Math.hypot(v.x, v.y);
+    if (speed < 0.3) return;
+    const ux = v.x / speed;
+    const uy = v.y / speed;
+    const r = m(this.opts.level.anchors[i]?.radius ?? 0.4);
+    const start = { x: p.x + ux * (r + m(0.12)), y: p.y + uy * (r + m(0.12)) };
+    const len = m(0.15 + 0.06 * speed);
+    const tip = { x: start.x + ux * len, y: start.y + uy * len };
+    const head = m(0.14);
+    g.lineStyle(2.2, INK, 0.85);
+    g.lineBetween(start.x, start.y, tip.x, tip.y);
+    for (const side of [-1, 1]) {
+      g.lineBetween(
+        tip.x,
+        tip.y,
+        tip.x - ux * head - uy * head * 0.7 * side,
+        tip.y - uy * head + ux * head * 0.7 * side,
+      );
+    }
   }
 
   private handPoint(player: Pt, anchor: Pt): Pt {

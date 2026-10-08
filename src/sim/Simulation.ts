@@ -1,5 +1,6 @@
-import { dcos, dsin, SIM_DT, vec2, type Intent, type Vec2 } from '../core';
+import { SIM_DT, vec2, type Intent, type Vec2 } from '../core';
 import type { PhysicsAdapter, PhysicsStats } from '../physics';
+import { anchorPathState } from './anchorPath';
 import { levelSegments, type LevelDef } from './level';
 import { resolveTarget, type RopeInvalidReason, type TargetResolution } from './targeting';
 import type { SimTuning } from './tuning';
@@ -43,6 +44,8 @@ export interface SimSnapshot {
   readonly rope: RopeSnapshot | null;
   /** Current anchor positions (moving anchors move). */
   readonly anchors: readonly Vec2[];
+  /** Path velocity of each anchor at this tick, m/s (zero for fixed anchors). */
+  readonly anchorVelocities: readonly Vec2[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
   /** Contacts that began during the last step (debug and feedback; never gameplay input). */
@@ -169,7 +172,10 @@ export class Simulation {
       velocity: vec2(0, 0),
       radius: tuning.player.radius,
     });
-    this.anchorIds = level.anchors.map((a) => physics.createKinematicAnchor(a.position));
+    // Created where the path puts them at attempt tick 0, so reset restores them exactly.
+    this.anchorIds = level.anchors.map((a) =>
+      physics.createKinematicAnchor(anchorPathState(a, 0).position),
+    );
   }
 
   step(intents: readonly Intent[]): void {
@@ -224,6 +230,9 @@ export class Simulation {
       },
       rope: this.rope ? this.ropeSnapshot(s.position, anchors) : null,
       anchors,
+      anchorVelocities: this.level.anchors.map(
+        (a) => anchorPathState(a, this.attemptTicks * SIM_DT).velocity,
+      ),
       aim: this.aim,
       lastDeath: this.lastDeath,
       contacts: this.lastContacts,
@@ -530,20 +539,22 @@ export class Simulation {
     }
   }
 
+  /**
+   * Place each moving anchor exactly on its path for this tick. The velocity handed to physics is
+   * the secant to next tick's path point, so the anchor ends the step exactly where the path says
+   * and never jumps at the next placement (GMR-26: a per-tick jump of a·dt²/2 made a taut rope
+   * flicker slack under an accelerating pivot).
+   */
   private moveAnchors(): void {
     const t = this.attemptTicks * SIM_DT;
     this.level.anchors.forEach((def, i) => {
       if (!def.path) return;
-      // Smooth ping-pong: position = start + (to - start) * (1 - cos(2πt/T)) / 2.
-      const w = (2 * Math.PI) / def.path.period;
-      const k = (1 - dcos(w * t)) / 2;
-      const dk = (w * dsin(w * t)) / 2;
-      const dx = def.path.to.x - def.position.x;
-      const dy = def.path.to.y - def.position.y;
+      const now = anchorPathState(def, t).position;
+      const next = anchorPathState(def, t + SIM_DT).position;
       this.physics.moveKinematicAnchor(
         this.anchorIds[i] as number,
-        vec2(def.position.x + dx * k, def.position.y + dy * k),
-        vec2(dx * dk, dy * dk),
+        now,
+        vec2((next.x - now.x) / SIM_DT, (next.y - now.y) / SIM_DT),
       );
     });
   }
