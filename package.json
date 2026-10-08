@@ -30,7 +30,8 @@
     "levels:validate": "npm run levels:compile-schema -- --check && node scripts/validate-levels.mjs",
     "prebuild": "npm run levels:validate",
     "levels:compile-schema": "node scripts/compile-level-schema.mjs",
-    "levels:solve": "node scripts/solve-levels.mjs"
+    "levels:solve": "node scripts/solve-levels.mjs",
+    "inbox": "node scripts/agents/patch-inbox.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
