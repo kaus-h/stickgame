@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import lab01 from '../../content/levels/lab-01.json';
 import runtimeJson from '../../content/tuning/runtime.json';
-import { LevelError, parseLevel } from './level';
+import { DEFAULT_ANCHOR_RADIUS, LevelError, parseLevel } from './level';
 import { parseRuntimeTuning, TuningError } from './tuning';
 
 describe('parseRuntimeTuning', () => {
@@ -39,5 +39,12 @@ describe('parseLevel', () => {
     const bad = structuredClone(lab01) as { solids: unknown[] };
     bad.solids[0] = { id: 'x', rect: { x: 0, y: 0, w: -1, h: 1 } };
     expect(() => parseLevel(bad)).toThrow('level.solids[0].rect');
+  });
+
+  it('defaults anchor impact radius and rejects non-positive radii', () => {
+    expect(parseLevel(lab01).anchors.every((a) => a.radius === DEFAULT_ANCHOR_RADIUS)).toBe(true);
+    const bad = structuredClone(lab01) as { anchors: Record<string, unknown>[] };
+    (bad.anchors[0] as Record<string, unknown>).radius = 0;
+    expect(() => parseLevel(bad)).toThrow('level.anchors[0].radius');
   });
 });

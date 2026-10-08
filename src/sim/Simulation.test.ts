@@ -192,3 +192,50 @@ describe('player controller', () => {
     expect(a.snapshot()).toEqual(b.snapshot());
   });
 });
+
+describe('rope targeting in the simulation', () => {
+  const withAnchors: LevelDef = {
+    ...level,
+    solids: [...level.solids, box('wall', 6, 2, 0.5, 6)],
+    anchors: [
+      { id: 'near', position: vec2(4, 3), radius: 0.4 },
+      { id: 'behind-wall', position: vec2(9, 3), radius: 0.4 },
+      { id: 'moving', position: vec2(1, 2), radius: 0.4, path: { to: vec2(3, 2), period: 2 } },
+    ],
+  };
+
+  it('has no target until there is an aim point', () => {
+    const sim = make(withAnchors);
+    run(sim, 10);
+    expect(sim.snapshot().target).toBeNull();
+  });
+
+  it('resolves anchor, impact point, distance and validity every tick', () => {
+    const sim = make(withAnchors);
+    run(sim, 10);
+    sim.step([{ type: 'ropeAim', target: vec2(4.1, 3.2) }]);
+    const s = sim.snapshot();
+    expect(s.target).toMatchObject({ valid: true, anchor: 0, impact: vec2(4.1, 3.2) });
+    const d = Math.hypot(4.1 - s.player.position.x, 3.2 - s.player.position.y);
+    expect(s.target?.distance).toBeCloseTo(d, 12);
+  });
+
+  it('reports a blocked shot through level geometry and a background miss', () => {
+    const sim = make(withAnchors);
+    run(sim, 10);
+    sim.step([{ type: 'ropeAim', target: vec2(9, 3) }]);
+    expect(sim.snapshot().target).toMatchObject({ valid: false, reason: 'blocked', anchor: 1 });
+    sim.step([{ type: 'ropeAim', target: vec2(15, -6) }]);
+    expect(sim.snapshot().target).toMatchObject({ valid: false, reason: 'no-anchor' });
+  });
+
+  it('tracks a moving anchor with a fixed aim point', () => {
+    const sim = make(withAnchors);
+    sim.step([{ type: 'ropeAim', target: vec2(1, 2) }]);
+    const first = sim.snapshot().target;
+    run(sim, 59); // half a period: the anchor is now at (3, 2), out of the selection region
+    const later = sim.snapshot().target;
+    expect(first).toMatchObject({ anchor: 2 });
+    expect(later?.anchor).not.toBe(2);
+  });
+});

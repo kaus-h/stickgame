@@ -4,6 +4,9 @@ import type { AnchorDef, LevelDef, SolidDef } from '../sim';
 /** Level JSON schema version understood by this build (doc 32). */
 export const LEVEL_SCHEMA_VERSION = 1;
 
+/** Anchor impact radius when level data omits one, m. */
+export const DEFAULT_ANCHOR_RADIUS = 0.4;
+
 export class LevelError extends Error {}
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
@@ -55,7 +58,13 @@ function solid(v: unknown, path: string): SolidDef {
 
 function anchor(v: unknown, path: string): AnchorDef {
   if (!isRecord(v)) fail(path, 'must be an object');
-  const base = { id: str(v.id, `${path}.id`), position: point(v.position, `${path}.position`) };
+  const radius = v.radius === undefined ? DEFAULT_ANCHOR_RADIUS : num(v.radius, `${path}.radius`);
+  if (radius <= 0) fail(`${path}.radius`, 'must be positive');
+  const base = {
+    id: str(v.id, `${path}.id`),
+    position: point(v.position, `${path}.position`),
+    radius,
+  };
   if (v.path === undefined) return base;
   if (!isRecord(v.path)) fail(`${path}.path`, 'must be an object');
   const period = num(v.path.period, `${path}.path.period`);

@@ -1,6 +1,7 @@
 import { dcos, dsin, SIM_DT, vec2, type Intent, type Vec2 } from '../core';
 import type { PhysicsAdapter, PhysicsStats } from '../physics';
 import { levelSegments, type LevelDef } from './level';
+import { resolveTarget, type RopeInvalidReason, type TargetResolution } from './targeting';
 import type { SimTuning } from './tuning';
 
 export type PlayerMode = 'grounded' | 'air' | 'tethered';
@@ -35,8 +36,8 @@ export interface SimSnapshot {
   readonly anchors: readonly Vec2[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
-  /** Index of the anchor the aim currently selects, if any. */
-  readonly aimAnchor: number | null;
+  /** What a rope press would do right now (anchor, impact point, distance, validity). */
+  readonly target: TargetResolution | null;
 }
 
 export type DeathCause = 'hazard' | 'out-of-bounds';
@@ -61,7 +62,7 @@ export type SimEvent =
       readonly at: Vec2;
     };
 
-export type RopeInvalidReason = 'no-anchor' | 'too-far' | 'too-close' | 'blocked';
+export type { RopeInvalidReason };
 
 export interface SimStats {
   readonly tick: number;
@@ -160,7 +161,7 @@ export class Simulation {
         : null,
       anchors,
       aim: this.aim,
-      aimAnchor: null,
+      target: this.target(s.position, anchors),
     };
   }
 
@@ -184,6 +185,20 @@ export class Simulation {
   dispose(): void {
     this.physics.dispose();
     this.events = [];
+  }
+
+  private target(player: Vec2, anchors: readonly Vec2[]): TargetResolution | null {
+    if (!this.aim) return null;
+    return resolveTarget(
+      player,
+      this.aim,
+      anchors.map((position, i) => ({
+        position,
+        radius: (this.level.anchors[i] as LevelDef['anchors'][number]).radius,
+      })),
+      this.tuning.rope,
+      (from, to) => this.physics.raycast(from, to),
+    );
   }
 
   // --- intents and control ---------------------------------------------------------------------
