@@ -50,7 +50,7 @@ test('level select locks unplayed levels; settings persist across a reload', asy
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.getByRole('button', { name: 'Levels' }).click();
-  await expect(page.locator('button[data-level="lab-01"]')).toBeEnabled();
+  await expect(page.locator('button[data-level="1-1"]')).toBeEnabled();
   await expect(page.locator('button[data-level="lab-moving"]')).toBeDisabled();
   await page.getByRole('button', { name: 'Back' }).click();
 

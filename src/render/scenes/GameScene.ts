@@ -42,6 +42,8 @@ export interface GameSceneOptions {
   readonly reducedMotion?: () => boolean | undefined;
   /** Draw the in-canvas exit result card (labs and tests); the app menu UI replaces it. */
   readonly showExitResult?: boolean;
+  /** Level-design review: fit the whole level on screen and hold the camera still (?overview=1). */
+  readonly overview?: boolean;
   /** On-screen touch controls this frame (GMR-27); null or inactive hides them. */
   readonly touchControls?: () => TouchControlsViewState | null;
 }
@@ -211,12 +213,23 @@ export class GameScene extends Phaser.Scene {
    */
   private fitCamera(): void {
     const cam = this.cameras.main;
-    cam.setZoom(cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA) / m(1));
     const b = this.opts.level.bounds;
+    if (this.opts.overview) {
+      const zoom = Math.min(
+        this.scale.width / m(b.maxX - b.minX),
+        this.scale.height / m(b.maxY - b.minY),
+      );
+      cam.setZoom(zoom);
+      cam.removeBounds();
+      cam.centerOn(m((b.minX + b.maxX) / 2), m((b.minY + b.maxY) / 2));
+      return;
+    }
+    cam.setZoom(cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA) / m(1));
     cam.setBounds(m(b.minX), m(b.minY), m(b.maxX - b.minX), m(b.maxY - b.minY));
   }
 
   private followCamera({ previous, current, alpha }: RenderFrame, dt: number): void {
+    if (this.opts.overview) return;
     const t = this.blend(previous, current, alpha);
     const p = previous.player.position;
     const c = current.player.position;

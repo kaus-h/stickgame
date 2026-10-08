@@ -1,0 +1,103 @@
+{
+  "$schema": "../level.schema.json",
+  "version": 2,
+  "id": "1-1",
+  "name": "First Rope",
+  "section": "section-1",
+  "telemetry": { "levelId": "1-1" },
+  "spawn": [3, 7.65],
+  "bounds": { "minX": -1, "minY": -6, "maxX": 142, "maxY": 13 },
+  "killY": 14,
+  "solids": [
+    { "id": "wall-left", "rect": { "x": -1, "y": -6, "w": 1, "h": 19 } },
+    { "id": "wall-right", "rect": { "x": 141, "y": -6, "w": 1, "h": 19 } },
+    { "id": "red-ink", "kind": "hazard", "rect": { "x": 0, "y": 11.4, "w": 141, "h": 1.6 } },
+
+    { "id": "c1-start", "rect": { "x": 0, "y": 8, "w": 10, "h": 3.4 } },
+    { "id": "c1-landing", "rect": { "x": 13.5, "y": 8, "w": 8.5, "h": 3.4 } },
+
+    { "id": "c2-far", "rect": { "x": 31, "y": 8, "w": 7, "h": 3.4 } },
+
+    { "id": "c3-high-ledge", "rect": { "x": 47, "y": 6, "w": 9, "h": 5.4 } },
+
+    { "id": "c4-pool", "kind": "hazard", "rect": { "x": 56, "y": 8.3, "w": 12, "h": 3.1 } },
+    { "id": "c4-far", "rect": { "x": 68, "y": 6, "w": 8, "h": 5.4 } },
+
+    { "id": "c5-far", "rect": { "x": 90, "y": 6, "w": 8, "h": 5.4 } },
+
+    { "id": "c6-ceiling", "rect": { "x": 98, "y": -1.6, "w": 24, "h": 1.2 } },
+    { "id": "c6-pool", "kind": "hazard", "rect": { "x": 98, "y": 9, "w": 24, "h": 2.4 } },
+    { "id": "c7-ledge", "rect": { "x": 122, "y": 6, "w": 19, "h": 5.4 } },
+    { "id": "c7-roof", "rect": { "x": 132, "y": 2.4, "w": 9, "h": 0.6 } }
+  ],
+  "anchors": [
+    { "id": "a2", "position": [26.5, 2], "requiredFrom": [21.5, 7.65] },
+    { "id": "a3", "position": [42.5, 1.5] },
+    { "id": "r3", "position": [45.5, 4.5] },
+    { "id": "a4", "position": [62, 0] },
+    { "id": "a5", "position": [80, 1] },
+    { "id": "a6a", "position": [104, 1.6] },
+    { "id": "a6b", "position": [115, 1.6] },
+    { "id": "m6", "position": [110, -3.6] }
+  ],
+  "chambers": [
+    {
+      "id": "1-1-c1",
+      "region": { "min": [0, -6], "max": [22, 11.4] },
+      "problem": "Run and jump a 3.5 m gap over red ink.",
+      "challengeFamily": "low-floor"
+    },
+    {
+      "id": "1-1-c2",
+      "region": { "min": [22, -6], "max": [38, 11.4] },
+      "problem": "Cross a 9 m gap with one rope: connect, swing, release.",
+      "challengeFamily": "rope-length"
+    },
+    {
+      "id": "1-1-c3",
+      "region": { "min": [38, -6], "max": [56, 11.4] },
+      "problem": "Reach a higher ledge; a low recovery anchor catches a short swing.",
+      "challengeFamily": "recovery"
+    },
+    {
+      "id": "1-1-c4",
+      "region": { "min": [56, -6], "max": [68, 11.4] },
+      "problem": "Too long: an early connection dips into the red pool; jump first and connect near the apex.",
+      "challengeFamily": "rope-length"
+    },
+    {
+      "id": "1-1-c5",
+      "region": { "min": [68, -6], "max": [90, 11.4] },
+      "problem": "Too short: connect early on the ground for a long rope that carries to the far ledge.",
+      "challengeFamily": "rope-length"
+    },
+    {
+      "id": "1-1-c6",
+      "region": { "min": [98, -6], "max": [122, 11.4] },
+      "problem": "Chain two ropes between a low ceiling and a high red pool.",
+      "challengeFamily": "low-floor"
+    },
+    {
+      "id": "1-1-c7",
+      "region": { "min": [122, -6], "max": [141, 11.4] },
+      "problem": "Arrive in the wide compartment from its open side.",
+      "challengeFamily": "exit"
+    }
+  ],
+  "checkpoints": [
+    { "id": "1-1-cpA", "position": [50, 5.65] },
+    { "id": "1-1-cpB", "position": [93, 5.65] }
+  ],
+  "exit": {
+    "id": "1-1-exit",
+    "family": "wide",
+    "min": [134, 3],
+    "max": [140, 6],
+    "entry": {
+      "side": "left",
+      "angle": { "min": 0, "max": 60 },
+      "speed": { "min": 3, "max": 7.5 },
+      "alignment": { "min": 0.15, "max": 0.9 }
+    }
+  }
+}

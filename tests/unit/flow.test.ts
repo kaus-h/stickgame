@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import chapterJson from '../../content/chapters/chapter-1.json';
 import strings from '../../content/strings/en.json';
@@ -14,7 +14,7 @@ import {
 } from '../../src/app/web/ui/flow';
 import type { LevelRecord } from '../../src/platform';
 
-const known = new Set(['lab-01', 'lab-exit-wide', 'lab-moving', 'lab-collision']);
+const known = new Set(readdirSync('content/levels').map((f) => f.replace(/.json$/, '')));
 const chapter = parseChapter(chapterJson, known);
 const cleared: LevelRecord = {
   cleared: true,
@@ -30,29 +30,29 @@ describe('game flow model (GMR-47)', () => {
   });
 
   it('rejects unknown or duplicate levels with a path', () => {
-    expect(() => parseChapter(chapterJson, new Set(['lab-01']))).toThrow(ChapterError);
+    expect(() => parseChapter(chapterJson, new Set(['1-1']))).toThrow(ChapterError);
     const dup = structuredClone(chapterJson);
-    dup.sections[0]?.levels.push({ id: 'lab-01', label: 'x', placeholder: true });
+    dup.sections[0]?.levels.push({ id: '1-1', label: 'x', placeholder: true });
     expect(() => parseChapter(dup, known)).toThrow('listed twice');
   });
 
   it('unlocks the first level, then each level after a clear; cleared levels stay open', () => {
-    expect(isUnlocked(chapter, 'lab-01', {})).toBe(true);
+    expect(isUnlocked(chapter, '1-1', {})).toBe(true);
     expect(isUnlocked(chapter, 'lab-exit-wide', {})).toBe(false);
-    expect(isUnlocked(chapter, 'lab-exit-wide', { 'lab-01': cleared })).toBe(true);
-    expect(isUnlocked(chapter, 'lab-moving', { 'lab-01': cleared })).toBe(false);
+    expect(isUnlocked(chapter, 'lab-exit-wide', { '1-1': cleared })).toBe(true);
+    expect(isUnlocked(chapter, 'lab-moving', { '1-1': cleared })).toBe(false);
     expect(isUnlocked(chapter, 'not-in-chapter', {})).toBe(false);
   });
 
   it('continues at the first unlocked, uncleared level', () => {
-    expect(continueLevel(chapter, {}).id).toBe('lab-01');
-    expect(continueLevel(chapter, { 'lab-01': cleared }).id).toBe('lab-exit-wide');
-    const all = { 'lab-01': cleared, 'lab-exit-wide': cleared, 'lab-moving': cleared };
+    expect(continueLevel(chapter, {}).id).toBe('1-1');
+    expect(continueLevel(chapter, { '1-1': cleared }).id).toBe('lab-exit-wide');
+    const all = { '1-1': cleared, 'lab-exit-wide': cleared, 'lab-moving': cleared };
     expect(continueLevel(chapter, all).id).toBe('lab-moving');
   });
 
   it('knows the next level and the end of the chapter', () => {
-    expect(nextLevel(chapter, 'lab-01')?.id).toBe('lab-exit-wide');
+    expect(nextLevel(chapter, '1-1')?.id).toBe('lab-exit-wide');
     expect(nextLevel(chapter, 'lab-moving')).toBeNull();
   });
 
