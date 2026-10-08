@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   checkPath,
+  detectTask,
   extractErrors,
   parseBundle,
   parseTaskName,
@@ -103,5 +104,25 @@ describe('patch inbox core (docs/agents/workflow.md)', () => {
       slug: 'gmr-123-add-spikes',
     });
     expect(parseTaskName('misc.patch').issue).toBeNull();
+  });
+
+  it('recognises a renamed download by its TASK header, and only then', () => {
+    const bundle = [
+      '===== TASK: GMR-12-spikes =====',
+      '===== FILE: a.ts =====',
+      'x',
+      '===== END FILE =====',
+    ].join('\n');
+    expect(detectTask(bundle)).toEqual({ name: 'GMR-12-spikes', ext: '.bundle.txt' });
+    expect(
+      detectTask(['TASK: GMR-12-fix', 'diff --git a/a.ts b/a.ts', '--- a/a.ts'].join('\n')),
+    ).toEqual({
+      name: 'GMR-12-fix',
+      ext: '.patch',
+    });
+    expect(detectTask('some log file\nTASK: x')).toBeNull();
+    expect(detectTask('===== FILE: a.ts =====')).toBeNull();
+    expect(detectTask('TASK: ../../evil\n===== FILE: a.ts =====')).toBeNull();
+    expect(parseBundle(bundle).writes).toEqual([{ path: 'a.ts', content: 'x\n' }]);
   });
 });
