@@ -148,6 +148,10 @@ async function start(): Promise<void> {
     Object.assign(window, {
       __stickgame: {
         snapshot: () => runtime.sim.snapshot(),
+        resources: () => ({
+          textures: game.textures.getTextureKeys().length,
+          cameras: devScene.cameras.cameras.length,
+        }),
         worldToScreen: (x: number, y: number) => devScene.worldToScreen(vec2(x, y)),
         screenToWorld: (x: number, y: number) => devScene.screenToWorld(x, y),
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),

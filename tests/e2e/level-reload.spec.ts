@@ -4,6 +4,7 @@ import { expect, test } from '@playwright/test';
 interface LevelProbe {
   level(): { id: string; revision: number; spawn: { x: number; y: number }; error: string | null };
   snapshot(): { player: { position: { x: number; y: number } }; rope: unknown };
+  resources(): { textures: number; cameras: number };
 }
 
 test('a real JSON edit hot reloads geometry and resets without a document reload', async ({
@@ -21,6 +22,10 @@ test('a real JSON edit hot reloads geometry and resets without a document reload
   const probe = () =>
     page.evaluate(() => (window as unknown as { __stickgame: LevelProbe }).__stickgame.level());
   const initial = await probe();
+  const resources = () =>
+    page.evaluate(() => (window as unknown as { __stickgame: LevelProbe }).__stickgame.resources());
+  await expect.poll(async () => (await resources()).cameras).toBe(2);
+  const initialResources = await resources();
   try {
     await page.keyboard.down('ArrowRight');
     await expect
@@ -65,6 +70,27 @@ test('a real JSON edit hot reloads geometry and resets without a document reload
     await writeFile(file, original);
     await expect.poll(async () => (await probe()).revision).toBe(2);
     expect((await probe()).error).toBeNull();
+    // Real Phaser resources: repeated same-size page baking must release its textures/cameras.
+    for (let revision = 3; revision <= 10; revision++) {
+      await writeFile(
+        file,
+        JSON.stringify({ ...source, name: `Reload ${String(revision)}` }, null, 2) + '\n',
+      );
+      await expect.poll(async () => (await probe()).revision).toBe(revision);
+      await page.evaluate(
+        () =>
+          new Promise<void>((resolve) =>
+            requestAnimationFrame(() => {
+              requestAnimationFrame(() => {
+                resolve();
+              });
+            }),
+          ),
+      );
+      await expect.poll(async () => (await resources()).textures).toBe(initialResources.textures);
+      expect((await resources()).cameras).toBe(initialResources.cameras);
+    }
+    expect((await resources()).textures).toBe(initialResources.textures);
   } finally {
     await writeFile(file, original);
   }
