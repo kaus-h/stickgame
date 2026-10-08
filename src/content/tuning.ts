@@ -1,4 +1,3 @@
-import { vec2, type Vec2 } from '../core';
 import type { SimTuning } from '../sim';
 
 /** Central runtime tuning (content/tuning/runtime.json). The step size itself is fixed at SIM_DT. */
@@ -26,18 +25,15 @@ function rec(obj: Record<string, unknown>, key: string, path: string): Record<st
   return v;
 }
 
-function vec(obj: Record<string, unknown>, key: string, path: string): Vec2 {
-  const v = rec(obj, key, path);
-  return vec2(num(v, 'x', `${path}.${key}`), num(v, 'y', `${path}.${key}`));
-}
-
 /** Validate untrusted JSON into RuntimeTuning; throws TuningError with the offending path. */
 export function parseRuntimeTuning(json: unknown): RuntimeTuning {
   if (!isRecord(json)) throw new TuningError('tuning must be an object');
   const clock = rec(json, 'clock', 'tuning');
   const sim = rec(json, 'sim', 'tuning');
-  const probe = rec(sim, 'probe', 'tuning.sim');
-  const bounds = rec(probe, 'bounds', 'tuning.sim.probe');
+  const player = rec(sim, 'player', 'tuning.sim');
+  const rope = rec(sim, 'rope', 'tuning.sim');
+  const P = 'tuning.sim.player';
+  const R = 'tuning.sim.rope';
 
   return {
     clock: {
@@ -45,17 +41,27 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
       maxFrameDelta: num(clock, 'maxFrameDelta', 'tuning.clock', 0),
     },
     sim: {
-      gravity: num(sim, 'gravity', 'tuning.sim'),
+      gravity: num(sim, 'gravity', 'tuning.sim', 0),
       physicsSubsteps: num(sim, 'physicsSubsteps', 'tuning.sim', 1),
-      probe: {
-        start: vec(probe, 'start', 'tuning.sim.probe'),
-        velocity: vec(probe, 'velocity', 'tuning.sim.probe'),
-        bounds: {
-          minX: num(bounds, 'minX', 'tuning.sim.probe.bounds'),
-          maxX: num(bounds, 'maxX', 'tuning.sim.probe.bounds'),
-          floorY: num(bounds, 'floorY', 'tuning.sim.probe.bounds'),
-        },
-        restitution: num(probe, 'restitution', 'tuning.sim.probe', 0),
+      player: {
+        radius: num(player, 'radius', P, 0.05),
+        runSpeed: num(player, 'runSpeed', P, 0),
+        groundAccel: num(player, 'groundAccel', P, 0),
+        groundDecel: num(player, 'groundDecel', P, 0),
+        airAccel: num(player, 'airAccel', P, 0),
+        airMaxSpeed: num(player, 'airMaxSpeed', P, 0),
+        jumpSpeed: num(player, 'jumpSpeed', P, 0),
+        jumpCut: num(player, 'jumpCut', P, 0),
+        fallGravityScale: num(player, 'fallGravityScale', P, 0),
+        maxFallSpeed: num(player, 'maxFallSpeed', P, 0),
+        coyoteTicks: num(player, 'coyoteTicks', P, 0),
+        jumpBufferTicks: num(player, 'jumpBufferTicks', P, 0),
+      },
+      rope: {
+        minLength: num(rope, 'minLength', R, 0),
+        maxLength: num(rope, 'maxLength', R, 0),
+        selectRadius: num(rope, 'selectRadius', R, 0),
+        steerAccel: num(rope, 'steerAccel', R, 0),
       },
     },
   };

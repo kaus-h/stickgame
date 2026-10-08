@@ -3,10 +3,11 @@ import type { RuntimeTuning } from '../../content';
 import type { PhysicsAdapter } from '../../physics';
 import type { PlatformServices } from '../../platform';
 import type { FrameSource, RenderFrame, RuntimeStats } from '../../render';
-import { Simulation, type SimEvent, type SimSnapshot } from '../../sim';
+import { Simulation, type LevelDef, type SimEvent, type SimSnapshot } from '../../sim';
 
 export interface GameRuntimeDeps {
   readonly tuning: RuntimeTuning;
+  readonly level: LevelDef;
   readonly physics: PhysicsAdapter;
   readonly intents: IntentSource;
   readonly platform: PlatformServices;
@@ -40,7 +41,7 @@ export class GameRuntime implements FrameSource {
   private lastAlpha = 0;
 
   constructor(private readonly deps: GameRuntimeDeps) {
-    this.sim = new Simulation(deps.tuning.sim, deps.physics);
+    this.sim = new Simulation(deps.tuning.sim, deps.physics, deps.level);
     this.clock = new FixedStepClock({ dt: SIM_DT, ...deps.tuning.clock });
     this.current = this.sim.snapshot();
     this.previous = this.current;
