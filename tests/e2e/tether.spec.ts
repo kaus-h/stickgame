@@ -33,7 +33,7 @@ test.setTimeout(60_000);
 
 test('run, jump, tether to the first anchor, swing and release in the lab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 720 });
-  await page.goto('/');
+  await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.locator('canvas').click({ position: { x: 5, y: 5 } }); // focus without aiming
   await page.mouse.up();

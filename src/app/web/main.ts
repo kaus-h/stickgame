@@ -64,7 +64,11 @@ async function start(): Promise<void> {
   // ?fps=30 (or any value) caps the display loop to test frame-rate independence.
   const fpsLimit = Number(new URLSearchParams(window.location.search).get('fps') ?? 0);
   const game = new Phaser.Game({
-    type: Phaser.AUTO,
+    // ?renderer=canvas forces Canvas 2D (CI browsers without a GPU run WebGL in software).
+    type:
+      new URLSearchParams(window.location.search).get('renderer') === 'canvas'
+        ? Phaser.CANVAS
+        : Phaser.AUTO,
     parent: 'game',
     backgroundColor: '#f3efe6',
     antialias: true,

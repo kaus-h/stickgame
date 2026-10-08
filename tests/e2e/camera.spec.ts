@@ -21,7 +21,7 @@ const VIEWPORTS: [string, number, number][] = [
 
 async function boot(page: Page, w: number, h: number): Promise<void> {
   await page.setViewportSize({ width: w, height: h });
-  await page.goto('/');
+  await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.locator('canvas').click({ position: { x: 3, y: 3 } });
 }
