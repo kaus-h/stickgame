@@ -3,3 +3,4 @@ assets/concepts/0003-notebook-first.png,ChatGPT image generation (StickGame proj
 assets/concepts/0004-notebook-black-ink.png,ChatGPT image generation (StickGame project),0004,2026-10-07,none,owner (direction approved),Concept reference only; not a shipped game asset
 assets/sheets/0005-asset-sheet-v1.png,ChatGPT image generation (StickGame project),0005,2026-10-07,none,pending,Pipeline test sheet
 assets/art/test-0005/*,Sliced from assets/sheets/0005-asset-sheet-v1.png by scripts/art/slice-sheet.mjs,0005,2026-10-07,automatic crop and downscale only,pending,Pipeline test assets; not final art
+assets/concepts/0006-hero-pose-sheet.png,ChatGPT image generation (StickGame project),0006,2026-10-07,none,owner review pending,Hero design reference (pose sheet); no artist names or reference images in the prompt
