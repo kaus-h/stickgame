@@ -34,7 +34,13 @@ test('device lab renders live metrics and reproduces the golden replay hashes', 
   expect(report.frames.frames).toBeGreaterThan(30);
   expect(report.frames.p50Ms).toBeGreaterThan(0);
   expect(report.touch['measured']).toBeGreaterThan(0);
-  expect(report.webgl['available']).toBe(true);
+  // Headless Firefox on Linux CI has no WebGL; there the lab must report it, not crash.
+  const hasWebGL = await page.evaluate(
+    () =>
+      document.createElement('canvas').getContext('webgl2') !== null ||
+      document.createElement('canvas').getContext('webgl') !== null,
+  );
+  expect(report.webgl['available']).toBe(hasWebGL);
   expect(report.determinism?.identical).toBe(true);
   expect(report.determinism?.measured.mainFinal).toBe(GOLDEN.mainFinal);
   expect(report.run.targetSeconds).toBe(5);
