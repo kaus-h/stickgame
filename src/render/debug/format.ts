@@ -1,4 +1,5 @@
 import type { SimEvent, SimSnapshot } from '../../sim';
+import { BUILD_HASH } from '../../core';
 import type { RuntimeStats } from '../frame';
 
 const f2 = (n: number): string => n.toFixed(2);
@@ -37,7 +38,7 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
   const t = s.target;
   const d = s.lastDeath;
   return [
-    `sim ${String(stats.simHz)} Hz  steps/frame ${String(stats.stepsLastFrame)}  alpha ${f2(stats.alpha)}  frame ${stats.frameMsAvg.toFixed(1)}/${stats.frameMsMax.toFixed(1)} ms  step ${stats.simStepMsAvg.toFixed(3)} ms${stats.paused ? '  PAUSED' : ''}`,
+    `build ${BUILD_HASH}  sim ${String(stats.simHz)} Hz  steps/frame ${String(stats.stepsLastFrame)}  alpha ${f2(stats.alpha)}  frame ${stats.frameMsAvg.toFixed(1)}/${stats.frameMsMax.toFixed(1)} ms  step ${stats.simStepMsAvg.toFixed(3)} ms${stats.paused ? '  PAUSED' : ''}`,
     `tick ${String(s.tick)}  attempt ${String(s.attemptTick)}  resets ${String(s.resets)}  deaths ${String(s.deaths)}  bodies ${String(stats.bodies)}  joints ${String(stats.joints)}`,
     `player ${p.mode}  pos ${v2(p.position)}  vel ${v2(p.velocity)}  |v| ${speed(p.velocity).toFixed(2)}  facing ${p.facing > 0 ? '→' : '←'}`,
     rope

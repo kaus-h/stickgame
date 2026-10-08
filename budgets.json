@@ -1,0 +1,6 @@
+{
+  "_comment": "Bundle budgets checked by scripts/bundle-report.mjs (GMR-53). PROPOSED defaults, not canon: no numbers exist in the repo yet. Raise only with evidence and a canon update. Sizes in kilobytes (1 KB = 1024 B).",
+  "initialJsGzipKB": 450,
+  "totalKB": 1536,
+  "_totalNote": "totalKB counts everything in dist/ except *.map files (raw bytes)."
+}

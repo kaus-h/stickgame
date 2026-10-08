@@ -6,6 +6,7 @@ export default tseslint.config(
   {
     ignores: [
       'dist',
+      'scripts', // plain node tooling scripts (.mjs), not part of the TS project
       'coverage',
       'test-results',
       'playwright-report',
