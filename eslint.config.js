@@ -13,6 +13,7 @@ export default tseslint.config(
       'native',
       'desktop',
       '.claude',
+      'vendor/.build', // generated slim Phaser bundle (GMR-99)
     ],
   },
   js.configs.recommended,
@@ -22,7 +23,7 @@ export default tseslint.config(
       globals: { ...globals.browser },
       parserOptions: {
         projectService: {
-          allowDefaultProject: ['*.js', '*.cjs'],
+          allowDefaultProject: ['*.js', '*.cjs', 'vendor/*.js'],
         },
         tsconfigRootDir: import.meta.dirname,
       },
