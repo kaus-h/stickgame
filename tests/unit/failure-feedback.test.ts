@@ -93,5 +93,23 @@ describe('FailureFeedback (GMR-43)', () => {
     expect(causeText('out-of-bounds', null)).toBe('fell off the page');
     expect(causeText('hazard', 'lethal-floor')).toBe('red ink = danger');
     expect(causeText('hazard', 'thorns-2')).toBe('spikes!');
+    expect(causeText('enemy-contact', null)).toBe('goon contact — aim for the flat top');
+  });
+  it('uses the shared enemy explanation for repeated goon contacts', () => {
+    const feedback = new FailureFeedback();
+    for (let i = 0; i < LABEL_AFTER_REPEATS; i++) {
+      feedback.onEvents([
+        {
+          ...(death(vec2(6, 7)) as Extract<SimEvent, { type: 'death' }>),
+          cause: 'enemy-contact',
+          solid: null,
+          enemy: 'goon-a',
+        },
+      ]);
+    }
+    expect(feedback.label()).toEqual({
+      text: 'goon contact — aim for the flat top',
+      at: vec2(6, 7),
+    });
   });
 });

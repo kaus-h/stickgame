@@ -14,10 +14,12 @@ export function formatEvent(e: SimEvent): string {
       return `${t} reset`;
     case 'jump':
       return `${t} jump`;
+    case 'stomp':
+      return `${t} stomp ${e.enemy} at ${v2(e.at)} incoming ${v2(e.velocity)} rebound ${v2(e.rebound)} m/s`;
     case 'land':
       return `${t} land ${e.speed.toFixed(1)} m/s`;
     case 'death':
-      return `${t} death ${e.cause}${e.solid ? ` (${e.solid})` : ''} at ${v2(e.at)} ${speed(e.velocity).toFixed(1)} m/s${e.rope ? ` rope a${String(e.rope.anchor)} L${f2(e.rope.length)}` : ''}`;
+      return `${t} death ${e.cause}${e.solid ? ` (${e.solid})` : ''}${e.enemy ? ` enemy ${e.enemy}` : ''} at ${v2(e.at)} ${speed(e.velocity).toFixed(1)} m/s${e.rope ? ` rope a${String(e.rope.anchor)} L${f2(e.rope.length)}` : ''}`;
     case 'exit':
       return `${t} exit after ${(e.attemptTicks / 60).toFixed(2)} s${e.attempt ? ` ${attemptLine(e.attempt)}` : ''}`;
     case 'checkpoint':
@@ -54,11 +56,14 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
       ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}${t.snapped ? ' SNAPPED' : ''}  assist ${s.assist}`
       : `target —  assist ${s.assist}`,
     anchorLine(s),
+    s.enemies.length
+      ? `enemies ${s.enemies.map((e) => `${e.id} ${e.alive ? 'alive' : 'defeated'} at ${v2(e.position)} size ${v2(e.size)} v ${v2(e.velocity)} facing ${String(e.facing)}`).join(' | ')}`
+      : 'enemies —',
     s.contacts.length
       ? `contacts ${s.contacts.map((c) => `${c.solid}${c.kind === 'hazard' ? '!' : ''} n(${f2(c.normal.x)},${f2(c.normal.y)}) ${c.speed.toFixed(1)}`).join('  ')}`
       : 'contacts —',
     d
-      ? `last death #${String(d.tick)} ${d.cause}${d.solid ? ` (${d.solid})` : ''} at ${v2(d.at)} ${speed(d.velocity).toFixed(1)} m/s${d.rope ? ` tethered a${String(d.rope.anchor)}` : ''}`
+      ? `last death #${String(d.tick)} ${d.cause}${d.solid ? ` (${d.solid})` : ''}${d.enemy ? ` enemy ${d.enemy}` : ''} at ${v2(d.at)} ${speed(d.velocity).toFixed(1)} m/s${d.rope ? ` tethered a${String(d.rope.anchor)}` : ''}`
       : 'last death —',
     s.completion
       ? `completion #${String(s.completion.tick)} ${(s.completion.attemptTicks / 60).toFixed(2)} s ${attemptLine(s.completion)}`

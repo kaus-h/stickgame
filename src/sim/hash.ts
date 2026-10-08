@@ -52,6 +52,22 @@ export function hashSnapshot(s: SimSnapshot): string {
     f64(a.x);
     f64(a.y);
   }
+  if (s.enemies.length) {
+    int32(0x474f4f4e);
+    int32(s.enemies.length);
+    for (const enemy of s.enemies) {
+      int32(enemy.id.length);
+      for (let i = 0; i < enemy.id.length; i++) int32(enemy.id.charCodeAt(i));
+      f64(enemy.position.x);
+      f64(enemy.position.y);
+      f64(enemy.size.x);
+      f64(enemy.size.y);
+      f64(enemy.velocity.x);
+      f64(enemy.velocity.y);
+      int32(enemy.alive ? 1 : 0);
+      int32(enemy.facing);
+    }
+  }
   // Null entry state adds no bytes, preserving all historical replay hashes.
   for (const record of [s.completion, s.lastExitAttempt]) {
     if (!record) continue;

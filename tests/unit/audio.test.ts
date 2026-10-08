@@ -17,6 +17,7 @@ describe('procedural SFX (GMR-41)', () => {
   it('covers every doc 08 core event shipped in Section 1', () => {
     for (const name of [
       'jump',
+      'stomp',
       'land',
       'ropeShot',
       'ropeConnect',
@@ -107,6 +108,23 @@ describe('SfxDirector', () => {
     d.onFrame(snap(true));
     d.onFrame(snap(true));
     expect(sink.calls).toEqual(['ropeTaut']);
+  });
+
+  it('plays the distinct stomp cue on confirmed defeat only', () => {
+    const sink = recorder();
+    const director = new SfxDirector(sink);
+    director.onEvents([
+      {
+        type: 'stomp',
+        tick: 5,
+        enemy: 'goon-a',
+        at: vec2(2, 3),
+        velocity: vec2(4, 8),
+        rebound: vec2(4, -15),
+      },
+    ]);
+    expect(sink.calls).toEqual(['stomp']);
+    expect(renderSfx(bank.stomp as SfxParams, 48_000).length / 48_000).toBeLessThan(0.15);
   });
 
   it('keeps the success cue silent on a rejected exit', () => {

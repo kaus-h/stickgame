@@ -1,0 +1,15 @@
+{
+  "comment": "Names and source scale for 0005-asset-sheet-v1.png, in detected order (row, then left to right). sourcePxPerMeter sets each object's real size: platforms share one scale so their stones match.",
+  "objects": [
+    { "name": "platform-left", "sourcePxPerMeter": 161 },
+    { "name": "platform-mid", "sourcePxPerMeter": 161 },
+    { "name": "platform-right", "sourcePxPerMeter": 161 },
+    { "name": "platform-small", "sourcePxPerMeter": 161 },
+    { "name": "anchor-inactive", "sourcePxPerMeter": 190 },
+    { "name": "anchor-active", "sourcePxPerMeter": 190 },
+    { "name": "anchor-timed", "sourcePxPerMeter": 190 },
+    { "name": "anchor-one-use", "sourcePxPerMeter": 190 },
+    { "name": "hazard-thorns", "sourcePxPerMeter": 200 },
+    { "name": "exit-door", "sourcePxPerMeter": 140 }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "version": 2,
+  "id": "lab-goon-contact",
+  "name": "Patroller Lab / Contact and Retry",
+  "spawn": [2, 7.65],
+  "bounds": { "minX": 0, "minY": -4, "maxX": 18, "maxY": 12 },
+  "killY": 13,
+  "solids": [{ "id": "floor", "rect": { "x": 0, "y": 8, "w": 18, "h": 2 } }],
+  "anchors": [],
+  "enemies": [
+    {
+      "id": "goon-contact",
+      "kind": "patroller",
+      "position": [6, 7.5],
+      "size": [1.2, 1],
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 15, "topInset": 0.12 }
+    }
+  ]
+}
