@@ -4,6 +4,7 @@ import {
   emptySave,
   encodeSave,
   recordRun,
+  type PersonalBest,
   type RunResult,
   type SaveData,
   type Settings,
@@ -63,8 +64,19 @@ export class SaveStore {
     this.persist();
   }
 
-  setGhost(levelId: string, replay: string): void {
-    this.data = { ...this.data, ghosts: { ...this.data.ghosts, [levelId]: replay } };
+  /** Store a new personal best (GMR-103); the caller decides that it beats the old one. */
+  setPersonalBest(levelId: string, pb: PersonalBest): void {
+    this.data = { ...this.data, pbs: { ...this.data.pbs, [levelId]: pb } };
+    this.persist();
+  }
+
+  /** Drop a personal best whose replay no longer fits the level or build (GMR-103). */
+  clearPersonalBest(levelId: string): void {
+    if (!(levelId in this.data.pbs)) return;
+    const pbs = { ...this.data.pbs };
+    // eslint-disable-next-line @typescript-eslint/no-dynamic-delete -- a keyed record by design
+    delete pbs[levelId];
+    this.data = { ...this.data, pbs };
     this.persist();
   }
 

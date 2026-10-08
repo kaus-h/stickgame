@@ -3,7 +3,7 @@ import { metersToPixels as m, type Vec2 } from '../../core';
 import type { PlayerMode } from '../../sim';
 import { strokeInk, type Pt } from '../ink';
 
-const INK = 0x16161a;
+const HERO_INK = 0x16161a;
 const PAPER = 0xf3efe6;
 
 export interface HeroPose {
@@ -21,6 +21,8 @@ export interface HeroPose {
    * small phone screens (GMR-55 readability at gameplay scale).
    */
   readonly line: number;
+  /** Line colour; default ink. The PB ghost (GMR-103) draws in pencil grey. */
+  readonly ink?: number;
 }
 
 /**
@@ -56,6 +58,7 @@ export function drawHero(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
 
 function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   const { c, facing: face, velocity: v, mode, line: L } = p;
+  const INK = p.ink ?? HERO_INK;
   const headR = m(0.2);
   const head = { x: c.x + face * m(0.01), y: c.y - m(0.13) };
   const neck = { x: c.x, y: c.y + m(0.06) };

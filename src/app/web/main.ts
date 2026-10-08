@@ -4,7 +4,16 @@ import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
-import { parseAssistMode, vec2, type Intent, type Vec2 } from '../../core';
+import {
+  BUILD_HASH,
+  decodeReplay,
+  encodeReplay,
+  parseAssistMode,
+  vec2,
+  type Intent,
+  type ReplayInput,
+  type Vec2,
+} from '../../core';
 import {
   bindDom,
   bindTouchDom,
@@ -15,17 +24,18 @@ import {
   type SafeAreaInsets,
   type TouchScheme,
 } from '../../input';
-import type { SimEvent } from '../../sim';
+import { levelFingerprint, type LevelDef, type SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
 import { GameScene } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
+import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
 import chapterJson from '../../../content/chapters/chapter-1.json';
 import stringsEn from '../../../content/strings/en.json';
 import { enemyTelemetry } from '../../telemetry/enemyTelemetry';
 import { levelSources } from './level-catalog';
-import { GameFlowUi } from './ui/GameFlowUi';
+import { GameFlowUi, type ResultSplit } from './ui/GameFlowUi';
 import { parseChapter, playOrder } from './ui/flow';
 
 // Composition root for the browser build.
@@ -76,11 +86,19 @@ async function start(): Promise<void> {
       }
     : null;
   let scene: GameScene | null = null;
+  // Dev-only scripted input for e2e (GMR-103): intents keyed by ticks after the script starts.
+  let devScript: { start: number; byTick: Map<number, readonly Intent[]> } | null = null;
   // The pause intent (Esc, P, touch pause) opens the menu; it never reaches the simulation.
   let flow: GameFlowUi | null = null;
+  // The ghost toggle (G) is a presentation setting: like pause, it never reaches the simulation.
+  let toggleGhost = (): void => undefined;
   const pushIntent = (intent: Intent): void => {
     if (intent.type === 'pause') {
       flow?.onPauseKey();
+      return;
+    }
+    if (intent.type === 'ghostToggle') {
+      toggleGhost();
       return;
     }
     intents.push(intent);
@@ -128,13 +146,54 @@ async function start(): Promise<void> {
   for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
     window.addEventListener(type, unlockAudio, { capture: true, passive: true });
   }
+  // Racing-style timing (GMR-103): run replay, lives, splits and the PB ghost, which plays in a
+  // headless simulation with a physics world of its own.
+  const timing = new RunTiming({
+    tuning: tuning.sim,
+    level,
+    physics: new KinematicPhysicsAdapter(),
+    build: BUILD_HASH,
+    assist: tuning.assist,
+  });
+  timing.setGhostVisible(saved.settings.ghost);
+  /** Load the saved PB for `lvl`; a replay that no longer fits the level or build is discarded. */
+  const loadPb = (lvl: LevelDef): void => {
+    const stored = save.current.pbs[lvl.id];
+    if (!stored) {
+      timing.setPb(null);
+      return;
+    }
+    const checked = validatePb(stored, lvl, BUILD_HASH);
+    if ('pb' in checked) timing.setPb(checked.pb);
+    else {
+      console.info(`PB ghost for ${lvl.id} discarded: ${checked.reason}`);
+      save.clearPersonalBest(lvl.id);
+      timing.setPb(null);
+    }
+  };
+  loadPb(level);
+  toggleGhost = () => {
+    const on = !save.current.settings.ghost;
+    save.updateSettings({ ghost: on });
+    timing.setGhostVisible(on);
+  };
   // Run bookkeeping for the save: deaths since the last clear; a clear records time and deaths.
+  // Play time (all runs, restarts included) feeds the time to first clear.
   let runDeaths = 0;
   const flushDeaths = (): void => {
-    if (runDeaths === 0) return;
-    save.recordRun(level.id, { cleared: false, ticks: 0, deaths: runDeaths });
+    const playTicks = timing.takePlayTicks(runtime.sim);
+    if (runDeaths === 0 && playTicks === 0) return;
+    save.recordRun(level.id, { cleared: false, ticks: 0, deaths: runDeaths, playTicks });
     runDeaths = 0;
   };
+  const resultsSplits = (r: RunSummary): ResultSplit[] => [
+    ...r.splits.map((ticks, index) => ({
+      index,
+      ticks,
+      pbTicks: r.previousPb?.splits[index] ?? null,
+    })),
+    { index: -1, ticks: r.runTicks, pbTicks: r.previousPb?.ticks ?? null },
+  ];
   platform.onVisibilityChange((visible) => {
     audio.setVisible(visible);
     if (!visible) flushDeaths();
@@ -150,6 +209,10 @@ async function start(): Promise<void> {
       mapper.beforeTick();
       touch.beforeTick();
       const state = runtime.sim.snapshot();
+      if (devScript) {
+        for (const intent of devScript.byTick.get(state.tick - devScript.start) ?? [])
+          intents.push(intent);
+      }
       if (releaseTrace) {
         releaseTrace.before.set(state.tick, state.player.velocity);
         if (releaseTrace.before.size > 128) {
@@ -160,6 +223,7 @@ async function start(): Promise<void> {
       sfx.onFrame(state);
     },
     assist: { mode: assistMode, ...tuning.assist },
+    timing,
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
@@ -173,16 +237,41 @@ async function start(): Promise<void> {
       if (enemy) platform.analytics.track(enemy);
       if (e.type === 'death') runDeaths++;
       else if (e.type === 'exit') {
-        const previousBest = save.current.levels[level.id]?.bestTicks ?? null;
+        const before = save.current.levels[level.id];
+        const previousBest = before?.bestTicks ?? null;
+        const firstClear = before?.cleared !== true;
         const deaths = runDeaths;
-        save.recordRun(level.id, { cleared: true, ticks: e.runTicks, deaths });
+        const playTicks = timing.takePlayTicks(runtime.sim);
+        save.recordRun(level.id, { cleared: true, ticks: e.runTicks, deaths, playTicks });
         runDeaths = 0;
+        const run = timing.takeResult();
+        if (run?.isPb && run.replay) {
+          const pb = { ticks: run.runTicks, splits: run.splits, replay: run.replay };
+          save.setPersonalBest(level.id, {
+            ticks: pb.ticks,
+            splits: pb.splits,
+            replay: encodeReplay(pb.replay),
+            levelVersion: levelFingerprint(level),
+          });
+          timing.setPb(pb);
+        }
         if (flowMode && flow) {
           flow.showResults({
             levelId: level.id,
             ticks: e.runTicks,
-            deaths,
+            deaths: run?.deaths ?? deaths,
             newBest: previousBest !== null && e.runTicks < previousBest,
+            ...(run
+              ? {
+                  pbDelta: run.previousPb ? run.runTicks - run.previousPb.ticks : null,
+                  lives: run.lives,
+                  bestLifeTicks: run.bestLifeTicks,
+                  splits: resultsSplits(run),
+                }
+              : {}),
+            firstClearTicks: firstClear
+              ? (save.current.levels[level.id]?.firstClearTicks ?? null)
+              : null,
           });
         }
       }
@@ -200,6 +289,7 @@ async function start(): Promise<void> {
     },
     showExitResult: !flowMode,
     overview: params.has('overview'),
+    strings: stringsEn,
   });
 
   // Game flow (GMR-47): title, level select, pause, results, settings.
@@ -218,10 +308,14 @@ async function start(): Promise<void> {
       levelName = levelId;
       runtime.replaceLevel(next);
       level = next;
+      loadPb(next);
       gameScene.replaceLevel(next);
     },
     restart: () => {
       intents.push({ type: 'restart' });
+    },
+    respawn: () => {
+      intents.push({ type: 'respawn' });
     },
     setMenuPaused: (paused) => {
       runtime.pause('menu', paused);
@@ -238,6 +332,7 @@ async function start(): Promise<void> {
       audio.setVolume('sfx', st.sfxVolume);
       audio.setVolume('music', st.musicVolume);
       audio.setMuted(st.muted);
+      timing.setGhostVisible(st.ghost);
     },
   });
   if (flowMode) {
@@ -293,6 +388,7 @@ async function start(): Promise<void> {
         intents.clearLog();
         runtime.replaceLevel(next);
         level = next;
+        loadPb(next);
         scene.replaceLevel(next);
         levelRevision++;
         levelError = null;
@@ -341,6 +437,44 @@ async function start(): Promise<void> {
           },
         },
         flow: () => flow.screen,
+        // GMR-103: racing state, and a scripted run (a replay restarted from the next tick).
+        race: () => {
+          const view = timing.view();
+          const text = (name: string) => {
+            const t = devScene.children.getByName(name) as Phaser.GameObjects.Text | undefined;
+            return { visible: t?.visible ?? false, text: t?.text ?? '', color: t?.style.color };
+          };
+          return {
+            pb: view.pb,
+            ghostEnabled: view.ghostEnabled,
+            ghost: view.ghost
+              ? {
+                  runTick: view.ghost.current.runTick,
+                  position: view.ghost.current.player.position,
+                }
+              : null,
+            split: view.split,
+            hud: {
+              run: text('run-timer'),
+              life: text('life-timer'),
+              splitTime: text('split-time'),
+              splitDelta: text('split-delta'),
+            },
+            savedPb: save.current.pbs[level.id] ?? null,
+          };
+        },
+        playReplay: (replayText: string) => {
+          const replay = decodeReplay(replayText, BUILD_HASH).replay;
+          const byTick = new Map<number, readonly Intent[]>(
+            replay.inputs.map((input: ReplayInput) => [input.tick, input.intents]),
+          );
+          byTick.set(0, [{ type: 'restart' }, ...(byTick.get(0) ?? [])]);
+          devScript = { start: runtime.sim.snapshot().tick, byTick };
+          return replay.ticks;
+        },
+        stopReplay: () => {
+          devScript = null;
+        },
         // Shows the results card for the current level as if it had just been cleared.
         debugResults: (ticks: number, deaths: number) => {
           flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
