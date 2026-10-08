@@ -1,0 +1,132 @@
+{
+  "format": 1,
+  "level": "lab-exit-miss",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 101,
+  "chambers": [
+    {
+      "id": "level",
+      "problem": null,
+      "challengeFamily": null,
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 101,
+      "ticks": 101,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 48, "action": "move", "axis": -1 },
+        { "t": 52, "action": "move", "axis": 1 },
+        { "t": 56, "action": "move", "axis": 0 },
+        { "t": 56, "action": "jump", "hold": 54 },
+        { "t": 64, "action": "move", "axis": -1 },
+        { "t": 68, "action": "move", "axis": 0 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "move",
+          "event": "press",
+          "tick": 48,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "move",
+          "event": "press",
+          "tick": 52,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "move",
+          "event": "press",
+          "tick": 56,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "jump",
+          "event": "press",
+          "tick": 56,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "jump",
+          "event": "release",
+          "tick": 110,
+          "earliest": -30,
+          "latest": 40,
+          "size": 71,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "move",
+          "event": "press",
+          "tick": 64,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "move",
+          "event": "press",
+          "tick": 68,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 4,
+        "action": "jump",
+        "event": "press",
+        "tick": 56,
+        "earliest": 0,
+        "latest": 0,
+        "size": 1,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 289, "simTicks": 64401, "deathsEncountered": 0 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-exit-miss\",\"s\":0,\"n\":101,\"i\":[[0,[\"m\",1]],[48,[\"m\",-1]],[52,[\"m\",1]],[56,[\"m\",0],\"j\"],[64,[\"m\",-1]],[68,[\"m\",0]]]}"
+}

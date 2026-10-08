@@ -1,0 +1,37 @@
+{
+  "format": 1,
+  "level": "lab-exit-shaft",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 59,
+  "chambers": [
+    {
+      "id": "level",
+      "problem": null,
+      "challengeFamily": null,
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 59,
+      "ticks": 59,
+      "plan": [{ "t": 0, "action": "move", "axis": 1 }],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 40,
+          "size": 41,
+          "capped": true,
+          "startClipped": true
+        }
+      ],
+      "tightestWindow": null,
+      "search": { "expansions": 2, "simTicks": 441, "deathsEncountered": 0 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-exit-shaft\",\"s\":0,\"n\":59,\"i\":[[0,[\"m\",1]]]}"
+}

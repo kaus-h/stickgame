@@ -1,0 +1,74 @@
+{
+  "format": 1,
+  "level": "lab-authoring",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 115,
+  "chambers": [
+    {
+      "id": "chamber-1",
+      "problem": "Jump and tether across a small hazard, then release onto the floor.",
+      "challengeFamily": "swing-and-release",
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 115,
+      "ticks": 115,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 24, "action": "jump", "hold": 39 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 14,
+          "size": 15,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "press",
+          "tick": 24,
+          "earliest": -14,
+          "latest": 14,
+          "size": 29,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "release",
+          "tick": 63,
+          "earliest": -31,
+          "latest": 40,
+          "size": 72,
+          "capped": true,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 1,
+        "action": "jump",
+        "event": "press",
+        "tick": 24,
+        "earliest": -14,
+        "latest": 14,
+        "size": 29,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 3, "simTicks": 2095, "deathsEncountered": 15 }
+    }
+  ],
+  "notes": [
+    "Anchor required-shot is tagged as a required shot, but the found route does not use it: the chamber can be completed without that shot."
+  ],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-authoring\",\"s\":0,\"n\":115,\"i\":[[0,[\"m\",1]],[24,\"j\"],[63,\"J\"]]}"
+}

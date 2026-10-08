@@ -1,0 +1,293 @@
+{
+  "format": 1,
+  "level": "lab-moving",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 755,
+  "chambers": [
+    {
+      "id": "level",
+      "problem": null,
+      "challengeFamily": null,
+      "goal": { "kind": "exit" },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 755,
+      "ticks": 755,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 37, "action": "rope", "anchor": 0, "offset": 2, "release": 176 },
+        { "t": 108, "action": "move", "axis": -1 },
+        { "t": 124, "action": "move", "axis": 0 },
+        { "t": 128, "action": "move", "axis": 1 },
+        { "t": 180, "action": "rope", "anchor": 0, "offset": 0, "release": 184 },
+        { "t": 240, "action": "rope", "anchor": 1, "offset": 0, "release": 297 },
+        { "t": 341, "action": "jump", "hold": 48 },
+        { "t": 377, "action": "rope", "anchor": 2, "offset": 2, "release": 427 },
+        { "t": 471, "action": "rope", "anchor": 3, "offset": 2, "release": 556 },
+        { "t": 604, "action": "rope", "anchor": 4, "offset": 2, "release": 707 },
+        { "t": 640, "action": "move", "axis": -1 },
+        { "t": 656, "action": "move", "axis": 1 },
+        { "t": 712, "action": "rope", "anchor": 4, "offset": 0, "release": 719 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "rope",
+          "event": "press",
+          "tick": 37,
+          "earliest": -25,
+          "latest": 25,
+          "size": 51,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 1,
+          "action": "rope",
+          "event": "release",
+          "tick": 176,
+          "earliest": -1,
+          "latest": 0,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "move",
+          "event": "press",
+          "tick": 108,
+          "earliest": -1,
+          "latest": 1,
+          "size": 3,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "move",
+          "event": "press",
+          "tick": 124,
+          "earliest": 0,
+          "latest": 1,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "move",
+          "event": "press",
+          "tick": 128,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "press",
+          "tick": 180,
+          "earliest": 0,
+          "latest": 1,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "release",
+          "tick": 184,
+          "earliest": -1,
+          "latest": 1,
+          "size": 3,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 240,
+          "earliest": -24,
+          "latest": 16,
+          "size": 41,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "release",
+          "tick": 297,
+          "earliest": -10,
+          "latest": 13,
+          "size": 24,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "jump",
+          "event": "press",
+          "tick": 341,
+          "earliest": -4,
+          "latest": 3,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "jump",
+          "event": "release",
+          "tick": 389,
+          "earliest": -29,
+          "latest": 31,
+          "size": 61,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "press",
+          "tick": 377,
+          "earliest": -10,
+          "latest": 12,
+          "size": 23,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "release",
+          "tick": 427,
+          "earliest": -9,
+          "latest": 10,
+          "size": 20,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "press",
+          "tick": 471,
+          "earliest": -6,
+          "latest": 5,
+          "size": 12,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "release",
+          "tick": 556,
+          "earliest": 0,
+          "latest": 1,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "press",
+          "tick": 604,
+          "earliest": -4,
+          "latest": 3,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "release",
+          "tick": 707,
+          "earliest": -1,
+          "latest": 0,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "move",
+          "event": "press",
+          "tick": 640,
+          "earliest": -2,
+          "latest": 4,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "move",
+          "event": "press",
+          "tick": 656,
+          "earliest": -1,
+          "latest": 0,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "press",
+          "tick": 712,
+          "earliest": 0,
+          "latest": 1,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "release",
+          "tick": 719,
+          "earliest": -6,
+          "latest": 7,
+          "size": 14,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 1,
+        "action": "rope",
+        "event": "release",
+        "tick": 176,
+        "earliest": -1,
+        "latest": 0,
+        "size": 2,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 1992, "simTicks": 637020, "deathsEncountered": 8422 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-moving\",\"s\":0,\"n\":755,\"i\":[[0,[\"m\",1]],[37,[\"a\",14.454375052300671,1],\"r\"],[108,[\"m\",-1]],[124,[\"m\",0]],[128,[\"m\",1]],[176,\"R\"],[180,[\"a\",16.999999999999996,1],\"r\"],[184,\"R\"],[240,[\"a\",34,1.9999999999999982],\"r\"],[297,\"R\"],[341,\"j\"],[377,[\"a\",55.21836820550428,0],\"r\"],[389,\"J\"],[427,\"R\"],[471,[\"a\",70.48206763116508,1],\"r\"],[556,\"R\"],[604,[\"a\",86.71123214812374,1],\"r\"],[640,[\"m\",-1]],[656,[\"m\",1]],[707,\"R\"],[712,[\"a\",82.75084164871657,1],\"r\"],[719,\"R\"]]}"
+}
