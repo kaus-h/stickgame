@@ -73,7 +73,7 @@ describe('versioned level schema and compiler', () => {
 
   it('JSON Schema rejects unknown gameplay features and provides exact nested paths', () => {
     expect(() => {
-      validateLevelSchema({ ...authored(), enemies: [] });
+      validateLevelSchema({ ...lab01, enemies: [] });
     }).toThrow('level.enemies');
     expect(() => parseLevel({ ...authored(), triggers: [] })).toThrow('level.triggers');
     expect(() => parseLevel({ ...lab01, version: 3 })).toThrow('level.version');

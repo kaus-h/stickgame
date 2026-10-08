@@ -112,6 +112,10 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
     this.groundContacts.delete(id);
   }
 
+  setBodyPosition(id: number, position: Vec2): void {
+    this.record(id).body.setPosition(position);
+  }
+
   createKinematicAnchor(position: Vec2): number {
     const body = this.world.createBody({ type: 'kinematic', position });
     this.anchors.push({ initial: position, body });
