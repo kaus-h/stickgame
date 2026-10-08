@@ -20,6 +20,10 @@ export function formatEvent(e: SimEvent): string {
       return `${t} death ${e.cause}${e.solid ? ` (${e.solid})` : ''} at ${v2(e.at)} ${speed(e.velocity).toFixed(1)} m/s${e.rope ? ` rope a${String(e.rope.anchor)} L${f2(e.rope.length)}` : ''}`;
     case 'exit':
       return `${t} exit after ${(e.attemptTicks / 60).toFixed(2)} s${e.attempt ? ` ${attemptLine(e.attempt)}` : ''}`;
+    case 'checkpoint':
+      return `${t} checkpoint ${String(e.index)} (${e.id})`;
+    case 'respawn':
+      return `${t} respawn at checkpoint ${String(e.checkpoint)}`;
     case 'exitMiss':
       return `${t} exit miss ${attemptLine(e.attempt)}`;
     case 'ropeAttach':
@@ -41,7 +45,7 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
   const d = s.lastDeath;
   return [
     `build ${BUILD_HASH}  sim ${String(stats.simHz)} Hz  steps/frame ${String(stats.stepsLastFrame)}  alpha ${f2(stats.alpha)}  frame ${stats.frameMsAvg.toFixed(1)}/${stats.frameMsMax.toFixed(1)} ms  step ${stats.simStepMsAvg.toFixed(3)} ms${stats.paused ? '  PAUSED' : ''}`,
-    `tick ${String(s.tick)}  attempt ${String(s.attemptTick)}  resets ${String(s.resets)}  deaths ${String(s.deaths)}  bodies ${String(stats.bodies)}  joints ${String(stats.joints)}`,
+    `tick ${String(s.tick)}  run ${String(s.runTick)}  checkpoint ${String(s.checkpoint)}  attempt ${String(s.attemptTick)}  resets ${String(s.resets)}  deaths ${String(s.deaths)}  bodies ${String(stats.bodies)}  joints ${String(stats.joints)}`,
     `player ${p.mode}  pos ${v2(p.position)}  vel ${v2(p.velocity)}  |v| ${speed(p.velocity).toFixed(2)}  facing ${p.facing > 0 ? '→' : '←'}`,
     rope
       ? `rope a${String(rope.anchor)}  ${rope.locked ? 'locked' : 'paying out'} ${rope.taut ? 'taut' : 'slack'}  L ${rope.length.toFixed(3)} m  pivot ${v2(rope.point)}  since #${String(rope.attachedTick)}`

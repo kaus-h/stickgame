@@ -104,6 +104,14 @@ export class PlanckPhysicsAdapter implements PhysicsAdapter {
     this.record(id).body.setLinearVelocity(velocity);
   }
 
+  teleportBody(id: number, position: Vec2): void {
+    const { body } = this.record(id);
+    body.setTransform(position, 0);
+    body.setLinearVelocity({ x: 0, y: 0 });
+    body.setAwake(true);
+    this.groundContacts.delete(id);
+  }
+
   createKinematicAnchor(position: Vec2): number {
     const body = this.world.createBody({ type: 'kinematic', position });
     this.anchors.push({ initial: position, body });

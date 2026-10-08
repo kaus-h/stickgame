@@ -59,9 +59,18 @@ export interface SimSnapshot {
   readonly contacts: readonly ContactSnapshot[];
   /** The most recent death (survives the reset it caused). */
   readonly lastDeath: DeathRecord | null;
+  /** Ticks since the run began (level start or restart); keeps counting through deaths. */
+  readonly runTick: number;
+  /** Index of the last reached checkpoint in level.checkpoints, or -1 for the spawn. */
+  readonly checkpoint: number;
   /** Accepted compartment entry, held until an immediate restart. */
   readonly completion:
-    (ExitAttempt & { readonly tick: number; readonly attemptTicks: number }) | null;
+    | (ExitAttempt & {
+        readonly tick: number;
+        readonly attemptTicks: number;
+        readonly runTicks: number;
+      })
+    | null;
   /** Last entry result, including rejected crossings, for spatial feedback/telemetry. */
   readonly lastExitAttempt: (ExitAttempt & { readonly tick: number }) | null;
   /** What a rope press would do right now (anchor, impact point, distance, validity). */
@@ -114,8 +123,17 @@ export type SimEvent =
       readonly type: 'exit';
       readonly tick: number;
       readonly attemptTicks: number;
+      /** Ticks since the run began, through deaths and checkpoint respawns (GMR-100). */
+      readonly runTicks: number;
       readonly attempt?: ExitAttempt;
     }
+  | {
+      readonly type: 'checkpoint';
+      readonly tick: number;
+      readonly index: number;
+      readonly id: string;
+    }
+  | { readonly type: 'respawn'; readonly tick: number; readonly checkpoint: number }
   | { readonly type: 'exitMiss'; readonly tick: number; readonly attempt: ExitAttempt }
   | {
       readonly type: 'ropeAttach';
@@ -160,6 +178,8 @@ export class Simulation {
   /** Level solid id for each physics segment (levelSegments keeps solid order). */
   private segmentSolid: string[] = [];
   private lastDeath: DeathRecord | null = null;
+  private runTicks = 0;
+  private activeCheckpoint = -1;
   private completion: SimSnapshot['completion'] = null;
   private lastExitAttempt: SimSnapshot['lastExitAttempt'] = null;
   private lastContacts: readonly ContactSnapshot[] = [];
@@ -263,6 +283,7 @@ export class Simulation {
     this.physics.step(SIM_DT, this.tuning.physicsSubsteps);
     this.tickCount++;
     this.attemptTicks++;
+    this.runTicks++;
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
   }
 
@@ -276,7 +297,31 @@ export class Simulation {
     this.physics.setGravity(vec2(0, tuning.gravity));
   }
 
+  /** Restart: back to the spawn with a fresh run (checkpoints cleared). */
   reset(): void {
+    this.activeCheckpoint = -1;
+    this.runTicks = 0;
+    this.resetAttempt();
+  }
+
+  /**
+   * A new life after a death (GMR-100): the authored state comes back (bodies, anchors, rope), and
+   * the player stands at the last reached checkpoint. The run clock keeps counting.
+   */
+  private respawn(): void {
+    this.resetAttempt();
+    const cp = this.level.checkpoints?.[this.activeCheckpoint];
+    if (cp) {
+      this.physics.teleportBody(this.body, cp.position);
+      this.events.push({
+        type: 'respawn',
+        tick: this.tickCount,
+        checkpoint: this.activeCheckpoint,
+      });
+    }
+  }
+
+  private resetAttempt(): void {
     this.completion = null;
     this.lastExitAttempt = null;
     this.physics.resetBodies();
@@ -312,6 +357,8 @@ export class Simulation {
       ),
       aim: this.aim,
       lastDeath: this.lastDeath,
+      runTick: this.runTicks,
+      checkpoint: this.activeCheckpoint,
       completion: this.completion,
       lastExitAttempt: this.lastExitAttempt,
       contacts: this.lastContacts,
@@ -669,6 +716,7 @@ export class Simulation {
       this.die('out-of-bounds', s.position, s.velocity, null);
       return;
     }
+    this.updateCheckpoints(s.position);
 
     const exit = this.level.exit;
     if (exit && 'entry' in exit) {
@@ -691,11 +739,17 @@ export class Simulation {
       if (attempt) {
         this.lastExitAttempt = { ...attempt, tick: this.tickCount };
         if (attempt.accepted) {
-          this.completion = { ...attempt, tick: this.tickCount, attemptTicks: this.attemptTicks };
+          this.completion = {
+            ...attempt,
+            tick: this.tickCount,
+            attemptTicks: this.attemptTicks,
+            runTicks: this.runTicks,
+          };
           this.events.push({
             type: 'exit',
             tick: this.tickCount,
             attemptTicks: this.attemptTicks,
+            runTicks: this.runTicks,
             attempt,
           });
         } else {
@@ -711,7 +765,12 @@ export class Simulation {
       s.position.y >= exit.min.y &&
       s.position.y <= exit.max.y
     ) {
-      this.events.push({ type: 'exit', tick: this.tickCount, attemptTicks: this.attemptTicks });
+      this.events.push({
+        type: 'exit',
+        tick: this.tickCount,
+        attemptTicks: this.attemptTicks,
+        runTicks: this.runTicks,
+      });
       this.reset();
     }
   }
@@ -736,7 +795,25 @@ export class Simulation {
         : null,
     };
     this.events.push({ type: 'death', ...this.lastDeath });
-    this.reset();
+    this.respawn();
+  }
+
+  /**
+   * Checkpoints activate when the player stands within their trigger (1.5 m wide, 3 m tall around
+   * the authored position). Only later checkpoints count, so going back never moves the respawn.
+   */
+  private updateCheckpoints(p: Vec2): void {
+    const list = this.level.checkpoints;
+    if (!list) return;
+    for (let i = list.length - 1; i > this.activeCheckpoint; i--) {
+      const cp = list[i];
+      if (!cp) continue;
+      if (Math.abs(p.x - cp.position.x) <= 0.75 && Math.abs(p.y - cp.position.y) <= 1.5) {
+        this.activeCheckpoint = i;
+        this.events.push({ type: 'checkpoint', tick: this.tickCount, index: i, id: cp.id });
+        return;
+      }
+    }
   }
 }
 

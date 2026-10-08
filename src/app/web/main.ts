@@ -152,14 +152,14 @@ async function start(): Promise<void> {
       else if (e.type === 'exit') {
         const previousBest = save.current.levels[level.id]?.bestTicks ?? null;
         const deaths = runDeaths;
-        save.recordRun(level.id, { cleared: true, ticks: e.attemptTicks, deaths });
+        save.recordRun(level.id, { cleared: true, ticks: e.runTicks, deaths });
         runDeaths = 0;
         if (flowMode && flow) {
           flow.showResults({
             levelId: level.id,
-            ticks: e.attemptTicks,
+            ticks: e.runTicks,
             deaths,
-            newBest: previousBest !== null && e.attemptTicks < previousBest,
+            newBest: previousBest !== null && e.runTicks < previousBest,
           });
         }
       }

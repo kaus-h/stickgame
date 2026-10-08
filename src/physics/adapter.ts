@@ -78,6 +78,8 @@ export interface PhysicsAdapter {
   /** Optional precise path for gameplay crossings; excludes depenetration/position corrections. */
   bodyMotion?(body: number): readonly BodyMotionSegment[];
   setBodyVelocity(body: number, velocity: Vec2): void;
+  /** Move a body to a point at rest (checkpoint respawn, GMR-100); contacts and motion clear. */
+  teleportBody(body: number, position: Vec2): void;
 
   /** A pivot whose motion the sim scripts (moving anchors). */
   createKinematicAnchor(position: Vec2): number;

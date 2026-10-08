@@ -84,7 +84,7 @@ describe('FailureFeedback (GMR-43)', () => {
     const f = new FailureFeedback();
     f.observe(snap(0, vec2(0, 0)));
     f.observe(snap(1, vec2(1, 0)));
-    f.onEvents([{ type: 'exit', tick: 1, attemptTicks: 1 }]);
+    f.onEvents([{ type: 'exit', tick: 1, attemptTicks: 1, runTicks: 1 }]);
     expect(f.previous?.ended).toBe('exit');
     expect(f.label()).toBeNull();
   });

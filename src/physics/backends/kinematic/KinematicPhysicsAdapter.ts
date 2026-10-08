@@ -121,6 +121,17 @@ export class KinematicPhysicsAdapter implements PhysicsAdapter {
     return this.body(id).motion;
   }
 
+  teleportBody(id: number, position: Vec2): void {
+    const b = this.body(id);
+    b.x = position.x;
+    b.y = position.y;
+    b.vx = 0;
+    b.vy = 0;
+    b.touching = new Set();
+    b.motion.length = 0;
+    b.grounded = this.isGrounded(b);
+  }
+
   setBodyVelocity(id: number, velocity: Vec2): void {
     const b = this.body(id);
     b.vx = velocity.x;
