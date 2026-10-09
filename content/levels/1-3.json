@@ -584,12 +584,33 @@
         "w": 3.4,
         "h": 8
       }
+    },
+    {
+      "id": "mastery-spikes-high",
+      "kind": "hazard",
+      "rect": {
+        "x": 28.5,
+        "y": -8,
+        "w": 0.4,
+        "h": 15.05
+      }
+    },
+    {
+      "id": "mastery-spikes-low",
+      "kind": "hazard",
+      "rect": {
+        "x": 28.5,
+        "y": 8.1,
+        "w": 0.4,
+        "h": 0.3
+      }
     }
   ],
   "anchors": [
     {
       "id": "a2",
-      "position": [36.5, 3]
+      "position": [36.5, 3],
+      "requiredFrom": [34, 9.15]
     },
     {
       "id": "a3",
@@ -597,11 +618,13 @@
       "path": {
         "to": [68, -3],
         "period": 5
-      }
+      },
+      "requiredFrom": [60, 1.5]
     },
     {
       "id": "a4",
-      "position": [88.5, 4]
+      "position": [88.5, 4],
+      "requiredFrom": [85.5, 6.65]
     },
     {
       "id": "a5",
@@ -613,7 +636,8 @@
     },
     {
       "id": "a6",
-      "position": [136, -1]
+      "position": [136, -1],
+      "requiredFrom": [129.5, 5.65]
     },
     {
       "id": "a7",
@@ -621,7 +645,13 @@
       "path": {
         "to": [172, -1],
         "period": 5
-      }
+      },
+      "requiredFrom": [163, 5.65]
+    },
+    {
+      "id": "m1",
+      "position": [26, -2],
+      "radius": 0.25
     }
   ],
   "enemies": [
@@ -660,7 +690,7 @@
       "id": "g7",
       "kind": "patroller",
       "position": [152.5, 9.5],
-      "size": [1.2, 1],
+      "size": [1.8, 1],
       "path": {
         "to": [156.8, 9.5],
         "period": 6
@@ -688,7 +718,7 @@
         "min": [24, -8],
         "max": [56, 16]
       },
-      "problem": "A goon on a pillar is the only step high enough: drop onto it and bounce up to the ledge.",
+      "problem": "Use the goon on the pillar as a step: drop onto its top and rebound up to the ledge.",
       "challengeFamily": "enemy-assisted"
     },
     {
@@ -697,7 +727,7 @@
         "min": [56, -8],
         "max": [80, 16]
       },
-      "problem": "The first moving anchor: wait for it, catch it and ride it across.",
+      "problem": "The first moving anchor: jump to catch it and ride it across.",
       "challengeFamily": "moving-anchor"
     },
     {

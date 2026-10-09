@@ -1,0 +1,465 @@
+{
+  "format": 1,
+  "level": "1-3",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 1308,
+  "chambers": [
+    {
+      "id": "1-3-c1",
+      "problem": "Stomp the patroller and ride the rebound over a wall too tall to jump.",
+      "challengeFamily": "stomp",
+      "goal": { "kind": "region", "min": { "x": 24, "y": -8 }, "max": { "x": 56, "y": 16 } },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 184,
+      "ticks": 184,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 48, "action": "jump", "hold": 24 },
+        { "t": 72, "action": "move", "axis": -1 },
+        { "t": 76, "action": "move", "axis": 0 },
+        { "t": 108, "action": "move", "axis": 1 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 6,
+          "size": 7,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "press",
+          "tick": 48,
+          "earliest": -14,
+          "latest": 15,
+          "size": 30,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "release",
+          "tick": 72,
+          "earliest": -15,
+          "latest": 16,
+          "size": 32,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "move",
+          "event": "press",
+          "tick": 72,
+          "earliest": -3,
+          "latest": 0,
+          "size": 4,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "move",
+          "event": "press",
+          "tick": 76,
+          "earliest": -1,
+          "latest": 4,
+          "size": 6,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "move",
+          "event": "press",
+          "tick": 108,
+          "earliest": -25,
+          "latest": 40,
+          "size": 66,
+          "capped": true,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 1,
+        "action": "jump",
+        "event": "press",
+        "tick": 48,
+        "earliest": -14,
+        "latest": 15,
+        "size": 30,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 19, "simTicks": 2636, "deathsEncountered": 28 }
+    },
+    {
+      "id": "1-3-c2",
+      "problem": "Use the goon on the pillar as a step: drop onto its top and rebound up to the ledge.",
+      "challengeFamily": "enemy-assisted",
+      "goal": { "kind": "region", "min": { "x": 56, "y": -8 }, "max": { "x": 80, "y": 16 } },
+      "startTick": 184,
+      "solved": true,
+      "endTick": 455,
+      "ticks": 271,
+      "plan": [
+        { "t": 245, "action": "jump", "hold": 42 },
+        { "t": 272, "action": "rope", "anchor": 0, "offset": 1, "release": 310 }
+      ],
+      "windows": [
+        {
+          "step": 5,
+          "action": "jump",
+          "event": "press",
+          "tick": 245,
+          "earliest": -3,
+          "latest": 20,
+          "size": 24,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "jump",
+          "event": "release",
+          "tick": 287,
+          "earliest": -22,
+          "latest": 40,
+          "size": 63,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 272,
+          "earliest": -3,
+          "latest": 4,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "release",
+          "tick": 310,
+          "earliest": -9,
+          "latest": 9,
+          "size": 19,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 6,
+        "action": "rope",
+        "event": "press",
+        "tick": 272,
+        "earliest": -3,
+        "latest": 4,
+        "size": 8,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 11, "simTicks": 5350, "deathsEncountered": 24 }
+    },
+    {
+      "id": "1-3-c3",
+      "problem": "The first moving anchor: wait for it, catch it and ride it across.",
+      "challengeFamily": "moving-anchor",
+      "goal": { "kind": "checkpoint", "index": 0, "id": "1-3-cpA" },
+      "startTick": 455,
+      "solved": true,
+      "endTick": 638,
+      "ticks": 183,
+      "plan": [
+        { "t": 458, "action": "jump", "hold": 42 },
+        { "t": 491, "action": "rope", "anchor": 1, "offset": 0, "release": 540 }
+      ],
+      "windows": [
+        {
+          "step": 7,
+          "action": "jump",
+          "event": "press",
+          "tick": 458,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 7,
+          "action": "jump",
+          "event": "release",
+          "tick": 500,
+          "earliest": -40,
+          "latest": 40,
+          "size": 81,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "press",
+          "tick": 491,
+          "earliest": -21,
+          "latest": 22,
+          "size": 44,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "release",
+          "tick": 540,
+          "earliest": -18,
+          "latest": 19,
+          "size": 38,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 7,
+        "action": "jump",
+        "event": "press",
+        "tick": 458,
+        "earliest": -3,
+        "latest": 3,
+        "size": 7,
+        "capped": false,
+        "startClipped": true
+      },
+      "search": { "expansions": 5, "simTicks": 1898, "deathsEncountered": 6 }
+    },
+    {
+      "id": "1-3-c4",
+      "problem": "A short, fast swing: connect close to the anchor or the long rope dips into the spikes.",
+      "challengeFamily": "rope-length",
+      "goal": { "kind": "region", "min": { "x": 104, "y": -8 }, "max": { "x": 126, "y": 16 } },
+      "startTick": 638,
+      "solved": true,
+      "endTick": 816,
+      "ticks": 178,
+      "plan": [{ "t": 670, "action": "rope", "anchor": 2, "offset": 1, "release": 718 }],
+      "windows": [
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "press",
+          "tick": 670,
+          "earliest": -32,
+          "latest": 22,
+          "size": 55,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "release",
+          "tick": 718,
+          "earliest": -5,
+          "latest": 5,
+          "size": 11,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 9,
+        "action": "rope",
+        "event": "release",
+        "tick": 718,
+        "earliest": -5,
+        "latest": 5,
+        "size": 11,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 5, "simTicks": 3488, "deathsEncountered": 6 }
+    },
+    {
+      "id": "1-3-c5",
+      "problem": "Intercept a fast moving anchor that is only in reach for part of its run.",
+      "challengeFamily": "moving-anchor-intercept",
+      "goal": { "kind": "checkpoint", "index": 1, "id": "1-3-cpB" },
+      "startTick": 816,
+      "solved": true,
+      "endTick": 979,
+      "ticks": 163,
+      "plan": [{ "t": 820, "action": "rope", "anchor": 3, "offset": 1, "release": 927 }],
+      "windows": [
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "press",
+          "tick": 820,
+          "earliest": -4,
+          "latest": 5,
+          "size": 10,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "release",
+          "tick": 927,
+          "earliest": -18,
+          "latest": 18,
+          "size": 37,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 10,
+        "action": "rope",
+        "event": "press",
+        "tick": 820,
+        "earliest": -4,
+        "latest": 5,
+        "size": 10,
+        "capped": false,
+        "startClipped": true
+      },
+      "search": { "expansions": 4, "simTicks": 1401, "deathsEncountered": 8 }
+    },
+    {
+      "id": "1-3-c6",
+      "problem": "Time the release to fly into a low pocket between spikes.",
+      "challengeFamily": "release",
+      "goal": { "kind": "region", "min": { "x": 150, "y": -8 }, "max": { "x": 180, "y": 16 } },
+      "startTick": 979,
+      "solved": true,
+      "endTick": 1123,
+      "ticks": 144,
+      "plan": [{ "t": 992, "action": "rope", "anchor": 4, "offset": 0, "release": 1058 }],
+      "windows": [
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "press",
+          "tick": 992,
+          "earliest": -13,
+          "latest": 14,
+          "size": 28,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "release",
+          "tick": 1058,
+          "earliest": -2,
+          "latest": 2,
+          "size": 5,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 11,
+        "action": "rope",
+        "event": "release",
+        "tick": 1058,
+        "earliest": -2,
+        "latest": 2,
+        "size": 5,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 4, "simTicks": 1472, "deathsEncountered": 6 }
+    },
+    {
+      "id": "1-3-c7",
+      "problem": "Stomp the goon for height, catch the moving anchor and drop straight into the shaft.",
+      "challengeFamily": "exit",
+      "goal": { "kind": "exit" },
+      "startTick": 1123,
+      "solved": true,
+      "endTick": 1308,
+      "ticks": 185,
+      "plan": [
+        { "t": 1130, "action": "jump", "hold": 4 },
+        { "t": 1218, "action": "rope", "anchor": 5, "offset": 1, "release": 1276 }
+      ],
+      "windows": [
+        {
+          "step": 12,
+          "action": "jump",
+          "event": "press",
+          "tick": 1130,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "jump",
+          "event": "release",
+          "tick": 1134,
+          "earliest": -3,
+          "latest": 2,
+          "size": 6,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "press",
+          "tick": 1218,
+          "earliest": -15,
+          "latest": 15,
+          "size": 31,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "release",
+          "tick": 1276,
+          "earliest": -1,
+          "latest": 2,
+          "size": 4,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 13,
+        "action": "rope",
+        "event": "release",
+        "tick": 1276,
+        "earliest": -1,
+        "latest": 2,
+        "size": 4,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 10, "simTicks": 2043, "deathsEncountered": 31 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-3\",\"s\":0,\"n\":1308,\"i\":[[0,[\"m\",1]],[48,\"j\"],[72,[\"m\",-1],\"J\"],[76,[\"m\",0]],[108,[\"m\",1]],[245,\"j\"],[272,[\"a\",36.78,3],\"r\"],[287,\"J\"],[310,\"R\"],[458,\"j\"],[491,[\"a\",66.61368241596044,-3],\"r\"],[500,\"J\"],[540,\"R\"],[670,[\"a\",88.78,4],\"r\"],[718,\"R\"],[820,[\"a\",107.34973452628603,0],\"r\"],[927,\"R\"],[992,[\"a\",136,-1],\"r\"],[1058,\"R\"],[1130,\"j\"],[1134,\"J\"],[1218,[\"a\",166.4906705423352,-1],\"r\"],[1276,\"R\"]]}"
+}
