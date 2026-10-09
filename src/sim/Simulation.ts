@@ -563,6 +563,8 @@ export class Simulation {
       case 'respawn':
       case 'pause':
       case 'ghostToggle':
+      case 'bodiesToggle':
+      case 'bodiesClear':
         break;
     }
   }

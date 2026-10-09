@@ -29,6 +29,8 @@ export class DebugOverlay {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly level?: LevelDef,
+    /** Extra status line from the scene (death bodies, GMR-104). */
+    private readonly extra?: () => string,
   ) {
     this.world = scene.add.graphics().setDepth(50).setVisible(false);
     this.text = scene.add
@@ -78,6 +80,7 @@ export class DebugOverlay {
         : []),
       ...formatOverlay(s, frame.stats),
       formatRace(s, frame.race),
+      ...(this.extra ? [this.extra()] : []),
       '— events —',
       ...this.log.tail(8),
       '[`] hide',

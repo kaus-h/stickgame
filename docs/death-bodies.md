@@ -1,0 +1,11 @@
+# Death bodies (GMR-104)
+
+Owner-set presentation: render-only death bodies, instant retry, non-collidable and non-interactable. No simulation state or replay hash changes. The seeded death event gives the same starting pose. Embedded spawn points are projected out of solids before the first step, preserving initial velocity. Static authored segments settle the Verlet limbs; red ink permits 0.12 m sinking. Bodies freeze at rest or after four seconds, and only the newest 60 can simulate. Older bodies fade for 0.4 s.
+
+B toggles a saved visibility setting with a 120 ms pop. C clears with a 250 ms scribble. Both controls are available in pause for touch. Restart/checkpoint respawn keep the pile; changing level drops it. Bodies are pencil at 35% alpha below baked level art and gameplay marks. Settled figures share an atlas for individual effects. Steady piles use cached composites grouped into 1024 px world tiles, so rendering cost follows occupied tiles rather than body count. Overlapping pencil remains 35% alpha after compositing. All cached textures are destroyed on clear and scene shutdown.
+
+Only an accepted exit starts the shaded procedural eraser. Its sweep lasts 1.1 s, any key/pointer skips, and reduced motion uses a 0.2 s fade. Results wait for completion; death never waits. Hidden piles are still cleared on accepted exit. Original procedural art is recorded in provenance; no generated asset is used.
+
+Acceptance evidence includes simulation-hash equality through repeated deaths, floor/thin-ledge/hazard collision, cap/freeze and lifecycle unit tests, real browser controls/exit tests, and paired empty/full-pile frame measurements. Desktop browser timings are not a claim about untested physical native devices.
+
+The GPU benchmark is opt-in because parallel camera/device-lab tests invalidate its baseline. Set STICKGAME_BODIES_PERF=1 and run the '60 settled' Playwright case for one browser at a time with --workers=2. Its threshold remains 0.5 ms added update-and-render cost per frame.

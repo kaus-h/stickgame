@@ -102,6 +102,17 @@ async function start(): Promise<void> {
       toggleGhost();
       return;
     }
+    // Death bodies (GMR-104): B shows/hides, C clears. Presentation only, like the ghost toggle.
+    if (intent.type === 'bodiesToggle') {
+      const on = !save.current.settings.bodies;
+      save.updateSettings({ bodies: on });
+      scene?.setBodiesVisible(on);
+      return;
+    }
+    if (intent.type === 'bodiesClear') {
+      scene?.clearBodies();
+      return;
+    }
     intents.push(intent);
   };
   const mapper = new DesktopInputMapper(
@@ -256,7 +267,11 @@ async function start(): Promise<void> {
           });
           timing.setPb(pb);
         }
-        if (flowMode && flow) {
+        // Leftover death bodies are rubbed out by the eraser first (GMR-104); the menu waits for
+        // it with the simulation paused, so a key that skips the sweep cannot leak into play.
+        const results = (): void => {
+          if (!flowMode || !flow) return;
+          runtime.pause('sweep', false);
           flow.showResults({
             levelId: level.id,
             ticks: e.runTicks,
@@ -274,7 +289,10 @@ async function start(): Promise<void> {
               ? (save.current.levels[level.id]?.firstClearTicks ?? null)
               : null,
           });
-        }
+        };
+        if (flowMode) runtime.pause('sweep', true);
+        if (scene) scene.eraseBodies(results);
+        else results();
       }
     }
   });
@@ -291,6 +309,8 @@ async function start(): Promise<void> {
     showExitResult: !flowMode,
     overview: params.has('overview'),
     strings: stringsEn,
+    gravity: tuning.sim.gravity,
+    bodiesVisible: () => save.current.settings.bodies,
   });
 
   // Game flow (GMR-47): title, level select, pause, results, settings.
@@ -346,6 +366,10 @@ async function start(): Promise<void> {
       audio.setVolume('music', st.musicVolume);
       audio.setMuted(st.muted);
       timing.setGhostVisible(st.ghost);
+      gameScene.setBodiesVisible(st.bodies);
+    },
+    clearBodies: () => {
+      gameScene.clearBodies();
     },
   });
   if (flowMode) {
@@ -399,6 +423,8 @@ async function start(): Promise<void> {
         mapper.blur();
         intents.clear();
         intents.clearLog();
+        // Scene restart cancels any in-flight eraser; do not retain its menu pause.
+        runtime.pause('sweep', false);
         runtime.replaceLevel(next);
         level = next;
         loadPb(next);
@@ -490,7 +516,26 @@ async function start(): Promise<void> {
         },
         // Shows the results card for the current level as if it had just been cleared.
         debugResults: (ticks: number, deaths: number) => {
-          flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+          runtime.pause('sweep', true);
+          devScene.eraseBodies(() => {
+            runtime.pause('sweep', false);
+            flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+          });
+        },
+        // GMR-104: death bodies (count, settling, visible) and dev-only body placement.
+        bodies: () => devScene.bodyStats(),
+        addBody: (x: number, y: number, vx = 0, vy = 0, tick = 0) => {
+          devScene.addBody({ tick, at: vec2(x, y), velocity: vec2(vx, vy) });
+        },
+        /** Average ms per synchronous game step (update + render) over `frames` frames. */
+        benchFrames: (frames: number) => {
+          game.loop.sleep();
+          const t0 = performance.now();
+          let t = t0;
+          for (let i = 0; i < frames; i++) game.step((t += 16.67), 16.67);
+          const ms = (performance.now() - t0) / frames;
+          game.loop.wake();
+          return ms;
         },
         audio: () => ({ state: audio.state, latency: audio.latency(), sounds: audio.soundNames }),
         releaseEvidence: () => releaseTrace?.evidence ?? null,
