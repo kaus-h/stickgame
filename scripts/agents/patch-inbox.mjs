@@ -7,7 +7,8 @@
 //   npm run inbox                      process every pending task once
 //   npm run inbox -- --watch           keep polling (every 10 s)
 //   npm run inbox -- GMR-123-spikes    process the named task(s) only
-//   options: --inbox <dir>  --no-check  --no-push  --keep-worktree
+//   options: --inbox <dir>  --downloads "<dir>;<dir>"  --no-downloads  --no-check  --no-push
+//            --keep-worktree
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
@@ -20,11 +21,21 @@ import {
   statSync,
   writeFileSync,
   appendFileSync,
+  openSync,
+  readSync,
+  closeSync,
 } from 'node:fs';
 import { homedir } from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { checkPath, extractErrors, parseBundle, parseTaskName, patchPaths } from './inbox-core.mjs';
+import {
+  checkPath,
+  detectTask,
+  extractErrors,
+  parseBundle,
+  parseTaskName,
+  patchPaths,
+} from './inbox-core.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const args = process.argv.slice(2);
@@ -38,7 +49,9 @@ const INBOX = resolve(
     process.env.STICKGAME_INBOX ??
     (process.platform === 'win32' ? 'D:/tmp/inbox' : join(homedir(), 'stickgame-inbox')),
 );
-const named = args.filter((a, i) => !a.startsWith('--') && args[i - 1] !== '--inbox');
+const named = args.filter(
+  (a, i) => !a.startsWith('--') && args[i - 1] !== '--inbox' && args[i - 1] !== '--downloads',
+);
 const RESERVED = new Set(['done', 'failed', 'log.jsonl', 'README.md']);
 const PARTIAL = /\.(crdownload|part|tmp|download)$/i;
 const isWin = process.platform === 'win32';
@@ -63,6 +76,74 @@ function settled(path) {
     : [path];
   const now = Date.now();
   return files.every((f) => !PARTIAL.test(f) && now - statSync(f).mtimeMs > 3000);
+}
+
+/**
+ * Download folders to sweep for task files whose name was lost. The Claude desktop in-app
+ * browser saves downloads to the root of D:\ as GUID-named .tmp files; a normal browser uses
+ * ~/Downloads. Only files that start with a TASK line (detectTask) are moved; nothing else is
+ * read past its first 4 KB or touched.
+ */
+const DOWNLOADS = flag('--no-downloads')
+  ? []
+  : (
+      opt('--downloads') ??
+      process.env.STICKGAME_DOWNLOADS ??
+      (isWin ? `D:/;${join(homedir(), 'Downloads')}` : join(homedir(), 'Downloads'))
+    )
+      .split(';')
+      .filter(Boolean)
+      .map((d) => resolve(d));
+
+function collectDownloads() {
+  const now = Date.now();
+  for (const dir of DOWNLOADS) {
+    if (!existsSync(dir)) continue;
+    let names = [];
+    try {
+      names = readdirSync(dir);
+    } catch {
+      continue;
+    }
+    for (const n of names) {
+      if (!/\.(tmp|txt|md|patch|diff)$/i.test(n) || /\.(crdownload|part)$/i.test(n)) continue;
+      const p = join(dir, n);
+      let st;
+      try {
+        st = statSync(p);
+      } catch {
+        continue;
+      }
+      if (
+        !st.isFile() ||
+        st.size > 5 * 1024 * 1024 ||
+        now - st.mtimeMs > 48 * 3600_000 ||
+        now - st.mtimeMs < 3000
+      )
+        continue;
+      let head = '';
+      try {
+        const fd = openSync(p, 'r');
+        const buf = Buffer.alloc(4096);
+        const len = readSync(fd, buf, 0, 4096, 0);
+        closeSync(fd);
+        head = buf.subarray(0, len).toString('utf8');
+      } catch {
+        continue;
+      }
+      const task = detectTask(head);
+      if (!task) continue;
+      let target = join(INBOX, `${task.name}${task.ext}`);
+      for (let k = 2; existsSync(target); k++) target = join(INBOX, `${task.name}-${k}${task.ext}`);
+      try {
+        renameSync(p, target);
+      } catch {
+        cpSync(p, target);
+        rmSync(p, { force: true });
+      }
+      console.log(`picked up ${n} → ${target}`);
+    }
+  }
 }
 
 function pendingTasks() {
@@ -333,6 +414,7 @@ function finish(result, error, started, s, wt) {
 }
 
 function sweep() {
+  collectDownloads();
   for (const name of pendingTasks()) {
     if (!settled(join(INBOX, name))) continue;
     try {

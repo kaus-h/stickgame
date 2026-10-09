@@ -25,17 +25,20 @@ Reply with only the issue key.
 Repo kaus-h/stickgame, branch main (read it with the GitHub connector). Follow AGENTS.md.
 Task: <GMR-123> as described in that Linear issue.
 Files to change: <paths>. Don't change any other files.
-Output: ONE downloadable file named <GMR-123-short-name>.bundle.txt containing the complete new
-content of every changed file in this format:
+Output: ONE downloadable file named <GMR-123-short-name>.bundle.txt. Its FIRST line must be
+===== TASK: <GMR-123-short-name> =====
+followed by the complete new content of every changed file in this format:
 ===== FILE: <path> =====
 <complete file>
 ===== END FILE =====
 (Use ===== DELETE: <path> ===== to delete.) For files over 400 lines, give a unified diff
-against main instead, in <GMR-123-short-name>.patch.
+against main instead, in <GMR-123-short-name>.patch, whose first line is
+TASK: <GMR-123-short-name>
+The TASK line is required: downloads lose their filename, and the inbox finds files by it.
 Include the unit tests that prove the acceptance criteria. No explanation needed in chat.
 ```
 
-**Fix round:** `Fix <GMR-123>: the inbox's failure log is on PR #<N> (or: <pasted RESULT.md error>). Send a new <GMR-123-short-name>.bundle.txt with the corrected complete files.`
+**Fix round:** `Fix <GMR-123>: the inbox's failure log is on PR #<N> (or: <pasted RESULT.md error>). Send a new <GMR-123-short-name>.bundle.txt (same TASK line) with the corrected complete files.`
 
 ## 3. Small exact task for Muse → PR
 
