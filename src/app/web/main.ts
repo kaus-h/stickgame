@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
-import { parseRuntimeTuning } from '../../content';
+import { getLevelTheme, parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
 import {
   BUILD_HASH,
@@ -28,7 +28,7 @@ import {
 import { levelFingerprint, type LevelDef, type SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
-import { GameScene } from '../../render';
+import { GameScene, loadLevelKit } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
@@ -296,6 +296,7 @@ async function start(): Promise<void> {
       }
     }
   });
+  await loadLevelKit();
   scene = new GameScene({
     level,
     source: runtime,
@@ -419,7 +420,11 @@ async function start(): Promise<void> {
         const next = nextRegistry.load(levelName);
         levelError = null;
         // A catalog edit can concern another open level. Preserve this attempt and its input.
-        if (JSON.stringify(next) === JSON.stringify(level)) return;
+        if (
+          JSON.stringify(next) === JSON.stringify(level) &&
+          getLevelTheme(next) === getLevelTheme(level)
+        )
+          return;
         mapper.blur();
         intents.clear();
         intents.clearLog();
@@ -444,6 +449,10 @@ async function start(): Promise<void> {
     Object.assign(window, {
       __stickgame: {
         snapshot: () => runtime.sim.snapshot(),
+        kitPresentation: () => ({
+          ...devScene.kitPresentation(),
+          fingerprint: levelFingerprint(level),
+        }),
         resources: () => ({
           textures: game.textures.getTextureKeys().length,
           cameras: devScene.cameras.cameras.length,

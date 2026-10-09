@@ -7,8 +7,8 @@
 // each object is then written at 1x (64 px/m, matching PIXELS_PER_METER) and 2x (128 px/m) with
 // area-averaged downscaling, and listed in a manifest.
 //
-// Usage: node scripts/art/slice-sheet.mjs <sheet.png> <out-dir> [--spec spec.json] [--gap 14] [--min-area 400]
-// Spec: { "objects": [ { "name": "platform-mid", "sourcePxPerMeter": 161 }, ... ] } in detected order.
+// Usage: node scripts/art/slice-sheet.mjs <sheet.png> <out-dir> [--spec spec.json] [--gap 14] [--min-area 400] [--white-paper-alpha] [--1x-only]
+// Spec objects may provide sourceBox {x,y,width,height}; otherwise detected order is used.
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -24,14 +24,25 @@ function parseArgs(argv) {
     );
     process.exit(2);
   }
-  const opts = { gap: 14, minArea: 400, alpha: 16, spec: null };
-  for (let i = 0; i < rest.length; i += 2) {
+  const opts = {
+    gap: 14,
+    minArea: 400,
+    alpha: 16,
+    spec: null,
+    whitePaperAlpha: false,
+    oneXOnly: false,
+  };
+  for (let i = 0; i < rest.length; i++) {
     const key = rest[i]?.replace(/^--/, '');
-    const raw = rest[i + 1];
-    if (key === 'spec') opts.spec = JSON.parse(fs.readFileSync(raw, 'utf8'));
-    else if (key === 'gap') opts.gap = Number(raw);
-    else if (key === 'min-area') opts.minArea = Number(raw);
-    else if (key === 'alpha') opts.alpha = Number(raw);
+    if (key === 'white-paper-alpha') opts.whitePaperAlpha = true;
+    else if (key === '1x-only') opts.oneXOnly = true;
+    else {
+      const raw = rest[++i];
+      if (key === 'spec') opts.spec = JSON.parse(fs.readFileSync(raw, 'utf8'));
+      else if (key === 'gap') opts.gap = Number(raw);
+      else if (key === 'min-area') opts.minArea = Number(raw);
+      else if (key === 'alpha') opts.alpha = Number(raw);
+    }
   }
   return { sheet, outDir, opts };
 }
@@ -135,6 +146,37 @@ function crop(png, box, pad) {
   return out;
 }
 
+/** Remove a white scan/paper matte while preserving antialiased black and red ink. */
+function whitePaperToAlpha(png) {
+  for (let i = 0; i < png.data.length; i += 4) {
+    const r = png.data[i];
+    const g = png.data[i + 1];
+    const b = png.data[i + 2];
+    const a = 255 - Math.min(r, g, b);
+    if (a < 8) {
+      png.data[i + 3] = 0;
+      continue;
+    }
+    const matte = 255 - a;
+    png.data[i] = Math.max(0, Math.min(255, Math.round(((r - matte) * 255) / a)));
+    png.data[i + 1] = Math.max(0, Math.min(255, Math.round(((g - matte) * 255) / a)));
+    png.data[i + 2] = Math.max(0, Math.min(255, Math.round(((b - matte) * 255) / a)));
+    png.data[i + 3] = a;
+  }
+}
+
+/** Keep red ink only on assets explicitly marked as hazards. */
+function removeNonHazardRed(png, preserveRed) {
+  if (preserveRed) return;
+  for (let i = 0; i < png.data.length; i += 4) {
+    if (png.data[i] > png.data[i + 1] * 1.35 && png.data[i] > png.data[i + 2] * 1.35) {
+      png.data[i] = 0;
+      png.data[i + 1] = 0;
+      png.data[i + 2] = 0;
+    }
+  }
+}
+
 /** Area-averaging downscale on premultiplied alpha (no dark fringes around ink strokes). */
 function downscale(src, scale) {
   const w = Math.max(1, Math.round(src.width * scale));
@@ -179,19 +221,21 @@ function downscale(src, scale) {
 
 const { sheet, outDir, opts } = parseArgs(process.argv.slice(2));
 const png = PNG.sync.read(fs.readFileSync(sheet));
-if (png.colorType !== 6 && png.alpha !== true) {
+if (opts.whitePaperAlpha) whitePaperToAlpha(png);
+if (!opts.whitePaperAlpha && png.colorType !== 6 && png.alpha !== true) {
   console.warn('warning: sheet has no alpha channel; every pixel will count as opaque');
 }
-const objects = findObjects(png, opts);
 const specs = opts.spec?.objects ?? [];
+const hasExplicitBoxes = specs.length > 0 && specs.every((spec) => spec.sourceBox);
+const objects = hasExplicitBoxes ? specs.map((spec) => spec.sourceBox) : findObjects(png, opts);
 if (opts.spec && specs.length !== objects.length) {
   console.error(
     `spec lists ${String(specs.length)} objects but the sheet has ${String(objects.length)}; fix the spec or --gap`,
   );
   process.exit(1);
 }
-fs.mkdirSync(path.join(outDir, '2x'), { recursive: true });
 fs.mkdirSync(path.join(outDir, '1x'), { recursive: true });
+if (!opts.oneXOnly) fs.mkdirSync(path.join(outDir, '2x'), { recursive: true });
 
 const manifest = { source: path.basename(sheet), pxPerMeter1x: PX_PER_METER_1X, objects: [] };
 objects.forEach((box, i) => {
@@ -200,6 +244,7 @@ objects.forEach((box, i) => {
   // Without a spec, assume the sheet is drawn at 2x.
   const sourcePxPerMeter = spec?.sourcePxPerMeter ?? PX_PER_METER_1X * 2;
   const full = crop(png, box, 2);
+  if (opts.whitePaperAlpha) removeNonHazardRed(full, spec?.preserveRed === true);
   const scale2x = (PX_PER_METER_1X * 2) / sourcePxPerMeter;
   const scale1x = PX_PER_METER_1X / sourcePxPerMeter;
   if (scale2x > 1)
@@ -208,7 +253,8 @@ objects.forEach((box, i) => {
     );
   const img2x = downscale(full, Math.min(1, scale2x));
   const img1x = downscale(full, scale1x);
-  fs.writeFileSync(path.join(outDir, '2x', `${name}.png`), PNG.sync.write(img2x));
+  if (!opts.oneXOnly)
+    fs.writeFileSync(path.join(outDir, '2x', `${name}.png`), PNG.sync.write(img2x));
   fs.writeFileSync(path.join(outDir, '1x', `${name}.png`), PNG.sync.write(img1x));
   manifest.objects.push({
     name,
@@ -219,13 +265,15 @@ objects.forEach((box, i) => {
       +(full.height / sourcePxPerMeter).toFixed(3),
     ],
     size1x: [img1x.width, img1x.height],
-    size2x: [img2x.width, img2x.height],
+    ...(!opts.oneXOnly ? { size2x: [img2x.width, img2x.height] } : {}),
+    ...(spec?.metadata ? { metadata: spec.metadata } : {}),
   });
 });
+manifest.scaleVariants = opts.oneXOnly ? ['1x'] : ['1x', '2x'];
 fs.writeFileSync(path.join(outDir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
 console.log(`${String(objects.length)} objects -> ${outDir}`);
 for (const o of manifest.objects) {
   console.log(
-    `${o.name.padEnd(18)} ${o.sizeMeters.join(' x ')} m   1x ${o.size1x.join('x')}   2x ${o.size2x.join('x')}`,
+    `${o.name.padEnd(24)} ${o.sizeMeters.join(' x ')} m   1x ${o.size1x.join('x')}${o.size2x ? `   2x ${o.size2x.join('x')}` : ''}`,
   );
 }

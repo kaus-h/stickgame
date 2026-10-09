@@ -28,7 +28,7 @@ This bible is the reference for every prompt, procedural renderer and asset revi
 
 ## 3. Line and mass
 
-- **Line weight.** Outlines 2.5–3.5 px at 1080p. Hatching 1–1.5 px. Every outline has a slight hand wobble that is deterministic per object (`render/ink.ts`), so it never shimmers frame to frame.
+- **Line weight (owner, 2026-10-09).** Terrain preserves the thin 0016 kit strokes at native 64 px/m; the exact collision contour is 1.1 world pixels (about 1 px at the default 900p view). Hatching repeats without stretching; the final repeat is cropped. The kit preserves the source pen wobble; its exact collision contour stays straight. Other procedural outlines use stable per-object wobble (`render/ink.ts`), so none shimmer frame to frame.
 - **Black-mass ratio.** The page stays mostly paper-white. Fills are hatching, not flat black. The only flat black is boots, eye holes, small bolts and the hero's mouth stitches.
 - **Hatching.** Shading uses directional cross-hatching:
   - solids: diagonal down-right
@@ -38,15 +38,15 @@ This bible is the reference for every prompt, procedural renderer and asset revi
 
 ## 4. Who draws what
 
-| Element                                                 | Source                                                                               | Why                                                                                                   |
-| ------------------------------------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
-| Level geometry (solids, hazards, walls)                 | **Procedural pen renderer** drawn from collision data (`render/ink.ts`, `GameScene`) | Art is always aligned to collision (AGENTS.md). Infinite variety, zero asset weight. Matches the page |
-| Rope                                                    | Procedural dashed line                                                               | Locked canon: dashed                                                                                  |
-| Anchors                                                 | Procedural ring at the authored impact radius                                        | The art must equal the impact disc                                                                    |
-| Hero                                                    | AI design reference (0006) leads to a procedural or cutout rig drawn in ink          | Consistency across 10 poses; animation stays code-driven                                              |
-| Enemies, boss, props, margin doodles, menus, title page | AI image generation, then cleanup, threshold, slicing                                | Expressive illustration where hand-drawn charm matters most                                           |
+| Element                                                 | Source                                                                      | Why                                                                                       |
+| ------------------------------------------------------- | --------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Level geometry (solids, hazards, walls)                 | **0016 thin-line kit** cropped/tiled to collision (`render/kit/LevelKit`)   | Collision stays authoritative; calibrated crests and clipped skirts preserve its boundary |
+| Rope                                                    | Procedural dashed line                                                      | Locked canon: dashed                                                                      |
+| Anchors                                                 | 0016 ring slice calibrated to the authored impact radius                    | The art must equal the impact disc                                                        |
+| Hero                                                    | AI design reference (0007) leads to a procedural or cutout rig drawn in ink | Consistency across 10 poses; animation stays code-driven                                  |
+| Enemies, boss, props, margin doodles, menus, title page | AI image generation, then cleanup, threshold, slicing                       | Expressive illustration where hand-drawn charm matters most                               |
 
-**Decision (2026-10-07).** AI-generated terrain tiles (sheet 0005 v1/v2) are dropped. Even with explicit "pure ink" prompts they drift back to grey dungeon stone, which reads goth, not paper.
+**Historical decision (2026-10-07).** Sheet 0005 v1/v2 terrain tiles were dropped. **Superseded for terrain rendering by the owner-approved 0016 thin-line kit (2026-10-09, GMR-107); 0005 remains unused.** Even with explicit "pure ink" prompts they drift back to grey dungeon stone, which reads goth, not paper.
 
 ## 5. The hero (reference: `assets/concepts/0007-hero-pose-sheet.png`, owner-approved 2026-10-08; supersedes 0006, which had a scarf)
 

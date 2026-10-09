@@ -23,6 +23,7 @@
       }
     },
     "killY": { "type": "number" },
+    "theme": { "enum": ["paper", "scenery"] },
     "solids": { "type": "array", "items": { "$ref": "#/definitions/solid" } },
     "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
     "enemies": { "type": "array", "items": { "$ref": "#/definitions/patroller" } },
@@ -89,7 +90,13 @@
   "allOf": [
     {
       "if": { "properties": { "version": { "const": 1 } } },
-      "then": { "properties": { "exit": { "$ref": "#/definitions/region" }, "enemies": false } }
+      "then": {
+        "properties": {
+          "exit": { "$ref": "#/definitions/region" },
+          "enemies": false,
+          "theme": false
+        }
+      }
     }
   ],
   "definitions": {

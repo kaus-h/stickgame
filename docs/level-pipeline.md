@@ -44,6 +44,13 @@ GMR-46 adds authored v2 compartment exit angle, speed and alignment acceptance;
 see [compartment-exits.md](compartment-exits.md). Other unsupported fields are rejected;
 add them with their implementing issue and a migration when needed.
 
+GMR-107 adds optional v2 `theme: "paper" | "scenery"` (default `paper`). `paper` is
+empty ruled paper; `scenery` uses faint pencil doodles as an explicit placeholder until a separate
+background sheet is approved. The content compiler stores theme metadata outside `LevelDef`,
+keyed by compiled level identity. Theme never enters the simulation or its replay/PB fingerprint.
+Theme-only edits still redraw through the existing authoring hot-reload path. See
+[the 0016 renderer notes](art/level-kit-0016.md) for slice calibration and evidence.
+
 ## Author → validate → compile → preview
 
 1. Edit a JSON file in `content/levels`, using `lab-authoring.json` as the v2 example.

@@ -18,6 +18,17 @@ export const MAX_ANCHOR_SPEED = 8;
 /** m/s²: 0.4 × gravity (30). Above it, pivot-driven chaos and slack ropes appear in the lab. */
 export const MAX_ANCHOR_ACCEL = 12;
 
+/** Renderer-only background selection authored with a level. */
+export type LevelTheme = 'paper' | 'scenery';
+
+// Presentation metadata stays outside LevelDef so it cannot affect simulation or replay hashes.
+const levelThemes = new WeakMap<LevelDef, LevelTheme>();
+
+/** Resolve the authored presentation theme without making it simulation state. */
+export function getLevelTheme(level: LevelDef): LevelTheme {
+  return levelThemes.get(level) ?? 'paper';
+}
+
 /** Peak speed (m/s) and acceleration (m/s²) of a ping-pong path from `from` to `to`. */
 export function anchorPathPeaks(
   from: Vec2,
@@ -217,6 +228,7 @@ export function compileLevel(source: unknown): LevelDef {
   }
   if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
     fail('level.exit.id', `duplicate id "${level.exit.id}"`);
+  if (json.theme !== undefined) levelThemes.set(level, json.theme as LevelTheme);
   return level;
 }
 
@@ -329,4 +341,4 @@ function authoringMetadata(json: AuthoringLevelV2): Partial<LevelDef> {
 }
 
 /** Backward-compatible loader entry point. */
-export const parseLevel = compileLevel;
+export const parseLevel: (source: unknown) => LevelDef = compileLevel;
