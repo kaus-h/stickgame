@@ -55,6 +55,8 @@ export interface Settings {
   readonly assist: 'standard' | 'wide-select' | 'snap';
   /** Show the personal-best ghost (GMR-103); G toggles it. */
   readonly ghost: boolean;
+  /** Show the death bodies (GMR-104); B toggles them. */
+  readonly bodies: boolean;
 }
 
 export interface SaveData {
@@ -74,6 +76,7 @@ export const DEFAULT_SETTINGS: Settings = {
   touchScheme: null,
   assist: 'standard',
   ghost: true,
+  bodies: true,
 };
 
 export function emptySave(): SaveData {
@@ -170,6 +173,7 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     touchScheme: typeof s.touchScheme === 'string' ? s.touchScheme : null,
     assist: s.assist === 'wide-select' || s.assist === 'snap' ? s.assist : 'standard',
     ghost: s.ghost !== false,
+    bodies: s.bodies !== false,
   };
   const pbs: Record<string, PersonalBest> = {};
   if (isRecord(data.pbs)) {

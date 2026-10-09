@@ -19,7 +19,11 @@ export type Intent =
   | { readonly type: 'respawn' }
   | { readonly type: 'pause' }
   /** Show or hide the personal-best ghost (GMR-103). Presentation only; the simulation ignores it. */
-  | { readonly type: 'ghostToggle' };
+  | { readonly type: 'ghostToggle' }
+  /** Show or hide the death bodies (GMR-104, B). Presentation only; never reaches the simulation. */
+  | { readonly type: 'bodiesToggle' }
+  /** Clear the death bodies (GMR-104, C). Presentation only; never reaches the simulation. */
+  | { readonly type: 'bodiesClear' };
 
 /** Supplies the intents that apply to a given simulation tick. */
 export interface IntentSource {

@@ -180,6 +180,8 @@ const CODES = {
   respawn: 'k',
   pause: 'p',
   ghostToggle: 'g',
+  bodiesToggle: 'b',
+  bodiesClear: 'c',
 } as const;
 type SimpleType = keyof typeof CODES;
 const SIMPLE_BY_CODE = new Map<string, SimpleType>(
