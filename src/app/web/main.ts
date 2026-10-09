@@ -301,7 +301,7 @@ async function start(): Promise<void> {
   // bundle. If this wiring ever looks wrong, the overlay module is standalone: call
   // drawRopeDesign with a world-space Graphics, the level, tuning and metersToPixels(1).
   if (params.get('design') === '1') {
-    gameScene.events.on(Phaser.Scenes.Events.CREATE, () => {
+    gameScene.events.once('create', () => {
       void import('../../tools/design-overlay/RopeDesignOverlay').then(({ drawRopeDesign }) => {
         drawRopeDesign(gameScene.add.graphics().setDepth(50), level, tuning, metersToPixels(1));
       });
