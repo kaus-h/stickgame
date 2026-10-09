@@ -163,6 +163,21 @@ export class TouchControlsView {
         g.lineBetween(end.x, end.y, end.x + s * 0.05, end.y + s * 0.5);
         break;
       }
+      case 'respawn': {
+        // A small checkpoint flag with a return hook: back to the flag.
+        g.lineBetween(p.x - s * 0.3, p.y + s, p.x - s * 0.3, p.y - s);
+        g.fillStyle(tone, alpha).fillTriangle(
+          p.x - s * 0.3,
+          p.y - s,
+          p.x + s * 0.7,
+          p.y - s * 0.65,
+          p.x - s * 0.3,
+          p.y - s * 0.3,
+        );
+        g.lineBetween(p.x + s * 0.7, p.y + s * 0.6, p.x - s * 0.1, p.y + s * 0.6);
+        g.lineBetween(p.x - s * 0.1, p.y + s * 0.6, p.x + s * 0.2, p.y + s * 0.3);
+        break;
+      }
       default:
         break;
     }

@@ -1,6 +1,6 @@
 {
-  "_comment": "Bundle budgets checked by scripts/bundle-report.mjs (GMR-53). PROPOSED defaults, not canon. Raise only with evidence and a canon update. Sizes in kilobytes (1 KB = 1024 B). GMR-99 (slim Phaser build) measured 204.3 KB initial JS gzip and 816.8 KB total; the budgets are those plus ~15% headroom.",
-  "initialJsGzipKB": 235,
-  "totalKB": 940,
+  "_comment": "Bundle budgets checked by scripts/bundle-report.mjs (GMR-53). PROPOSED defaults, not canon. Raise only with evidence and a canon update. Sizes in kilobytes (1 KB = 1024 B). GMR-99 (slim Phaser build) measured 204.3 KB initial JS gzip and 816.8 KB total. Re-based 2026-10-08 after the vertical-slice features landed (game flow, save, checkpoints, patroller goon, racing timing and PB ghost): measured 234.1 KB initial JS gzip and 948.3 KB total, budgets are those plus ~15% headroom again. Next step if it keeps growing: lazy-load level data and dev tools out of the main chunk (GMR-36 load budget).",
+  "initialJsGzipKB": 270,
+  "totalKB": 1090,
   "_totalNote": "totalKB counts everything in dist/ except *.map files (raw bytes)."
 }

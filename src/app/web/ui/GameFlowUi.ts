@@ -1,4 +1,5 @@
 import type { SaveData, Settings } from '../../../platform';
+import { DELTA_COLOURS, formatDelta } from '../../../render/race';
 import {
   continueLevel,
   formatTicks,
@@ -17,6 +18,8 @@ export interface FlowActions {
   play(levelId: string): void;
   /** Restart the current level's attempt. */
   restart(): void;
+  /** Respawn at the last reached checkpoint (GMR-103); restart if none was reached. */
+  respawn(): void;
   /** Pause or resume the simulation for the menus. */
   setMenuPaused(paused: boolean): void;
   /** Settings changed (persist and apply). */
@@ -28,6 +31,22 @@ export interface ResultsInfo {
   readonly ticks: number;
   readonly deaths: number;
   readonly newBest: boolean;
+  /** Run time minus the previous PB (GMR-103); null when this is the first PB. */
+  readonly pbDelta?: number | null;
+  /** Lives played in the run. */
+  readonly lives?: number;
+  readonly bestLifeTicks?: number;
+  /** Total level time until this first clear; only on the first clear. */
+  readonly firstClearTicks?: number | null;
+  /** Per-checkpoint splits, then the finish, with the PB split where there is one. */
+  readonly splits?: readonly ResultSplit[];
+}
+
+export interface ResultSplit {
+  /** Checkpoint index, or -1 for the finish. */
+  readonly index: number;
+  readonly ticks: number | null;
+  readonly pbTicks: number | null;
 }
 
 const CSS = `
@@ -57,6 +76,11 @@ const CSS = `
 .flow input[type=range] { width: 160px; accent-color: #16161a; }
 .flow select { font: inherit; font-size: 24px; background: none; border: 2px solid #16161a; border-radius: 8px; }
 .flow input[type=checkbox] { width: 24px; height: 24px; accent-color: #16161a; }
+.flow .delta { font-size: 28px; margin: 0 0 4px; }
+.flow table.splits { margin: 6px auto 4px; border-collapse: collapse; font-size: 24px; }
+.flow table.splits th { font-weight: normal; color: #5a5a5a; padding: 0 10px; }
+.flow table.splits td { padding: 0 10px; text-align: right; }
+.flow table.splits td:first-child { text-align: left; }
 `;
 
 /**
@@ -160,6 +184,10 @@ export class GameFlowUi {
           this.actions.restart();
           this.resume();
         }),
+        button(this.s('pause.respawn'), () => {
+          this.actions.respawn();
+          this.resume();
+        }),
       ),
       row(
         button(this.s('pause.settings'), () => {
@@ -183,11 +211,31 @@ export class GameFlowUi {
         : r.deaths === 1
           ? this.s('results.deaths1')
           : this.s('results.deaths', { n: r.deaths });
+    const lives =
+      r.lives === undefined
+        ? null
+        : r.lives === 1
+          ? this.s('results.lives1')
+          : this.s('results.lives', { n: r.lives });
     this.render('results', [
       h('h2', {}, [this.s('results.heading', { level: label })]),
-      h('p', { class: 'stat' }, [this.s('results.time', { time: formatTicks(r.ticks) })]),
-      h('p', { class: 'stat' }, [deaths]),
+      h('p', { class: 'stat', 'data-stat': 'time' }, [
+        this.s('results.time', { time: formatTicks(r.ticks) }),
+      ]),
+      this.pbDeltaLine(r.pbDelta),
+      h('p', { class: 'stat' }, [lives ? `${deaths} · ${lives}` : deaths]),
+      r.bestLifeTicks !== undefined && (r.lives ?? 1) > 1
+        ? h('p', { class: 'tag' }, [
+            this.s('results.bestLife', { time: formatTicks(r.bestLifeTicks) }),
+          ])
+        : null,
+      r.firstClearTicks != null
+        ? h('p', { class: 'tag', 'data-stat': 'first-clear' }, [
+            this.s('results.firstClear', { time: formatTicks(r.firstClearTicks) }),
+          ])
+        : null,
       r.newBest ? h('p', { class: 'best' }, [this.s('results.newBest')]) : null,
+      this.splitsTable(r.splits),
       row(
         next
           ? button(
@@ -273,6 +321,9 @@ export class GameFlowUi {
           this.actions.settings({ reducedMotion: v });
         },
       ),
+      this.checkbox(this.s('settings.ghost'), s.ghost, (v) => {
+        this.actions.settings({ ghost: v });
+      }),
       select(
         this.s('settings.assist'),
         'settings.assist',
@@ -324,6 +375,46 @@ export class GameFlowUi {
 
   // --- helpers -----------------------------------------------------------------------------------
 
+  /** "vs PB −0.42" in blue pen, "+0.42" in red pen; the sign always carries the meaning too. */
+  private pbDeltaLine(delta: number | null | undefined): HTMLElement | null {
+    if (delta === undefined) return null;
+    if (delta === null) return h('p', { class: 'delta' }, [this.s('results.firstPb')]);
+    return h('p', { class: 'delta', 'data-stat': 'pb-delta' }, [
+      `${this.s('results.pbDelta')} `,
+      this.deltaSpan(delta),
+    ]);
+  }
+
+  private deltaSpan(delta: number): HTMLElement {
+    const d = formatDelta(delta);
+    const span = h('span', { 'data-tone': d.tone }, [d.text]);
+    span.style.color = DELTA_COLOURS[d.tone];
+    return span;
+  }
+
+  private splitsTable(splits: readonly ResultSplit[] | undefined): HTMLElement | null {
+    if (!splits || splits.length < 2) return null; // the finish alone repeats the run time
+    const head = h('tr', {}, [
+      h('th', {}, [this.s('results.splits')]),
+      h('th', {}, [this.s('results.split.time')]),
+      h('th', {}, [this.s('results.split.delta')]),
+    ]);
+    const rows = splits.map((sp) =>
+      h('tr', {}, [
+        h('td', {}, [
+          sp.index < 0
+            ? this.s('results.split.finish')
+            : this.s('results.split.checkpoint', { n: sp.index + 1 }),
+        ]),
+        h('td', {}, [sp.ticks === null ? '—' : formatTicks(sp.ticks)]),
+        h('td', {}, [
+          sp.ticks !== null && sp.pbTicks !== null ? this.deltaSpan(sp.ticks - sp.pbTicks) : '—',
+        ]),
+      ]),
+    );
+    return h('table', { class: 'splits' }, [head, ...rows]);
+  }
+
   private levelCard(l: ChapterLevel, data: SaveData): HTMLElement {
     const unlocked = isUnlocked(this.chapter, l.id, data.levels);
     const rec = data.levels[l.id];
@@ -338,6 +429,15 @@ export class GameFlowUi {
     b.disabled = !unlocked;
     b.dataset.level = l.id;
     return h('div', { class: 'level' }, [b, h('span', { class: 'meta' }, [meta])]);
+  }
+
+  private checkbox(label: string, value: boolean, apply: (v: boolean) => void): HTMLElement {
+    const input = h('input', { type: 'checkbox', 'aria-label': label }, []) as HTMLInputElement;
+    input.checked = value;
+    input.onchange = () => {
+      apply(input.checked);
+    };
+    return h('label', { class: 'setting' }, [label, input]);
   }
 
   private labelOf(levelId: string): string {

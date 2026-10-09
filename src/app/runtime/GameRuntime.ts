@@ -10,6 +10,7 @@ import {
   type SimSnapshot,
   type TargetAssist,
 } from '../../sim';
+import type { RunTiming } from './RunTiming';
 
 export interface GameRuntimeDeps {
   readonly tuning: RuntimeTuning;
@@ -23,6 +24,8 @@ export interface GameRuntimeDeps {
   readonly beforeTick?: () => void;
   /** Opt-in aim assist (GMR-27); omitted = standard. */
   readonly assist?: TargetAssist;
+  /** Racing-style run timing and the PB ghost (GMR-103); omitted in tools and labs. */
+  readonly timing?: RunTiming;
 }
 
 const FRAME_WINDOW = 120;
@@ -41,6 +44,8 @@ export class GameRuntime implements FrameSource {
   private readonly pauseReasons = new Set<string>();
   private readonly unsubscribe: () => void;
   private readonly eventListeners = new Set<(events: readonly SimEvent[]) => void>();
+  /** Events collected step by step (timing needs them per tick), delivered once per frame. */
+  private pendingEvents: SimEvent[] = [];
 
   private frameMs: number[] = [];
   private simStepMsTotal = 0;
@@ -81,14 +86,18 @@ export class GameRuntime implements FrameSource {
       this.lastSteps = 0;
     }
 
-    const events = this.sim.drainEvents();
+    const events = this.pendingEvents;
+    this.pendingEvents = [];
+    events.push(...this.sim.drainEvents());
     if (events.length > 0) for (const listener of this.eventListeners) listener(events);
 
+    const race = this.deps.timing?.view();
     return {
       previous: this.previous,
       current: this.current,
       alpha: this.lastAlpha,
       stats: this.stats(),
+      ...(race ? { race } : {}),
     };
   }
 
@@ -112,6 +121,8 @@ export class GameRuntime implements FrameSource {
   /** Reload level data in the same simulation/physics world, with no stale interpolation. */
   replaceLevel(level: LevelDef): void {
     this.sim.replaceLevel(level);
+    this.deps.timing?.replaceLevel(level);
+    this.pendingEvents = [];
     this.clock.reset();
     this.current = this.sim.snapshot();
     this.previous = this.current;
@@ -155,13 +166,20 @@ export class GameRuntime implements FrameSource {
     this.unsubscribe();
     this.eventListeners.clear();
     this.sim.dispose();
+    this.deps.timing?.dispose();
   }
 
   private step(): void {
     const start = this.deps.now();
     this.previous = this.current;
     this.deps.beforeTick?.();
-    this.sim.step(this.deps.intents.poll(this.sim.snapshot().tick));
+    const intents = this.deps.intents.poll(this.sim.snapshot().tick);
+    const timing = this.deps.timing;
+    timing?.beforeStep(this.sim, intents);
+    this.sim.step(intents);
+    const events = this.sim.drainEvents();
+    timing?.afterStep(this.sim, events);
+    for (const e of events) this.pendingEvents.push(e);
     this.current = this.sim.snapshot();
     this.simStepMsTotal += this.deps.now() - start;
     this.simSteps++;

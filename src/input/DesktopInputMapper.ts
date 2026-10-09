@@ -9,7 +9,11 @@ export interface DesktopBindings {
   readonly right: readonly string[];
   readonly jump: readonly string[];
   readonly restart: readonly string[];
+  /** Respawn at the last checkpoint (GMR-103, owner-approved meta control). */
+  readonly respawn: readonly string[];
   readonly pause: readonly string[];
+  /** Show or hide the PB ghost (GMR-103). */
+  readonly ghost: readonly string[];
 }
 
 export const DEFAULT_DESKTOP_BINDINGS: DesktopBindings = {
@@ -17,7 +21,9 @@ export const DEFAULT_DESKTOP_BINDINGS: DesktopBindings = {
   right: ['KeyD', 'ArrowRight'],
   jump: ['Space', 'KeyW', 'ArrowUp'],
   restart: ['KeyR'],
+  respawn: ['Backspace'],
   pause: ['Escape', 'KeyP'],
+  ghost: ['KeyG'],
 };
 
 /**
@@ -42,7 +48,9 @@ export class DesktopInputMapper {
     this.held.add(code);
     if (this.bindings.jump.includes(code)) this.emit({ type: 'jumpPress' });
     if (this.bindings.restart.includes(code)) this.emit({ type: 'restart' });
+    if (this.bindings.respawn.includes(code)) this.emit({ type: 'respawn' });
     if (this.bindings.pause.includes(code)) this.emit({ type: 'pause' });
+    if (this.bindings.ghost.includes(code)) this.emit({ type: 'ghostToggle' });
     this.updateAxis();
   }
 
@@ -120,7 +128,8 @@ export class DesktopInputMapper {
  */
 export function bindDom(target: HTMLElement, mapper: DesktopInputMapper): () => void {
   const onKeyDown = (e: KeyboardEvent): void => {
-    if (e.code === 'Space' || e.code.startsWith('Arrow')) e.preventDefault();
+    if (e.code === 'Space' || e.code === 'Backspace' || e.code.startsWith('Arrow'))
+      e.preventDefault();
     mapper.keyDown(e.code, e.repeat);
   };
   const onKeyUp = (e: KeyboardEvent): void => {

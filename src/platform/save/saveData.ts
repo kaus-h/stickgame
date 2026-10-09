@@ -4,7 +4,7 @@
  * blocks play; the store also keeps the previous good copy as a backup.
  */
 
-export const SAVE_VERSION = 1;
+export const SAVE_VERSION = 2;
 
 export interface LevelRecord {
   readonly cleared: boolean;
@@ -16,6 +16,29 @@ export interface LevelRecord {
   readonly totalDeaths: number;
   /** Medal ids earned (mastery systems, GMR-65). */
   readonly medals: readonly string[];
+  /** Total play ticks on this level across every run and session, restarts included (GMR-103). */
+  readonly playTicks: number;
+  /**
+   * Time to first clear (GMR-103): playTicks at the first completion. Recorded once, never
+   * overwritten; null if not cleared yet, or cleared before this was tracked.
+   */
+  readonly firstClearTicks: number | null;
+}
+
+/**
+ * Personal best run (GMR-103): the run time, its checkpoint splits and the run as an input replay
+ * (GMR-29 format), which drives the PB ghost. The replay is only trusted for the level version and
+ * build it was recorded on; anything else is discarded by the app, never drawn wrong.
+ */
+export interface PersonalBest {
+  /** Run time in simulation ticks. */
+  readonly ticks: number;
+  /** Run time at each checkpoint, by checkpoint index; null where the run skipped it. */
+  readonly splits: readonly (number | null)[];
+  /** Encoded replay (core/replay.ts). */
+  readonly replay: string;
+  /** levelFingerprint of the level the replay was recorded on. */
+  readonly levelVersion: string;
 }
 
 export type ReducedMotion = 'system' | 'on' | 'off';
@@ -30,14 +53,16 @@ export interface Settings {
   readonly touchScheme: string | null;
   /** Opt-in aim assist tier (GMR-27); 'standard' means none. */
   readonly assist: 'standard' | 'wide-select' | 'snap';
+  /** Show the personal-best ghost (GMR-103); G toggles it. */
+  readonly ghost: boolean;
 }
 
 export interface SaveData {
   readonly version: number;
   readonly levels: Readonly<Record<string, LevelRecord>>;
   readonly settings: Settings;
-  /** Encoded replays (GMR-29 format) of the best run per level, for the local best ghost. */
-  readonly ghosts: Readonly<Record<string, string>>;
+  /** Personal best per level, with its splits and ghost replay (GMR-103). */
+  readonly pbs: Readonly<Record<string, PersonalBest>>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -48,10 +73,11 @@ export const DEFAULT_SETTINGS: Settings = {
   reducedMotion: 'system',
   touchScheme: null,
   assist: 'standard',
+  ghost: true,
 };
 
 export function emptySave(): SaveData {
-  return { version: SAVE_VERSION, levels: {}, settings: DEFAULT_SETTINGS, ghosts: {} };
+  return { version: SAVE_VERSION, levels: {}, settings: DEFAULT_SETTINGS, pbs: {} };
 }
 
 export const EMPTY_LEVEL: LevelRecord = {
@@ -60,6 +86,8 @@ export const EMPTY_LEVEL: LevelRecord = {
   fewestDeaths: null,
   totalDeaths: 0,
   medals: [],
+  playTicks: 0,
+  firstClearTicks: null,
 };
 
 /** A migration takes the data of version N and returns version N + 1. */
@@ -71,6 +99,14 @@ export type Migration = (data: Record<string, unknown>) => Record<string, unknow
  */
 export const MIGRATIONS: Readonly<Record<number, Migration>> = {
   0: (d) => ({ ...d, version: 1, settings: d.settings ?? {}, ghosts: d.ghosts ?? {} }),
+  // GMR-103: version-1 ghosts were bare replays with no splits or level version, so they cannot be
+  // validated against the current level; they are dropped. Level records gain play time and time to
+  // first clear (sanitize fills the defaults).
+  1: (d) => {
+    const next: Record<string, unknown> = { ...d, version: 2, pbs: {} };
+    delete next.ghosts;
+    return next;
+  },
 };
 
 export class SaveVersionError extends Error {}
@@ -118,6 +154,8 @@ export function sanitize(data: Record<string, unknown>): SaveData {
         medals: Array.isArray(r.medals)
           ? r.medals.filter((m): m is string => typeof m === 'string').slice(0, 16)
           : [],
+        playTicks: intOrNull(r.playTicks) ?? 0,
+        firstClearTicks: intOrNull(r.firstClearTicks),
       };
     }
   }
@@ -131,15 +169,30 @@ export function sanitize(data: Record<string, unknown>): SaveData {
       s.reducedMotion === 'on' || s.reducedMotion === 'off' ? s.reducedMotion : 'system',
     touchScheme: typeof s.touchScheme === 'string' ? s.touchScheme : null,
     assist: s.assist === 'wide-select' || s.assist === 'snap' ? s.assist : 'standard',
+    ghost: s.ghost !== false,
   };
-  const ghosts: Record<string, string> = {};
-  if (isRecord(data.ghosts)) {
-    for (const [id, g] of Object.entries(data.ghosts)) {
-      // Ghost replays are small (a few hundred bytes); refuse absurd sizes.
-      if (typeof g === 'string' && g.length < 200_000) ghosts[id] = g;
+  const pbs: Record<string, PersonalBest> = {};
+  if (isRecord(data.pbs)) {
+    for (const [id, pb] of Object.entries(data.pbs)) {
+      const ok = sanitizePb(pb);
+      if (ok && id.length > 0 && id.length <= 64) pbs[id] = ok;
     }
   }
-  return { version: SAVE_VERSION, levels, settings, ghosts };
+  return { version: SAVE_VERSION, levels, settings, pbs };
+}
+
+/** Shape check only; whether the replay still fits the level and build is the app's call. */
+function sanitizePb(pb: unknown): PersonalBest | null {
+  if (!isRecord(pb)) return null;
+  const ticks = intOrNull(pb.ticks);
+  // Replays are small (a few kilobytes for minutes of play); refuse absurd sizes.
+  if (ticks === null || ticks === 0) return null;
+  if (typeof pb.replay !== 'string' || pb.replay.length === 0 || pb.replay.length >= 200_000)
+    return null;
+  if (typeof pb.levelVersion !== 'string' || !Array.isArray(pb.splits) || pb.splits.length > 64)
+    return null;
+  const splits = pb.splits.map((v) => intOrNull(v));
+  return { ticks, splits, replay: pb.replay, levelVersion: pb.levelVersion };
 }
 
 /** Parse, migrate and repair. Returns null when the text is not a usable save at all. */
@@ -167,15 +220,21 @@ export interface RunResult {
   readonly cleared: boolean;
   readonly ticks: number;
   readonly deaths: number;
+  /** Play ticks on the level since the last record (restarts included), for time to first clear. */
+  readonly playTicks?: number;
 }
 
 /** Fold one finished run into a level record (pure; the store persists the result). */
 export function recordRun(prev: LevelRecord | undefined, run: RunResult): LevelRecord {
   const r = prev ?? EMPTY_LEVEL;
-  if (!run.cleared) return { ...r, totalDeaths: r.totalDeaths + run.deaths };
+  const playTicks = r.playTicks + (run.playTicks ?? 0);
+  if (!run.cleared) return { ...r, totalDeaths: r.totalDeaths + run.deaths, playTicks };
   return {
     ...r,
     cleared: true,
+    playTicks,
+    // Recorded once, at the first clear, and never overwritten.
+    firstClearTicks: r.cleared ? r.firstClearTicks : playTicks,
     bestTicks: r.bestTicks === null ? run.ticks : Math.min(r.bestTicks, run.ticks),
     fewestDeaths: r.fewestDeaths === null ? run.deaths : Math.min(r.fewestDeaths, run.deaths),
     totalDeaths: r.totalDeaths + run.deaths,

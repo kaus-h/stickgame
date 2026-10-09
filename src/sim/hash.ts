@@ -1,3 +1,4 @@
+import type { LevelDef } from './level';
 import type { SimSnapshot } from './Simulation';
 
 const scratch = new DataView(new ArrayBuffer(8));
@@ -68,6 +69,13 @@ export function hashSnapshot(s: SimSnapshot): string {
       int32(enemy.facing);
     }
   }
+  // Checkpoint respawns (GMR-103): zero adds no bytes, preserving all historical replay hashes.
+  if (s.respawns > 0) {
+    int32(0x5250574e);
+    int32(s.respawns);
+    int32(s.lives);
+    int32(s.runTick);
+  }
   // Null entry state adds no bytes, preserving all historical replay hashes.
   for (const record of [s.completion, s.lastExitAttempt]) {
     if (!record) continue;
@@ -87,6 +95,22 @@ export function hashSnapshot(s: SimSnapshot): string {
     f64(record.alignment);
     if ('attemptTicks' in record && typeof record.attemptTicks === 'number')
       int32(record.attemptTicks);
+  }
+  return (h >>> 0).toString(16).padStart(8, '0');
+}
+
+/**
+ * Level-version fingerprint (GMR-103): FNV-1a over the level definition's canonical JSON. A saved
+ * PB replay records it, and a replay for any other version of the level is discarded rather than
+ * played back against geometry it was not recorded on.
+ */
+export function levelFingerprint(level: LevelDef): string {
+  const text = JSON.stringify(level);
+  let h = 0x811c9dc5;
+  for (let i = 0; i < text.length; i++) {
+    const c = text.charCodeAt(i);
+    h = Math.imul(h ^ (c & 0xff), 0x01000193);
+    h = Math.imul(h ^ (c >>> 8), 0x01000193);
   }
   return (h >>> 0).toString(16).padStart(8, '0');
 }

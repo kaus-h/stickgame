@@ -54,7 +54,8 @@ export const DEFAULT_TOUCH_OPTIONS: TouchOptions = {
   deadzone: 0.18,
 };
 
-export type TouchControlId = 'left' | 'right' | 'stick' | 'jump' | 'rope' | 'pause' | 'restart';
+export type TouchControlId =
+  'left' | 'right' | 'stick' | 'jump' | 'rope' | 'pause' | 'restart' | 'respawn';
 
 /** A round control in CSS px. `hit` is the touch radius (larger than the drawn radius). */
 export interface TouchControl {
@@ -78,7 +79,8 @@ export interface TouchLayout {
   };
 }
 
-export type TouchRole = 'move' | 'jump' | 'rope' | 'aim' | 'pause' | 'restart' | 'ignored';
+export type TouchRole =
+  'move' | 'jump' | 'rope' | 'aim' | 'pause' | 'restart' | 'respawn' | 'ignored';
 
 /** Plain state for the on-screen control view (render reads it; no input import there). */
 export interface TouchControlsState {
@@ -220,6 +222,9 @@ export class TouchInputMapper {
       case 'restart':
         this.emit({ type: 'restart' });
         break;
+      case 'respawn':
+        this.emit({ type: 'respawn' });
+        break;
       case 'aim':
       case 'ignored':
         break;
@@ -289,6 +294,7 @@ export class TouchInputMapper {
       if (p.role === 'jump') pressed.add('jump');
       if (p.role === 'pause') pressed.add('pause');
       if (p.role === 'restart') pressed.add('restart');
+      if (p.role === 'respawn') pressed.add('respawn');
       if (p.role === 'rope' && this.opts.scheme === 'drag-aim') pressed.add('rope');
     }
     if (this.axis < 0) pressed.add('left');
@@ -492,9 +498,12 @@ export function computeLayout(
     controls.push({ id: 'rope', x: jump.x - u * 2.2, y: jump.y - u * 0.9, r: u, hit: u * 1.2 });
   }
   const small = u * 0.42;
-  const topY = insets.top + 58 + small;
+  // Below the run and life timers (GMR-103).
+  const topY = insets.top + 84 + small;
   controls.push({ id: 'pause', x: right - small, y: topY, r: small, hit: small * 1.5 });
   controls.push({ id: 'restart', x: right - small * 3.6, y: topY, r: small, hit: small * 1.5 });
+  // Respawn at the last checkpoint (GMR-103), beside restart.
+  controls.push({ id: 'respawn', x: right - small * 6.2, y: topY, r: small, hit: small * 1.5 });
   return {
     width,
     height,

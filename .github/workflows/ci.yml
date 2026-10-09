@@ -37,6 +37,18 @@ jobs:
         run: npm run test
       - name: Replay regression (explicit)
         run: npx vitest run tests/unit/replay.test.ts
+      - name: Route solver fixtures (every committed solution still reaches its goals)
+        run: |
+          set -o pipefail
+          npm run --silent levels:solve -- --verify | tee solver.txt
+      - name: Keep summary inputs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ci-summary-inputs
+          path: solver.txt
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Production build (embeds build hash)
         run: npm run build
       - name: Bundle size vs budgets.json
@@ -89,6 +101,56 @@ jobs:
             playwright-report
             test-results
           retention-days: 7
+
+  # One short PR comment an orchestrating agent can read instead of logs (docs/agents/workflow.md).
+  summary:
+    name: PR summary comment
+    needs: [check, e2e]
+    if: always() && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          name: ci-summary-inputs
+      - uses: actions/github-script@v7
+        env:
+          CHECK: ${{ needs.check.result }}
+          E2E: ${{ needs.e2e.result }}
+        with:
+          script: |
+            const fs = require('fs');
+            const marker = '<!-- stickgame-ci-summary -->';
+            const { owner, repo } = context.repo;
+            const pr = context.payload.pull_request;
+            const icon = (r) => ({ success: '✅', failure: '❌', cancelled: '⏹️', skipped: '⏭️' })[r] ?? r;
+            const files = await github.paginate(github.rest.pulls.listFiles, { owner, repo, pull_number: pr.number });
+            const sensitive = files
+              .map((f) => f.filename)
+              .filter((f) => /^(\.github\/|package(-lock)?\.json$|AGENTS\.md$|CLAUDE\.md$|scripts\/agents\/|src\/tools\/device-lab\/golden\.ts$|eslint\.config\.js$|\.dependency-cruiser\.cjs$)/.test(f));
+            const levels = files.map((f) => f.filename).filter((f) => /^content\/(levels|solutions)\//.test(f));
+            let solver = '';
+            try {
+              solver = fs.readFileSync('solver.txt', 'utf8').split('\n').filter((l) => /^\S+\s+(ok|unsolved|no fixture|FAIL|fail)/i.test(l)).join('\n');
+            } catch {}
+            const lines = [
+              marker,
+              `**CI for ${pr.head.sha.slice(0, 7)}**: check ${icon(process.env.CHECK)} · e2e ${icon(process.env.E2E)} · ${files.length} files, +${pr.additions}/−${pr.deletions}`,
+            ];
+            if (sensitive.length) lines.push(`**Sensitive paths (review closely):** ${sensitive.map((f) => '`' + f + '`').join(', ')}`);
+            if (levels.length) lines.push(`**Level content:** ${levels.map((f) => '`' + f + '`').join(', ')}`);
+            if (solver) lines.push('<details><summary>Route solver</summary>\n\n```\n' + solver + '\n```\n</details>');
+            if (process.env.CHECK !== 'success' || process.env.E2E !== 'success')
+              lines.push(`Failing job logs: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`);
+            const body = lines.join('\n\n');
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number: pr.number });
+            const existing = comments.find((c) => c.body?.includes(marker));
+            if (existing) await github.rest.issues.updateComment({ owner, repo, comment_id: existing.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number: pr.number, body });
 
   preview:
     name: Preview deploy (Cloudflare Pages, optional)
