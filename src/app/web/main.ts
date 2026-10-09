@@ -522,6 +522,9 @@ async function start(): Promise<void> {
         },
         stopReplay: () => {
           devScript = null;
+          // A replay's axis persists between ticks just like a held key. Ending the dev
+          // driver must release it, otherwise checkpoint probes keep walking after reset.
+          intents.push({ type: 'move', axis: 0 });
         },
         // Shows the results card for the current level as if it had just been cleared.
         debugResults: (ticks: number, deaths: number) => {

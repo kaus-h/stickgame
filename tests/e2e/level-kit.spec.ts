@@ -31,6 +31,20 @@ interface LevelJson {
   }[];
 }
 
+interface PixelStats {
+  total: number;
+  dark: number;
+  paper: number;
+  red: number;
+}
+
+interface WorldRect {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 function readKit(page: Page): Promise<KitState> {
   return page.evaluate(() =>
     (window as unknown as { __stickgame: LevelHook }).__stickgame.kitPresentation(),
@@ -85,6 +99,44 @@ async function attachScreenshot(page: Page, info: TestInfo, name: string): Promi
     contentType: 'image/png',
   });
 }
+
+/** Read broad world-space canvas regions so visual checks survive small rasterization shifts. */
+async function sampleWorldRect(page: Page, rect: WorldRect): Promise<PixelStats> {
+  return page.evaluate((worldRect) => {
+    const canvas = document.querySelector<HTMLCanvasElement>('#game canvas');
+    if (!canvas) throw new Error('Phaser canvas is missing');
+    const context = canvas.getContext('2d');
+    if (!context) throw new Error('Phaser Canvas 2D context is missing');
+    const game = (window as unknown as { __stickgame: LevelHook }).__stickgame;
+    const view = canvas.getBoundingClientRect();
+    const scaleX = canvas.width / view.width;
+    const scaleY = canvas.height / view.height;
+    const start = game.worldToScreen(worldRect.minX, worldRect.minY);
+    const end = game.worldToScreen(worldRect.maxX, worldRect.maxY);
+    const x = Math.max(0, Math.floor(start.x * scaleX));
+    const y = Math.max(0, Math.floor(start.y * scaleY));
+    const right = Math.min(canvas.width, Math.ceil(end.x * scaleX));
+    const bottom = Math.min(canvas.height, Math.ceil(end.y * scaleY));
+    if (right <= x || bottom <= y) throw new Error('World sample is outside the canvas');
+    const pixels = context.getImageData(x, y, right - x, bottom - y).data;
+    const stats: PixelStats = { total: 0, dark: 0, paper: 0, red: 0 };
+    for (let i = 0; i < pixels.length; i += 4) {
+      const red = pixels[i] ?? 255;
+      const green = pixels[i + 1] ?? 255;
+      const blue = pixels[i + 2] ?? 255;
+      const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
+      stats.total++;
+      if (luminance < 125) stats.dark++;
+      // Warm, bright paper remains distinct from the blue ruling and red danger hatch.
+      if (luminance > 210 && red - green < 24 && red - blue < 36) stats.paper++;
+      if (red > 115 && red > green * 1.3 && red > blue * 1.3) stats.red++;
+    }
+    return stats;
+  }, rect);
+}
+
+const share = (stats: PixelStats, key: 'dark' | 'paper' | 'red'): number =>
+  stats.total ? stats[key] / stats.total : 0;
 
 async function checkLevelKitLevel(page: Page, info: TestInfo, levelId: (typeof LEVEL_IDS)[number]) {
   const source = JSON.parse(
@@ -163,6 +215,76 @@ for (const levelId of LEVEL_IDS) {
     expect(pageErrors).toEqual([]);
   });
 }
+
+test('1-2: kit skirts fade into paper and hazards retain their paper gaps', async ({
+  page,
+}, info) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await page.goto(levelUrl('1-2'));
+  await waitForKit(page);
+  await attachScreenshot(page, info, '1-2-kit-paper-hazard-detail');
+
+  // c1-start has a crest at y=8m. The cross-section fades over 1.65m and leaves its lower
+  // rectangle edge unpainted, so the collision body does not acquire a false closed bottom.
+  const upperSkirt = await sampleWorldRect(page, {
+    minX: 7.4,
+    maxX: 8.6,
+    minY: 8.2,
+    maxY: 8.65,
+  });
+  const lowerSkirt = await sampleWorldRect(page, {
+    minX: 7.4,
+    maxX: 8.6,
+    minY: 9.2,
+    maxY: 9.6,
+  });
+  const interior = await sampleWorldRect(page, {
+    minX: 7.4,
+    maxX: 8.6,
+    minY: 10.1,
+    maxY: 10.6,
+  });
+  const lowerEdge = await sampleWorldRect(page, {
+    minX: 7.4,
+    maxX: 8.6,
+    minY: 11.15,
+    maxY: 11.38,
+  });
+  expect(share(upperSkirt, 'dark'), 'upper skirt should contain ink').toBeGreaterThan(0.02);
+  expect(share(lowerSkirt, 'dark'), 'ink density should fade down the skirt').toBeLessThan(
+    share(upperSkirt, 'dark') * 0.8,
+  );
+  expect(
+    share(interior, 'paper'),
+    'platform interior below the feather should be paper',
+  ).toBeGreaterThan(0.7);
+  expect(share(lowerEdge, 'dark'), 'no dark line should close the platform bottom').toBeLessThan(
+    0.03,
+  );
+
+  // A tooth patch and the lethal floor each contain red marks and visible paper between them.
+  const spikePatch = await sampleWorldRect(page, {
+    minX: 5.55,
+    maxX: 6.45,
+    minY: 7.53,
+    maxY: 7.97,
+  });
+  const poolPatch = await sampleWorldRect(page, {
+    minX: 1,
+    maxX: 3,
+    minY: 11.55,
+    maxY: 12.85,
+  });
+  expect(share(spikePatch, 'red'), 'spikes should be visibly red').toBeGreaterThan(0.005);
+  expect(share(spikePatch, 'paper'), 'spikes should have paper-negative gaps').toBeGreaterThan(
+    0.08,
+  );
+  expect(share(poolPatch, 'red'), 'pool should contain red hatch').toBeGreaterThan(0.08);
+  expect(share(poolPatch, 'paper'), 'pool hatching should leave paper gaps').toBeGreaterThan(0.08);
+  expect(pageErrors).toEqual([]);
+});
 
 /** Windows file watchers can briefly deny opening a watched fixture during write or cleanup. */
 async function updateFixture(file: URL, text: string | null): Promise<void> {

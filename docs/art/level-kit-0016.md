@@ -14,7 +14,7 @@ Acceptance/evidence: all three authored Section 1 levels use kit art; normal-vie
 node scripts/art/slice-sheet.mjs assets/sheets/0016-level-kit-thin.png assets/art/kit-0016 --spec assets/sheets/0016-level-kit-thin.spec.json --white-paper-alpha --1x-only
 ```
 
-The source has an opaque white matte. Explicit sheet-pixel rectangles avoid treating the page as one alpha component. White matte removal reconstructs alpha without a white halo, then area-averaged downscaling preserves fine marks. Non-hazard crops have stray red converted to black in this white-paper mode; the original transparent-sheet mode keeps its existing colours. Only spike/pool specs opt into red. Fourteen 1x slices have individual provenance rows; the complete set is 97,184 bytes. Only eight needed slices are imported by the game. No 2x set or original sheet ships in the bundle.
+The source has an opaque white matte. Explicit sheet-pixel rectangles avoid treating the page as one alpha component. White matte removal reconstructs alpha without a white halo, then area-averaged downscaling preserves fine marks. Non-hazard crops have stray red converted to black in this white-paper mode; the original transparent-sheet mode keeps its existing colours. Only spike/pool specs opt into red. Fourteen 1x slices have individual provenance rows; the complete set is 97,184 bytes. Only five needed slices are imported by the game; loose fading side contours replace the old cap/ceiling images in response to owner review. No 2x set or original sheet ships in the bundle.
 
 `manifest.json` records source rectangles, two-pixel padding, actual rounded output dimensions and explicit collision guides. Guide conversion uses those actual dimensions, not an assumed scale; padding and rounding therefore cannot shift a ledge crest or ring centre.
 
@@ -22,10 +22,9 @@ The source has an opaque white matte. Explicit sheet-pixel rectangles avoid trea
 
 `src/render/kit/LevelKit.ts` decodes browser images once at initial boot, without adding the omitted Phaser Loader. Restarts, retries, scene changes and authoring reloads reuse them. Only initial asset decode waits; there is no new work or delay between death and retry.
 
-Ledge crests tile at native 64 px/m. The last repeat crops to the exact remaining length. Left/right skirt caps align their calibrated source ends to the rectangle ends; hatch skirts clip to the collision polygon and fade into paper. Side/underside edge strips use the ceiling crop, calibrated to its underside guide at source y=695; a thin contour at the authoritative polygon keeps the exact boundary readable without stretching the kit strokes. Light top foliage is cosmetic, not extra collision. This mapping also follows sloped polygon edges in the labs.
+Ledge foliage tiles at native 64 px/m along the calibrated collision crest. A dense hatch skirt from the middle of the source ledge hangs 1.65 m below it and feathers to zero alpha. The shared feathered stamp is prepared once at initial decode, then baked into static tiles. Only the upper edge gets a bold second ink pass. There is no closed rectangle, bottom stroke or underside skirt on a freestanding platform. Two thin, loose side contours fade from the top corner before reaching the bottom. Interiors below the skirt stay open paper, following approved 0014/0015 negative space (owner review, 2026-10-09). Long walls use the same skirt rotated into collision; each side fades within half the wall thickness so opposing skirts do not fill it. Bound-attached ceiling surfaces retain a thin contact edge with a skirt into the solid.
 
-Lethal regions clip all red ink to their collision polygons. The pool's central pen strokes repeat without cliff-end decorations; spikes sit on the exposed top, hang down from ceiling hazards, or face left on vertical hazard faces. A red contour shows the complete lethal boundary even between illustrated teeth. The doorway hut uses its opening guide at the authored entry side; the existing angle/speed/alignment marks stay in front and preserve the full compartment rules.
-
+Lethal regions clip all red ink to their collision polygons. Ink pools use the full scribbled height, including ragged surface droplets and paper gaps, excluding the black banks. They repeat horizontally once per 7 m, with no filled rect, narrow-row repetition or red perimeter box. Spikes use five source teeth per 2.5 m and scale vertically to the hazard rect's complete depth; there is no pool backfill between teeth. Floor, ceiling and vertical-face orientations follow the authored hazard. The doorway hut uses its opening guide at the authored entry side; existing angle/speed/alignment marks stay in front and preserve the full compartment rules.
 Each anchor image is positioned at the interpolated pivot centre and its measured outer ring radius is scaled to the authored impact radius. The mounting tab is decoration above the disc. The active-target highlighter, cross and moving arrow remain separate presentation effects.
 
 Static terrain art bakes into world canvas tiles up to 1024 pixels, culling empty tiles and cropping the last row/column to the actual extent. The debug overlay reports theme, allocated tile count and canvas pixel storage. Only a few quads are visible per frame. Sparse moving-pivot/exit guides remain a lightweight Graphics layer; they do not allocate a second full-world texture set. Scene shutdown removes each tile texture; the single shared ring texture is reused. Camera routing and the body layer keep their existing ownership. Device-lab boot does not load this kit.
@@ -41,6 +40,18 @@ Static terrain art bakes into world canvas tiles up to 1024 pixels, culling empt
 Theme is validated authoring metadata, retained during migration and stored in a content-owned `WeakMap` keyed by the compiled level. It never becomes an enumerable simulation field, so `levelFingerprint`, PB compatibility and deterministic replay state remain identical. The registry retains this level identity. Authoring HMR compares theme as well as canonical geometry, then uses its existing reset-to-spawn/redraw path. Weak keys allow discarded levels to be collected.
 
 ## Verification limits
+
+Owner review fix (2026-10-09): browser pixel checks cover skirt density fading downward, paper interiors, absent lower closure, and paper gaps in spikes/pools. Restoring the original renderer makes the skirt check fail. The Chromium race failure was a held replay axis: `stopReplay()` stopped scheduling but did not release movement. It now queues neutral movement through the ordinary intent queue; the checkpoint test waits for that tick and confirms position remains at the checkpoint after another 300 ms. Restoring the old stop hook makes that assertion fail by 3.46 m. Production input/reset and simulation are unchanged.
+
+Local frame-cost investigation at 1600×900, headless Chromium Canvas, spawn view:
+
+| Level | Pre-kit procedural median | Revised kit median |
+| ----- | ------------------------: | -----------------: |
+| 1-1   |                  0.483 ms |           0.304 ms |
+| 1-2   |                  0.696 ms |           0.462 ms |
+| 1-3   |                  0.568 ms |           0.415 ms |
+
+These are synchronous update+render costs, warmed for 120 steps then measured in nine batches of 240 steps, sequentially on the same machine. Baseline is `b263aa9` (GMR-59 merged with main); [raw measurements](evidence/gmr107/frame-cost.json) include all samples and RAF intervals. They show no slowdown in this desktop sample; they do not measure physical-device or asynchronous GPU cost.
 
 Screenshots use Chromium at 1600×900, canvas rendering, default zoom or `?overview=1`. The baseline is the authored pre-kit 1-1/1-2/1-3 renderer from GMR-59 commit 891abc8; the implementation branch follows main including merged #48/#49. Geometry is identical. Timers can differ by a frame; these are visual art comparisons, not replay-frame goldens. Capture code asserts the actual level ID, so 1-3 is never the old placeholder lab.
 

@@ -28,7 +28,7 @@ This bible is the reference for every prompt, procedural renderer and asset revi
 
 ## 3. Line and mass
 
-- **Line weight (owner, 2026-10-09).** Terrain preserves the thin 0016 kit strokes at native 64 px/m; the exact collision contour is 1.1 world pixels (about 1 px at the default 900p view). Hatching repeats without stretching; the final repeat is cropped. The kit preserves the source pen wobble; its exact collision contour stays straight. Other procedural outlines use stable per-object wobble (`render/ink.ts`), so none shimmer frame to frame.
+- **Line weight (owner, 2026-10-09).** Terrain preserves thin 0016 source strokes at native 64 px/m, with a bold grassy contact crest and dense hanging hatch that fades into open paper. Platforms have no closed box or lower outline; thin doubled side trails fade from their top corners. The kit preserves the source pen wobble. Other procedural outlines use stable per-object wobble (`render/ink.ts`), so none shimmer frame to frame.
 - **Black-mass ratio.** The page stays mostly paper-white. Fills are hatching, not flat black. The only flat black is boots, eye holes, small bolts and the hero's mouth stitches.
 - **Hatching.** Shading uses directional cross-hatching:
   - solids: diagonal down-right
