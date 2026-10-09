@@ -12,6 +12,7 @@ describe('authored compartment exits', () => {
       min: { x: json.exit.min[0], y: json.exit.min[1] },
       max: { x: json.exit.max[0], y: json.exit.max[1] },
     });
+    expect(json.exit.entry).not.toHaveProperty('speed');
     expect(validateLevelAuthoring(json).filter((issue) => issue.severity === 'error')).toEqual([]);
   });
 
