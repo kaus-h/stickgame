@@ -12,7 +12,7 @@ import {
   type BodySegment,
   type Ragdoll,
 } from '../../src/render/bodies/ragdoll';
-import { hashSnapshot } from '../../src/sim';
+import { hashSnapshot, type LevelDef } from '../../src/sim';
 import { makeFixture, makeSim } from '../../src/tools/replay-drift/scenario';
 
 const G = 30;
@@ -33,6 +33,7 @@ const death = (x: number, y: number, vx = 0, vy = 0, tick = 100) => ({
   at: vec2(x, y),
   velocity: vec2(vx, vy),
 });
+const fixtureLevel = makeFixture(level12, tuning).level;
 /** Step until frozen (at most MAX_AGE plus a margin), checking `each` after every step. */
 function settle(rd: Ragdoll, segs: readonly BodySegment[], each?: (rd: Ragdoll) => void): number {
   let t = 0;
@@ -87,6 +88,49 @@ describe('death body ragdoll (GMR-104)', () => {
     expect(Math.max(...rd.points.map((p) => p.y))).toBeGreaterThan(10);
   });
 
+  it('projects an initial death pose out of a floor before the first physics step', () => {
+    const floor = box(-20, 10, 20, 12);
+    const floorLevel: LevelDef = {
+      ...fixtureLevel,
+      solids: [
+        {
+          id: 'spawn-floor',
+          kind: 'solid',
+          points: floor.slice(0, 4).map((p) => ({ x: p.ax, y: p.ay })),
+        },
+      ],
+    };
+    const rd = new BodyPile(floorLevel, G).spawn(death(0, 9.65)).rag;
+    expect(Math.max(...rd.points.map((p) => p.y))).toBeLessThanOrEqual(10);
+    let lowestClearance = -Infinity;
+    settle(rd, floor, (body) => {
+      lowestClearance = Math.max(lowestClearance, ...body.points.map((p) => p.y));
+    });
+    expect(rd.frozen).toBe(true);
+    expect(lowestClearance).toBeLessThanOrEqual(10 + 1e-6);
+  });
+
+  it('pins an initial death pose partway inside a hazard', () => {
+    const hazard = box(-20, 10, 20, 12, true);
+    const hazardLevel: LevelDef = {
+      ...fixtureLevel,
+      solids: [
+        {
+          id: 'spawn-hazard',
+          kind: 'hazard',
+          points: hazard.slice(0, 4).map((p) => ({ x: p.ax, y: p.ay })),
+        },
+      ],
+    };
+    const rd = new BodyPile(hazardLevel, G).spawn(death(0, 11)).rag;
+    expect(rd.stuck).toBe(true);
+    expect(rd.points.every((p) => p.pinned)).toBe(true);
+    for (const p of rd.points) {
+      expect(p.y).toBeGreaterThanOrEqual(10 + HAZARD_SINK - 1e-6);
+      expect(p.y).toBeLessThanOrEqual(12 - HAZARD_SINK + 1e-6);
+    }
+  });
+
   it('the seeded pose is identical for the same death event, different for another', () => {
     const pose = (rd: Ragdoll) => rd.points.map((p) => [p.x, p.y, p.px, p.py]);
     expect(pose(createRagdoll(death(4, 5, 3, -2, 900)))).toEqual(
@@ -106,18 +150,29 @@ describe('death body ragdoll (GMR-104)', () => {
 });
 
 describe('body pile (GMR-104)', () => {
-  const level = makeFixture(level12, tuning).level;
+  const level = fixtureLevel;
 
   it('keeps at most 60 bodies; the oldest fade out', () => {
     const pile = new BodyPile(level, G);
     for (let i = 0; i < 75; i++) pile.spawn(death(5 + i * 0.5, 6, 0, 0, i));
     expect(pile.kept).toBe(BODY_CAP);
+    expect(pile.simulating).toBeLessThanOrEqual(BODY_CAP);
     expect(pile.bodies.filter((b) => b.fading).map((b) => b.id)).toEqual(
       Array.from({ length: 15 }, (_, i) => i),
     );
     for (let k = 0; k < 60; k++) pile.step(1 / 60);
     expect(pile.bodies.length).toBe(BODY_CAP);
     expect(pile.bodies[0]?.id).toBe(15);
+  });
+
+  it('does not reverse time when a negative frame delta arrives', () => {
+    const pile = new BodyPile(level, G);
+    for (let i = 0; i <= BODY_CAP; i++) pile.spawn(death(5 + i * 0.5, 6, 0, 0, i));
+    const oldest = pile.bodies[0];
+    expect(oldest?.fading).toBe(true);
+    pile.step(-1);
+    expect(oldest?.fade).toBe(1);
+    expect(oldest?.rag.age).toBe(0);
   });
 
   it('caps the steps of a long frame and settles every body', () => {

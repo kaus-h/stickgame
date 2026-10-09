@@ -48,17 +48,19 @@ import 'phaser-src/input/keyboard/KeyboardPlugin.js';
 // Game Objects and their `scene.add.*` factories (factories self-register on GameObjectFactory).
 import GameObject from 'phaser-src/gameobjects/GameObject.js';
 import Graphics from 'phaser-src/gameobjects/graphics/Graphics.js';
+import Image from 'phaser-src/gameobjects/image/Image.js';
 import RenderTexture from 'phaser-src/gameobjects/rendertexture/RenderTexture.js';
 import Text from 'phaser-src/gameobjects/text/Text.js';
 import TileSprite from 'phaser-src/gameobjects/tilesprite/TileSprite.js';
 import 'phaser-src/gameobjects/graphics/GraphicsFactory.js';
+import 'phaser-src/gameobjects/image/ImageFactory.js';
 import 'phaser-src/gameobjects/rendertexture/RenderTextureFactory.js';
 import 'phaser-src/gameobjects/text/TextFactory.js';
 import 'phaser-src/gameobjects/tilesprite/TileSpriteFactory.js';
 
 export { Game, Scene, Scale };
 export const Cameras = { Scene2D };
-export const GameObjects = { GameObject, Graphics, RenderTexture, Text, TileSprite };
+export const GameObjects = { GameObject, Graphics, Image, RenderTexture, Text, TileSprite };
 
 export const VERSION = CONST.VERSION;
 export const LOG_VERSION = CONST.LOG_VERSION;

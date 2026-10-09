@@ -281,10 +281,11 @@ export class GameScene extends Phaser.Scene {
   override update(time: number, deltaMs: number): void {
     this.routeCameras();
     const frame = this.opts.source.frame(deltaMs / 1000);
-    const dt = Math.min(0.05, (time - this.lastTime) / 1000 || deltaMs / 1000);
+    const dt = Math.min(0.05, Math.max(0, (time - this.lastTime) / 1000 || deltaMs / 1000));
     this.lastTime = time;
     this.followCamera(frame, dt);
-    this.bodies.update(dt);
+    // Body physics caps its own catch-up; presentation effects keep their wall-time duration.
+    this.bodies.update(Math.max(0, deltaMs / 1000));
     this.drawDynamic(frame, dt);
     this.drawHud(frame);
     this.routeCameras(); // bodies baked this frame

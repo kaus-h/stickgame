@@ -4,6 +4,7 @@ import {
   bodySegments,
   createRagdoll,
   MAX_STEPS,
+  projectSpawnPoint,
   stepRagdoll,
   type BodySegment,
   type Ragdoll,
@@ -30,6 +31,7 @@ export interface PileBody {
 export class BodyPile {
   readonly bodies: PileBody[] = [];
   private readonly segments: BodySegment[];
+  private readonly solids: LevelDef['solids'];
   private readonly floorY: number;
   private acc = 0;
   private nextId = 0;
@@ -39,28 +41,53 @@ export class BodyPile {
     private readonly gravity: number,
   ) {
     this.segments = bodySegments(level);
+    this.solids = level.solids;
     this.floorY = level.bounds.maxY + 2;
   }
 
   spawn(death: Pick<DeathRecord, 'tick' | 'at' | 'velocity'>): PileBody {
-    const body: PileBody = { id: this.nextId++, rag: createRagdoll(death), fade: 1, fading: false };
+    const rag = createRagdoll(death);
+    for (const point of rag.points) {
+      const projection = projectSpawnPoint(point, this.solids);
+      if (!projection) continue;
+      if (projection.hazard) {
+        point.x = point.px = point.sx = projection.x;
+        point.y = point.py = point.sy = projection.y;
+        point.pinned = true;
+        rag.stuck = true;
+      } else {
+        const dx = projection.x - point.x;
+        const dy = projection.y - point.y;
+        point.x = projection.x;
+        point.y = projection.y;
+        point.px += dx;
+        point.py += dy;
+        point.sx += dx;
+        point.sy += dy;
+      }
+    }
+    const body: PileBody = { id: this.nextId++, rag, fade: 1, fading: false };
     this.bodies.push(body);
     let kept = 0;
     for (let i = this.bodies.length - 1; i >= 0; i--) {
       const b = this.bodies[i] as PileBody;
-      if (!b.fading && ++kept > BODY_CAP) b.fading = true;
+      if (!b.fading && ++kept > BODY_CAP) {
+        b.fading = true;
+        b.rag.frozen = true; // only the newest 60 may simulate
+      }
     }
     return body;
   }
 
   /** Advance by a frame's dt (capped): fixed ragdoll steps and over-cap fades. */
   step(dt: number): void {
-    this.acc = Math.min(this.acc + Math.max(0, dt), MAX_STEPS * BODY_STEP);
+    const elapsed = Math.max(0, dt);
+    this.acc = Math.min(this.acc + elapsed, MAX_STEPS * BODY_STEP);
     const steps = Math.floor(this.acc / BODY_STEP + 1e-9);
     this.acc -= steps * BODY_STEP;
     for (const b of this.bodies) {
       stepRagdoll(b.rag, steps, this.gravity, this.segments, this.floorY);
-      if (b.fading) b.fade -= dt / FADE_TIME;
+      if (b.fading) b.fade = Math.max(0, b.fade - elapsed / FADE_TIME);
     }
     for (let i = this.bodies.length - 1; i >= 0; i--)
       if ((this.bodies[i] as PileBody).fade <= 0) this.bodies.splice(i, 1);
@@ -73,6 +100,7 @@ export class BodyPile {
 
   clear(): void {
     this.bodies.length = 0;
+    this.acc = 0;
   }
 
   get kept(): number {

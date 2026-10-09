@@ -17,6 +17,12 @@ const CLEAR_TIME = 0.25;
 const SWEEP_TIME = 1.1;
 const FADE_SWEEP_TIME = 0.2;
 const SMUDGE_TIME = 1.5;
+/** One shared frozen-body texture: 128 slots of 128 px, large enough for normal hero bounds. */
+const ATLAS_CELL = 128;
+const ATLAS_COLUMNS = 16;
+const ATLAS_ROWS = 8;
+const ATLAS_SLOTS = ATLAS_COLUMNS * ATLAS_ROWS;
+const COMPOSITE_TILE = 1024;
 
 export interface BodiesStats {
   readonly count: number;
@@ -34,11 +40,17 @@ interface Smudge {
   age: number;
 }
 
+interface BakedBody {
+  readonly image: Phaser.GameObjects.Image;
+  readonly slot?: number;
+  readonly frame?: string;
+}
+
 /**
  * Death bodies on screen (GMR-104): translucent ragdolls where the hero died. Settling bodies are
- * redrawn each frame; frozen ones are baked once into a small RenderTexture, so a full pile costs
- * a few quads. B shows/hides with a pop, C scribbles them out, and an eraser sweep rubs them out
- * when the level is completed. Presentation only: nothing here reaches the simulation.
+ * redrawn each frame; frozen ones are baked into frames of one shared RenderTexture atlas. B
+ * shows/hides with a pop, C scribbles them out, and an eraser sweep rubs them out when the level
+ * is completed. Presentation only: nothing here reaches the simulation.
  */
 export class BodiesLayer {
   readonly pile: BodyPile;
@@ -46,7 +58,13 @@ export class BodiesLayer {
   private readonly fx: Phaser.GameObjects.Graphics;
   private readonly smudgeG: Phaser.GameObjects.Graphics;
   private readonly eraserG: Phaser.GameObjects.Graphics;
-  private readonly baked = new Map<number, Phaser.GameObjects.RenderTexture>();
+  private readonly baked = new Map<number, BakedBody>();
+  private readonly composites = new Map<string, Phaser.GameObjects.RenderTexture>();
+  private readonly freeSlots = Array.from({ length: ATLAS_SLOTS }, (_, i) => ATLAS_SLOTS - i - 1);
+  private atlas: Phaser.GameObjects.RenderTexture | null = null;
+  private compositeSignature = '';
+  private compositeMode = false;
+  private liveCompositeMode = false;
   private shown: boolean;
   private pop: number;
   private clearT: number | null = null;
@@ -120,7 +138,7 @@ export class BodiesLayer {
    */
   erase(done: () => void): void {
     if (this.sweep) return;
-    if (!this.shown || this.pile.kept === 0) {
+    if (this.pile.kept === 0) {
       this.removeAll();
       done();
       return;
@@ -142,8 +160,9 @@ export class BodiesLayer {
       fade = Math.max(0, 1 - this.clearT / CLEAR_TIME);
     }
     if (this.sweep && this.reducedMotion()) fade = Math.max(0, 1 - this.sweep.t / FADE_SWEEP_TIME);
-    this.syncBaked(scale, fade);
-    this.drawLive(scale);
+    const compositesActive = this.syncSettledComposites(scale);
+    this.syncBaked(scale, fade, compositesActive);
+    this.drawLive(scale, compositesActive);
     this.drawClearScribble();
     this.updateSweep(dt);
     this.drawSmudges(dt);
@@ -157,6 +176,10 @@ export class BodiesLayer {
     if (this.sweep) this.listen(false);
     this.sweep = null;
     this.removeAll();
+    this.live.destroy();
+    this.fx.destroy();
+    this.smudgeG.destroy();
+    this.eraserG.destroy();
   }
 
   private listen(on: boolean): void {
@@ -168,30 +191,136 @@ export class BodiesLayer {
 
   // --- drawing -----------------------------------------------------------------------------------
 
-  private syncBaked(scale: number, fade: number): void {
+  private syncSettledComposites(scale: number): boolean {
+    const bodies = this.pile.bodies;
+    const signature = bodies.map((body) => String(body.id)).join(',');
+    if (signature !== this.compositeSignature) this.clearComposites();
+    const eligible =
+      this.shown &&
+      this.pop >= 1 &&
+      scale === 1 &&
+      this.clearT === null &&
+      this.sweep === null &&
+      bodies.length > 0 &&
+      bodies.every((body) => body.rag.frozen && !body.fading);
+    if (!eligible) {
+      for (const composite of this.composites.values()) composite.setVisible(false);
+      return false;
+    }
+
+    if (signature !== this.compositeSignature) {
+      this.clearComposites();
+      const groups = new Map<string, typeof bodies>();
+      for (const body of bodies) {
+        const box = bounds(body.rag);
+        const tileX = Math.floor((box.x + box.w / 2) / COMPOSITE_TILE);
+        const tileY = Math.floor((box.y + box.h / 2) / COMPOSITE_TILE);
+        const key = `${String(tileX)},${String(tileY)}`;
+        const group = groups.get(key);
+        if (group) group.push(body);
+        else groups.set(key, [body]);
+      }
+
+      for (const [key, group] of groups) {
+        let x0 = Infinity;
+        let y0 = Infinity;
+        let x1 = -Infinity;
+        let y1 = -Infinity;
+        for (const body of group) {
+          const box = bounds(body.rag);
+          x0 = Math.min(x0, box.x);
+          y0 = Math.min(y0, box.y);
+          x1 = Math.max(x1, box.x + box.w);
+          y1 = Math.max(y1, box.y + box.h);
+        }
+        const g = this.scene.add.graphics();
+        for (const body of group) drawBody(g, body.rag, this.lineScale());
+        // Flatten overlaps into one opaque pencil layer, then apply the normal 35% body alpha once.
+        const composite = this.scene.add
+          .renderTexture((x0 + x1) / 2, (y0 + y1) / 2, x1 - x0, y1 - y0)
+          .setOrigin(0.5)
+          .setDepth(BODY_DEPTH)
+          .setAlpha(BODY_ALPHA);
+        composite.draw(g, -x0, -y0);
+        composite.render();
+        composite.setVisible(true);
+        g.destroy();
+        this.composites.set(key, composite);
+      }
+      this.compositeSignature = signature;
+    } else {
+      for (const composite of this.composites.values()) composite.setVisible(true);
+    }
+    return this.composites.size > 0;
+  }
+
+  private clearComposites(): void {
+    for (const composite of this.composites.values()) composite.destroy();
+    this.composites.clear();
+    this.compositeSignature = '';
+  }
+
+  private syncBaked(scale: number, fade: number, compositesActive: boolean): void {
+    if (compositesActive) {
+      if (!this.compositeMode) {
+        for (const baked of this.baked.values()) baked.image.setVisible(false);
+      }
+      this.compositeMode = true;
+      return;
+    }
+    this.compositeMode = false;
+
     const ids = new Set<number>();
     for (const b of this.pile.bodies) {
       ids.add(b.id);
-      let rt = this.baked.get(b.id);
-      if (!rt && b.rag.frozen) {
-        rt = this.bake(b.rag);
-        this.baked.set(b.id, rt);
+      let baked: BakedBody | null | undefined = this.baked.get(b.id);
+      if (!baked && b.rag.frozen) {
+        baked = this.bake(b.rag);
+        if (baked) this.baked.set(b.id, baked);
       }
-      rt?.setScale(scale)
-        .setAlpha(BODY_ALPHA * b.fade * fade)
-        .setVisible(scale > 0.01);
+      if (baked) {
+        baked.image
+          .setScale(scale)
+          .setAlpha(BODY_ALPHA * b.fade * fade)
+          .setVisible(scale > 0.01);
+      }
     }
-    for (const [id, rt] of this.baked) {
+    for (const [id, baked] of this.baked) {
       if (ids.has(id)) continue;
-      rt.destroy();
+      this.releaseBake(baked);
       this.baked.delete(id);
     }
   }
 
-  private bake(rd: Ragdoll): Phaser.GameObjects.RenderTexture {
+  private bake(rd: Ragdoll): BakedBody | null {
     const box = bounds(rd);
     const g = this.scene.add.graphics();
     drawBody(g, rd, this.lineScale());
+    if (box.w <= ATLAS_CELL && box.h <= ATLAS_CELL && this.freeSlots.length > 0) {
+      const slot = this.freeSlots.pop() as number;
+      const x = (slot % ATLAS_COLUMNS) * ATLAS_CELL;
+      const y = Math.floor(slot / ATLAS_COLUMNS) * ATLAS_CELL;
+      const atlas = this.ensureAtlas();
+      const frame = `body-${String(slot)}`;
+      atlas.draw(g, x - box.x, y - box.y);
+      atlas.render();
+      atlas.texture.add(frame, 0, x, y, box.w, box.h);
+      const image = this.scene.add
+        .image(box.x + box.w / 2, box.y + box.h / 2, atlas.texture, frame)
+        .setOrigin(0.5)
+        .setDepth(BODY_DEPTH);
+      g.destroy();
+      return { image, slot, frame };
+    }
+
+    if (box.w <= ATLAS_CELL && box.h <= ATLAS_CELL) {
+      // The atlas is intentionally bounded. If every cell is occupied, keep this body in the
+      // live overlay until fading bodies release cells rather than allocating another texture.
+      g.destroy();
+      return null;
+    }
+
+    // Keep unusual oversized poses visible without changing their scale or drawing bounds.
     const rt = this.scene.add
       .renderTexture(box.x + box.w / 2, box.y + box.h / 2, box.w, box.h)
       .setOrigin(0.5)
@@ -199,15 +328,40 @@ export class BodiesLayer {
     rt.draw(g, -box.x, -box.y);
     rt.render();
     g.destroy();
-    return rt;
+    return { image: rt };
   }
 
-  private drawLive(scale: number): void {
+  private ensureAtlas(): Phaser.GameObjects.RenderTexture {
+    if (!this.atlas) {
+      this.atlas = this.scene.add
+        .renderTexture(0, 0, ATLAS_CELL * ATLAS_COLUMNS, ATLAS_CELL * ATLAS_ROWS)
+        .setVisible(false);
+    }
+    return this.atlas;
+  }
+
+  private releaseBake(baked: BakedBody): void {
+    baked.image.destroy();
+    if (baked.slot === undefined || baked.frame === undefined || !this.atlas) return;
+    const x = (baked.slot % ATLAS_COLUMNS) * ATLAS_CELL;
+    const y = Math.floor(baked.slot / ATLAS_COLUMNS) * ATLAS_CELL;
+    this.atlas.texture.remove(baked.frame);
+    this.atlas.clear(x, y, ATLAS_CELL, ATLAS_CELL);
+    this.freeSlots.push(baked.slot);
+  }
+
+  private drawLive(scale: number, compositesActive: boolean): void {
     const g = this.live;
+    if (compositesActive) {
+      if (!this.liveCompositeMode) g.clear();
+      this.liveCompositeMode = true;
+      return;
+    }
+    this.liveCompositeMode = false;
     g.clear();
     if (scale <= 0.01) return;
     for (const b of this.pile.bodies) {
-      if (b.rag.frozen) continue;
+      if (b.rag.frozen && this.baked.has(b.id)) continue;
       const neck = bodyPoint(b.rag, NECK);
       const c = { x: m(neck.x), y: m(neck.y) };
       g.save();
@@ -270,16 +424,23 @@ export class BodiesLayer {
     const cam = this.scene.cameras.main;
     const worldX = cam.worldView.x + (sx - size * 0.3) / cam.zoom;
     for (const b of this.pile.bodies) {
-      const rt = this.baked.get(b.id);
-      if (!rt) continue;
-      const left = rt.x - rt.width / 2;
-      const cut = Math.max(0, Math.min(rt.width, worldX - left));
+      const baked = this.baked.get(b.id);
+      if (!baked) continue;
+      const image = baked.image;
+      const left = image.x - image.width * image.originX;
+      const cut = Math.max(0, Math.min(image.width, worldX - left));
       if (cut <= 0) continue;
       if (!sw.touched.has(b.id)) {
         sw.touched.add(b.id);
-        this.smudges.push({ x: left, y: rt.y, w: rt.width, seed: b.id, age: 0 });
+        this.smudges.push({
+          x: left,
+          y: image.y - image.height * image.originY,
+          w: image.width,
+          seed: b.id,
+          age: 0,
+        });
       }
-      rt.setCrop(cut, 0, rt.width - cut, rt.height).setVisible(cut < rt.width);
+      image.setCrop(cut, 0, image.width - cut, image.height).setVisible(cut < image.width);
     }
     if (e >= 1) this.finishSweep();
   }
@@ -314,8 +475,15 @@ export class BodiesLayer {
 
   private removeAll(): void {
     this.pile.clear();
-    for (const rt of this.baked.values()) rt.destroy();
+    this.clearComposites();
+    for (const baked of this.baked.values()) this.releaseBake(baked);
     this.baked.clear();
+    this.atlas?.destroy();
+    this.atlas = null;
+    this.compositeMode = false;
+    this.liveCompositeMode = false;
+    this.freeSlots.length = 0;
+    for (let i = ATLAS_SLOTS - 1; i >= 0; i--) this.freeSlots.push(i);
     this.live.clear();
     this.fx.clear();
   }

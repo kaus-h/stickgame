@@ -423,6 +423,8 @@ async function start(): Promise<void> {
         mapper.blur();
         intents.clear();
         intents.clearLog();
+        // Scene restart cancels any in-flight eraser; do not retain its menu pause.
+        runtime.pause('sweep', false);
         runtime.replaceLevel(next);
         level = next;
         loadPb(next);
@@ -514,7 +516,11 @@ async function start(): Promise<void> {
         },
         // Shows the results card for the current level as if it had just been cleared.
         debugResults: (ticks: number, deaths: number) => {
-          flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+          runtime.pause('sweep', true);
+          devScene.eraseBodies(() => {
+            runtime.pause('sweep', false);
+            flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+          });
         },
         // GMR-104: death bodies (count, settling, visible) and dev-only body placement.
         bodies: () => devScene.bodyStats(),

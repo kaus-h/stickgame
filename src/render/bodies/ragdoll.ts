@@ -1,5 +1,5 @@
 import { SeededRng } from '../../core';
-import type { DeathRecord, LevelDef } from '../../sim';
+import type { DeathRecord, LevelDef, SolidDef } from '../../sim';
 
 /**
  * Death bodies (GMR-104, owner direction 2026-10-08): a small Verlet stick figure left wherever
@@ -100,6 +100,140 @@ export interface Ragdoll {
 /** Point i of a body (see the point order above). */
 export const bodyPoint = (rd: Pick<Ragdoll, 'points'>, i: number): BodyPoint =>
   rd.points[i] ?? (rd.points[0] as BodyPoint);
+
+interface SpawnProjection {
+  readonly x: number;
+  readonly y: number;
+  readonly hazard: boolean;
+}
+
+/** Purely project an initially embedded body point to the nearest authored solid boundary. */
+export function projectSpawnPoint(
+  point: Pick<BodyPoint, 'x' | 'y' | 'r'>,
+  solids: readonly SolidDef[],
+): SpawnProjection | null {
+  let nearestHazard: { solid: SolidDef; x: number; y: number; distance2: number } | null = null;
+  let nearestSolid: { solid: SolidDef; x: number; y: number; distance2: number } | null = null;
+  for (const solid of solids) {
+    if (!inside(point.x, point.y, solid.points)) continue;
+    const nearest = nearestBoundary(point.x, point.y, solid.points);
+    if (solid.kind === 'hazard') {
+      if (!nearestHazard || nearest.distance2 < nearestHazard.distance2)
+        nearestHazard = { solid, ...nearest };
+    } else if (!nearestSolid || nearest.distance2 < nearestSolid.distance2) {
+      nearestSolid = { solid, ...nearest };
+    }
+  }
+
+  if (nearestHazard) {
+    let dx = point.x - nearestHazard.x;
+    let dy = point.y - nearestHazard.y;
+    let len = Math.hypot(dx, dy);
+    if (len < 1e-9) {
+      const center = polygonCenter(nearestHazard.solid.points);
+      dx = center.x - nearestHazard.x;
+      dy = center.y - nearestHazard.y;
+      len = Math.hypot(dx, dy) || 1;
+    }
+    return {
+      x: nearestHazard.x + (dx / len) * HAZARD_SINK,
+      y: nearestHazard.y + (dy / len) * HAZARD_SINK,
+      hazard: true,
+    };
+  }
+  if (!nearestSolid) return null;
+
+  const points = nearestSolid.solid.points;
+  const edge = nearestBoundaryEdge(point.x, point.y, points);
+  const a = points[edge] as { x: number; y: number };
+  const b = points[(edge + 1) % points.length] as { x: number; y: number };
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len = Math.hypot(dx, dy) || 1;
+  const area = signedArea(points);
+  // Positive winding keeps the polygon interior on each edge's left side.
+  const nx = area > 0 ? dy / len : -dy / len;
+  const ny = area > 0 ? -dx / len : dx / len;
+  const gap = point.r + 1e-4;
+  return {
+    x: nearestSolid.x + nx * gap,
+    y: nearestSolid.y + ny * gap,
+    hazard: false,
+  };
+}
+
+function inside(x: number, y: number, points: readonly { x: number; y: number }[]): boolean {
+  let hit = false;
+  for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+    const a = points[i] as { x: number; y: number };
+    const b = points[j] as { x: number; y: number };
+    if (a.y > y !== b.y > y && x < ((b.x - a.x) * (y - a.y)) / (b.y - a.y) + a.x) hit = !hit;
+  }
+  return hit;
+}
+
+function nearestBoundary(
+  x: number,
+  y: number,
+  points: readonly { x: number; y: number }[],
+): { x: number; y: number; distance2: number } {
+  const edge = nearestBoundaryEdge(x, y, points);
+  const a = points[edge] as { x: number; y: number };
+  const b = points[(edge + 1) % points.length] as { x: number; y: number };
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const len2 = dx * dx + dy * dy;
+  const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / len2)) : 0;
+  const px = a.x + dx * t;
+  const py = a.y + dy * t;
+  return { x: px, y: py, distance2: (x - px) ** 2 + (y - py) ** 2 };
+}
+
+function nearestBoundaryEdge(
+  x: number,
+  y: number,
+  points: readonly { x: number; y: number }[],
+): number {
+  let nearest = 0;
+  let distance2 = Infinity;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i] as { x: number; y: number };
+    const b = points[(i + 1) % points.length] as { x: number; y: number };
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len2 = dx * dx + dy * dy;
+    const t = len2 > 0 ? Math.max(0, Math.min(1, ((x - a.x) * dx + (y - a.y) * dy) / len2)) : 0;
+    const px = a.x + dx * t;
+    const py = a.y + dy * t;
+    const d2 = (x - px) ** 2 + (y - py) ** 2;
+    if (d2 < distance2) {
+      nearest = i;
+      distance2 = d2;
+    }
+  }
+  return nearest;
+}
+
+function signedArea(points: readonly { x: number; y: number }[]): number {
+  let area = 0;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[i] as { x: number; y: number };
+    const b = points[(i + 1) % points.length] as { x: number; y: number };
+    area += a.x * b.y - b.x * a.y;
+  }
+  return area;
+}
+
+function polygonCenter(points: readonly { x: number; y: number }[]): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  for (const point of points) {
+    x += point.x;
+    y += point.y;
+  }
+  const n = Math.max(1, points.length);
+  return { x: x / n, y: y / n };
+}
 
 /** A body in its death pose, moving with the death velocity. Same death, same body. */
 export function createRagdoll(d: Pick<DeathRecord, 'tick' | 'at' | 'velocity'>): Ragdoll {
@@ -252,6 +386,9 @@ function collide(rd: Ragdoll, p: BodyPoint, segs: readonly BodySegment[]): void 
     respond(p, n);
   }
   // Radius: push off nearby solid edges so the stroke rests on the line, not in it.
+  // `segs` is the swept-box broadphase result from substep. Keep the radius pass local too;
+  // scanning every level edge for every point and constraint iteration makes a 60-body pile
+  // needlessly expensive while settling.
   for (const s of segs) {
     if (s.hazard) continue;
     const dx = s.bx - s.ax;
