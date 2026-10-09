@@ -46,6 +46,14 @@ describe('DesktopInputMapper', () => {
     expect(out).toEqual([{ type: 'respawn' }, { type: 'ghostToggle' }, { type: 'restart' }]);
   });
 
+  it('B toggles and C clears the death bodies (GMR-104)', () => {
+    const { out, mapper } = setup();
+    mapper.keyDown('KeyB');
+    mapper.keyDown('KeyB', true);
+    mapper.keyDown('KeyC');
+    expect(out).toEqual([{ type: 'bodiesToggle' }, { type: 'bodiesClear' }]);
+  });
+
   it('aims in world space at press time and holds the rope until release', () => {
     const { out, mapper } = setup();
     mapper.pointerDown(128, 64, 0);

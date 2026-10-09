@@ -24,6 +24,8 @@ export interface FlowActions {
   setMenuPaused(paused: boolean): void;
   /** Settings changed (persist and apply). */
   settings(patch: Partial<Settings>): void;
+  /** Scribble out the death bodies on this level (GMR-104, C). */
+  clearBodies(): void;
 }
 
 export interface ResultsInfo {
@@ -197,6 +199,20 @@ export class GameFlowUi {
           this.showLevels();
         }),
       ),
+      // Death bodies (GMR-104): the touch route to B and C. Both resume so the effect is seen.
+      row(
+        button(
+          this.s(this.save().settings.bodies ? 'pause.hideBodies' : 'pause.showBodies'),
+          () => {
+            this.resume();
+            this.actions.settings({ bodies: !this.save().settings.bodies });
+          },
+        ),
+        button(this.s('pause.clearBodies'), () => {
+          this.resume();
+          this.actions.clearBodies();
+        }),
+      ),
     ]);
   }
 
@@ -323,6 +339,9 @@ export class GameFlowUi {
       ),
       this.checkbox(this.s('settings.ghost'), s.ghost, (v) => {
         this.actions.settings({ ghost: v });
+      }),
+      this.checkbox(this.s('settings.bodies'), s.bodies, (v) => {
+        this.actions.settings({ bodies: v });
       }),
       select(
         this.s('settings.assist'),

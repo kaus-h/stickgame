@@ -13,6 +13,7 @@ import { entryMarks, exitMissMessage } from '../exit';
 import { drawPatroller } from '../enemy';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
+import { BodiesLayer, type BodiesStats } from '../bodies/BodiesLayer';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -51,6 +52,10 @@ export interface GameSceneOptions {
   readonly touchControls?: () => TouchControlsViewState | null;
   /** Externalized UI strings (content/strings); HUD labels fall back to their keys. */
   readonly strings?: Readonly<Record<string, string>>;
+  /** Gravity for the death bodies (runtime tuning, m/s²). Presentation only (GMR-104). */
+  readonly gravity?: number;
+  /** Whether death bodies are shown (the B setting); read when a level's scene is built. */
+  readonly bodiesVisible?: () => boolean;
 }
 
 /** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
@@ -86,6 +91,7 @@ export class GameScene extends Phaser.Scene {
   /** Camera center in world meters (render/camera.ts). */
   private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
+  private bodies!: BodiesLayer;
 
   constructor(private opts: GameSceneOptions) {
     super('game');
@@ -95,6 +101,30 @@ export class GameScene extends Phaser.Scene {
   replaceLevel(level: LevelDef): void {
     this.opts = { ...this.opts, level };
     this.scene.restart();
+  }
+
+  /** Death bodies (GMR-104): B shows or hides them with a pop. */
+  setBodiesVisible(on: boolean): void {
+    this.bodies.setVisible(on);
+  }
+
+  /** C: scribble out every body on this level. */
+  clearBodies(): void {
+    this.bodies.clear();
+  }
+
+  /** After an accepted exit: the eraser rubs out the bodies, then `done` (at once if none). */
+  eraseBodies(done: () => void): void {
+    this.bodies.erase(done);
+  }
+
+  bodyStats(): BodiesStats {
+    return this.bodies.stats();
+  }
+
+  /** Dev and tests: a body as if the hero had died here. */
+  addBody(death: { tick: number; at: Vec2; velocity: Vec2 }): void {
+    this.bodies.onDeath(death);
   }
 
   /** Convert a canvas point (CSS px) to world meters with the current camera. Used by input. */
@@ -116,6 +146,14 @@ export class GameScene extends Phaser.Scene {
     this.lastTime = 0;
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
+    this.bodies = new BodiesLayer(
+      this,
+      this.opts.level,
+      this.opts.gravity ?? 30,
+      this.opts.bodiesVisible?.() ?? true,
+      () => this.reducedMotion,
+      () => this.lineScale(),
+    );
     // Previous-attempt ghost layer: drawn with the normal hero code, faded as a whole.
     this.ghostG = this.add.graphics().setAlpha(0.22);
     this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
@@ -187,7 +225,11 @@ export class GameScene extends Phaser.Scene {
       .setDepth(20)
       .setOrigin(0.5, 1)
       .setVisible(false);
-    if (this.opts.debug) this.overlay = new DebugOverlay(this, this.opts.level);
+    if (this.opts.debug)
+      this.overlay = new DebugOverlay(this, this.opts.level, () => {
+        const b = this.bodies.stats();
+        return `bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+      });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
@@ -195,8 +237,10 @@ export class GameScene extends Phaser.Scene {
       for (const e of events) {
         if (e.type === 'reset') this.stomps = [];
         if (e.type === 'stomp') this.stomps.push({ tick: e.tick, at: e.at });
-        if (e.type === 'death')
+        if (e.type === 'death') {
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
+          this.bodies.onDeath(e);
+        }
       }
     });
     // HUD and page frame render through their own unzoomed camera; the world camera zooms.
@@ -214,6 +258,7 @@ export class GameScene extends Phaser.Scene {
       this.scale.off('resize', resize);
       this.overlay?.destroy();
       this.overlay = null;
+      this.bodies.destroy();
     });
     this.fitCamera();
     const spawn = this.opts.level.spawn;
@@ -239,8 +284,10 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(0.05, (time - this.lastTime) / 1000 || deltaMs / 1000);
     this.lastTime = time;
     this.followCamera(frame, dt);
+    this.bodies.update(dt);
     this.drawDynamic(frame, dt);
     this.drawHud(frame);
+    this.routeCameras(); // bodies baked this frame
   }
 
   // --- camera ----------------------------------------------------------------------------------
@@ -926,7 +973,10 @@ export class GameScene extends Phaser.Scene {
     this.title.setPosition(w / 2, 14);
     const completion = current.completion;
     this.exitResult.setVisible(
-      this.opts.showExitResult !== false && completion !== null && completion.accepted,
+      this.opts.showExitResult !== false &&
+        completion !== null &&
+        completion.accepted &&
+        !this.bodies.sweeping,
     );
     if (completion?.accepted) {
       this.exitResult

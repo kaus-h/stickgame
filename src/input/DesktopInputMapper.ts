@@ -14,6 +14,9 @@ export interface DesktopBindings {
   readonly pause: readonly string[];
   /** Show or hide the PB ghost (GMR-103). */
   readonly ghost: readonly string[];
+  /** Show or hide the death bodies, and clear them (GMR-104). */
+  readonly bodies: readonly string[];
+  readonly clearBodies: readonly string[];
 }
 
 export const DEFAULT_DESKTOP_BINDINGS: DesktopBindings = {
@@ -24,6 +27,8 @@ export const DEFAULT_DESKTOP_BINDINGS: DesktopBindings = {
   respawn: ['Backspace'],
   pause: ['Escape', 'KeyP'],
   ghost: ['KeyG'],
+  bodies: ['KeyB'],
+  clearBodies: ['KeyC'],
 };
 
 /**
@@ -51,6 +56,8 @@ export class DesktopInputMapper {
     if (this.bindings.respawn.includes(code)) this.emit({ type: 'respawn' });
     if (this.bindings.pause.includes(code)) this.emit({ type: 'pause' });
     if (this.bindings.ghost.includes(code)) this.emit({ type: 'ghostToggle' });
+    if (this.bindings.bodies.includes(code)) this.emit({ type: 'bodiesToggle' });
+    if (this.bindings.clearBodies.includes(code)) this.emit({ type: 'bodiesClear' });
     this.updateAxis();
   }
 
