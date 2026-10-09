@@ -8,6 +8,7 @@ import {
   BUILD_HASH,
   decodeReplay,
   encodeReplay,
+  metersToPixels,
   parseAssistMode,
   vec2,
   type Intent,
@@ -294,6 +295,18 @@ async function start(): Promise<void> {
 
   // Game flow (GMR-47): title, level select, pause, results, settings.
   const gameScene = scene;
+
+  // Rope design overlay (GMR-54): dev-only reach circles and swing arcs, drawn once per scene
+  // creation when ?design=1 is present. Loaded on demand so it never weighs on the production
+  // bundle. If this wiring ever looks wrong, the overlay module is standalone: call
+  // drawRopeDesign with a world-space Graphics, the level, tuning and metersToPixels(1).
+  if (params.get('design') === '1') {
+    gameScene.events.once('create', () => {
+      void import('../../tools/design-overlay/RopeDesignOverlay').then(({ drawRopeDesign }) => {
+        drawRopeDesign(gameScene.add.graphics().setDepth(50), level, tuning, metersToPixels(1));
+      });
+    });
+  }
   flow = new GameFlowUi(document.body, stringsEn, chapter, () => save.current, {
     play: (levelId) => {
       flushDeaths();
