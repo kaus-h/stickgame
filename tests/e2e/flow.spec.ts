@@ -51,7 +51,7 @@ test('level select locks unplayed levels; settings persist across a reload', asy
   await page.waitForFunction(() => '__stickgame' in window);
   await page.getByRole('button', { name: 'Levels' }).click();
   await expect(page.locator('button[data-level="1-1"]')).toBeEnabled();
-  await expect(page.locator('button[data-level="lab-moving"]')).toBeDisabled();
+  await expect(page.locator('button[data-level="1-3"]')).toBeDisabled();
   await page.getByRole('button', { name: 'Back' }).click();
 
   await page.getByRole('button', { name: 'Settings' }).click();
@@ -67,7 +67,7 @@ test('level select locks unplayed levels; settings persist across a reload', asy
   await expect(page.getByRole('combobox', { name: 'Aim assist' })).toHaveValue('wide-select');
 });
 
-test('results card: time, deaths, new best; Next starts level 1-2', async ({ page }) => {
+test('results Next follows Section 1 through finale 1-3', async ({ page }) => {
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.keyboard.press('Enter'); // Play 1-1
@@ -82,9 +82,20 @@ test('results card: time, deaths, new best; Next starts level 1-2', async ({ pag
   await expect(page.getByText('new best')).toBeVisible();
   await page.getByRole('button', { name: 'Next' }).click();
   expect(await screen(page)).toBe('playing');
-  const levelId = await page.evaluate(
-    () =>
-      (window as unknown as { __stickgame: { level(): { id: string } } }).__stickgame.level().id,
-  );
-  expect(levelId).toBe('1-2');
+  const levelId = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __stickgame: { level(): { id: string } } }).__stickgame.level().id,
+    );
+  expect(await levelId()).toBe('1-2');
+
+  await page.evaluate(() => {
+    (
+      window as unknown as { __stickgame: { debugResults(t: number, d: number): void } }
+    ).__stickgame.debugResults(1941, 0);
+  });
+  await expect(page.getByRole('heading', { name: '1-2 cleared' })).toBeVisible();
+  await page.getByRole('button', { name: 'Next' }).click();
+  expect(await screen(page)).toBe('playing');
+  expect(await levelId()).toBe('1-3');
 });

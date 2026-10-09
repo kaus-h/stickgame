@@ -29,6 +29,8 @@ const cleared: LevelRecord = {
 describe('game flow model (GMR-47)', () => {
   it('parses the chapter manifest and lists Section 1 in play order', () => {
     expect(playOrder(chapter).map((l) => l.label)).toEqual(['1-1', '1-2', '1-3']);
+    expect(playOrder(chapter).map((l) => l.id)).toEqual(['1-1', '1-2', '1-3']);
+    expect(playOrder(chapter).map((l) => l.placeholder)).toEqual([false, false, false]);
   });
 
   it('rejects unknown or duplicate levels with a path', () => {
@@ -42,20 +44,23 @@ describe('game flow model (GMR-47)', () => {
     expect(isUnlocked(chapter, '1-1', {})).toBe(true);
     expect(isUnlocked(chapter, '1-2', {})).toBe(false);
     expect(isUnlocked(chapter, '1-2', { '1-1': cleared })).toBe(true);
-    expect(isUnlocked(chapter, 'lab-moving', { '1-1': cleared })).toBe(false);
+    expect(isUnlocked(chapter, '1-3', { '1-1': cleared })).toBe(false);
+    expect(isUnlocked(chapter, '1-3', { '1-1': cleared, '1-2': cleared })).toBe(true);
     expect(isUnlocked(chapter, 'not-in-chapter', {})).toBe(false);
   });
 
   it('continues at the first unlocked, uncleared level', () => {
     expect(continueLevel(chapter, {}).id).toBe('1-1');
     expect(continueLevel(chapter, { '1-1': cleared }).id).toBe('1-2');
-    const all = { '1-1': cleared, '1-2': cleared, 'lab-moving': cleared };
-    expect(continueLevel(chapter, all).id).toBe('lab-moving');
+    expect(continueLevel(chapter, { '1-1': cleared, '1-2': cleared }).id).toBe('1-3');
+    const all = { '1-1': cleared, '1-2': cleared, '1-3': cleared };
+    expect(continueLevel(chapter, all).id).toBe('1-3');
   });
 
   it('knows the next level and the end of the chapter', () => {
     expect(nextLevel(chapter, '1-1')?.id).toBe('1-2');
-    expect(nextLevel(chapter, 'lab-moving')).toBeNull();
+    expect(nextLevel(chapter, '1-2')?.id).toBe('1-3');
+    expect(nextLevel(chapter, '1-3')).toBeNull();
   });
 
   it('formats times and fills externalized strings', () => {
