@@ -151,7 +151,7 @@
         "entry": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["side", "angle", "speed", "alignment"],
+          "required": ["side", "angle", "alignment"],
           "properties": {
             "side": { "enum": ["left", "right", "top", "bottom"] },
             "angle": { "$ref": "#/definitions/angleWindow" },

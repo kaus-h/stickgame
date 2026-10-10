@@ -15,7 +15,6 @@
     "entry": {
       "side": "left",
       "angle": { "min": 0, "max": 60 },
-      "speed": { "min": 3, "max": 7.5 },
       "alignment": { "min": 0.15, "max": 0.9 }
     }
   }

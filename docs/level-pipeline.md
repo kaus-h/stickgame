@@ -40,9 +40,11 @@ Chambers require a stated problem and challenge family. Checkpoints and camera h
 authoring metadata in this issue; they do not activate respawning or alter the current camera.
 Triggers, mastery routes, advanced enemies and one-use anchors remain future feature contracts from doc 32.
 GMR-45 adds v2 patrollers with explicit path and stomp tuning; see [patroller-goon.md](patroller-goon.md).
-GMR-46 adds authored v2 compartment exit angle, speed and alignment acceptance;
-see [compartment-exits.md](compartment-exits.md). Other unsupported fields are rejected;
-add them with their implementing issue and a migration when needed.
+GMR-46 adds authored v2 compartment exit angle and alignment acceptance; `entry.speed` is
+optional. When absent, no minimum or maximum arrival speed is enforced. Only `lab-exit-miss`
+retains a speed window to exercise the optional rule; see [compartment-exits.md](compartment-exits.md).
+Other unsupported fields are rejected; add them with their implementing issue and a migration
+when needed.
 
 ## Author → validate → compile → preview
 

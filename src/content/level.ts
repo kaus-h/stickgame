@@ -265,7 +265,12 @@ function compileExit(raw: Record<string, unknown>): NonNullable<LevelDef['exit']
     ...box,
     id: str(raw.id, 'level.exit.id'),
     family,
-    entry: { side, angle: window('angle'), speed: window('speed'), alignment: window('alignment') },
+    entry: {
+      side,
+      angle: window('angle'),
+      ...(entry.speed === undefined ? {} : { speed: window('speed') }),
+      alignment: window('alignment'),
+    },
   };
 }
 

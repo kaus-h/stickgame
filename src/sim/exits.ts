@@ -74,7 +74,8 @@ export function evaluateExitEntry(
     angleCos > dcos((entry.angle.min * Math.PI) / 180) + eps
   )
     reason = 'angle';
-  else if (speed < entry.speed.min - eps || speed > entry.speed.max + eps) reason = 'speed';
+  else if (entry.speed && (speed < entry.speed.min - eps || speed > entry.speed.max + eps))
+    reason = 'speed';
   else if (alignment < entry.alignment.min - eps || alignment > entry.alignment.max + eps)
     reason = 'alignment';
   return {

@@ -97,8 +97,8 @@ export interface ExitDef extends LevelRegion {
     readonly side: ExitSide;
     /** Unsigned deviation from inward normal in degrees, 0..90. */
     readonly angle: ExitWindow;
-    /** Arrival speed, m/s. */
-    readonly speed: ExitWindow;
+    /** Optional arrival speed window (m/s); absent means speed is unrestricted. */
+    readonly speed?: ExitWindow;
     /** Opening fraction, increasing down/right. */
     readonly alignment: ExitWindow;
   };

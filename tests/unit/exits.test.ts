@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import miss from '../../content/levels/lab-exit-miss.json';
+import { compileLevel } from '../../src/content/level';
 import { evaluateExitEntry } from '../../src/sim/exits';
 import type { ExitDef } from '../../src/sim/level';
 
@@ -35,6 +37,33 @@ describe('swept compartment entry', () => {
       expect(result?.speed).toBe(160);
     },
   );
+  it.each([12, 0.5])('accepts %s m/s when entry.speed is absent', (speed) => {
+    const exit: ExitDef = {
+      ...opening,
+      entry: {
+        side: 'left',
+        angle: { min: 0, max: 45 },
+        alignment: { min: 0.2, max: 0.8 },
+      },
+    };
+    const attempt = evaluateExitEntry(
+      exit,
+      { x: -1, y: 1 },
+      { x: 1, y: 1 },
+      { x: speed, y: 0 },
+      0.3,
+    );
+    expect(attempt?.accepted).toBe(true);
+    expect(attempt?.reason).toBeNull();
+    expect(attempt?.speed).toBe(speed);
+  });
+  it('keeps the explicit lab-exit-miss speed rejection', () => {
+    const exit = compileLevel(miss).exit;
+    if (!exit || !('entry' in exit)) throw new Error('expected typed exit');
+    expect(
+      evaluateExitEntry(exit, { x: 9, y: 6.5 }, { x: 11, y: 6.5 }, { x: 12, y: 0 }, 0.3)?.reason,
+    ).toBe('speed');
+  });
   it('reports a reversed-side entry and ignores outbound movement', () => {
     expect(
       evaluateExitEntry(opening, { x: 2, y: 1 }, { x: 0.5, y: 1 }, { x: -10, y: 0 }, 0.3)?.reason,
