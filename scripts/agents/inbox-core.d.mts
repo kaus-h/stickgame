@@ -5,6 +5,10 @@ export declare function parseBundle(text: string): {
   errors: string[];
 };
 export declare function checkPath(p: string): { ok: boolean; sensitive: boolean; reason?: string };
+export declare function preparationPaths(touched: Iterable<string>): {
+  regenerateSchema: boolean;
+  generatedPaths: string[];
+};
 export declare function patchPaths(diff: string): string[];
 export declare function extractErrors(log: string, max?: number): string;
 export declare function parseTaskName(name: string): {

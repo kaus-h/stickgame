@@ -36,6 +36,14 @@ import {
   parseTaskName,
   patchPaths,
 } from './inbox-core.mjs';
+import {
+  runGit,
+  assertInboxWorktree,
+  assertInboxPath,
+  assertInboxTree,
+  gitEnvironment,
+} from './inbox-git.mjs';
+import { prepareInboxFiles } from './inbox-prepare.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const args = process.argv.slice(2);
@@ -62,12 +70,13 @@ function run(cmd, cmdArgs, cwd, extraEnv = {}) {
     cwd,
     encoding: 'utf8',
     shell: isWin && cmd === 'npm',
-    env: { ...process.env, ...extraEnv },
+    env: gitEnvironment({ ...process.env, ...extraEnv }),
+    windowsHide: true,
     maxBuffer: 64 * 1024 * 1024,
   });
-  return { ok: r.status === 0, out: `${r.stdout ?? ''}${r.stderr ?? ''}` };
+  return { ok: r.status === 0, out: `${r.stdout ?? ''}${r.stderr ?? ''}${r.error?.message ?? ''}` };
 }
-const git = (cwd, ...a) => run('git', a, cwd);
+const git = (cwd, ...a) => runGit(cwd, a);
 
 /** Downloads are still landing if a partial file exists or anything changed in the last 3 s. */
 function settled(path) {
@@ -157,6 +166,7 @@ function pendingTasks() {
 /** Collect a task's inputs into { meta, patches[], bundles[], filesDir } in a staging folder. */
 function stage(name) {
   const src = join(INBOX, name);
+  assertInboxTree(src);
   const stageDir = join(INBOX, '.staging', name);
   rmSync(stageDir, { recursive: true, force: true });
   mkdirSync(stageDir, { recursive: true });
@@ -167,6 +177,7 @@ function stage(name) {
       : run('unzip', ['-q', src, '-d', stageDir], INBOX);
     if (!r.ok) throw new Error(`could not extract ${name}: ${r.out}`);
   } else cpSync(src, join(stageDir, name));
+  assertInboxTree(stageDir);
   const all = readdirSync(stageDir, { recursive: true }).map((f) => String(f).replace(/\\/g, '/'));
   const metaFile = all.find((f) => /(^|\/)task\.json$/.test(f));
   const meta = metaFile ? JSON.parse(readFileSync(join(stageDir, metaFile), 'utf8')) : {};
@@ -197,7 +208,8 @@ function processTask(name) {
   const author = s.meta.author ?? 'BrowserGPT';
   const branch = s.meta.branch ?? `inbox/${t.slug}`;
   const base = s.meta.base ?? 'main';
-  if (/^(main|master)$/.test(branch)) throw new Error('refusing to push to main');
+  if (/^(main|master)$/i.test(branch)) throw new Error('refusing to push to main');
+  if (!git(REPO, 'check-ref-format', '--branch', branch).ok) throw new Error('invalid task branch');
   const result = { task: name, issue, branch, ok: false, stage: 'prepare', notes: [] };
 
   // 1. Fresh worktree: from the task branch if a PR round already exists (fix round), else base.
@@ -209,6 +221,7 @@ function processTask(name) {
   const from = remoteBranch ? `origin/${branch}` : `origin/${base}`;
   const add = git(REPO, 'worktree', 'add', '-q', '-b', branch, wt, from);
   if (!add.ok) return finish(result, `worktree: ${add.out}`, started, s);
+  assertInboxWorktree(wt, REPO, branch);
   result.round = remoteBranch ? 'fix' : 'new';
 
   // 2. Apply: patches (3-way), then bundles, then a files/ tree. Every path is checked first.
@@ -217,6 +230,7 @@ function processTask(name) {
   const guard = (p) => {
     const c = checkPath(p);
     if (!c.ok) throw new Error(c.reason);
+    assertInboxPath(wt, p);
     if (c.sensitive) result.notes.push(`sensitive path: ${p}`);
     touched.add(p);
   };
@@ -226,6 +240,7 @@ function processTask(name) {
       patchPaths(diff).forEach(guard);
       const a = git(wt, 'apply', '--3way', '--whitespace=nowarn', join(s.stageDir, p));
       if (!a.ok) throw new Error(`git apply ${p} failed:\n${a.out.trim()}`);
+      [...touched].forEach((path) => assertInboxPath(wt, path));
     }
     for (const b of s.bundles) {
       const parsed = parseBundle(readFileSync(join(s.stageDir, b), 'utf8'));
@@ -259,10 +274,30 @@ function processTask(name) {
 
   // 3. Format what the model wrote (models get Prettier details wrong; not worth a round trip).
   result.stage = 'install';
-  const ci = run('npm', ['ci', '--no-audit', '--no-fund', '--prefer-offline'], wt);
+  const ci = run(
+    'npm',
+    ['ci', '--no-audit', '--no-fund', '--prefer-offline'],
+    wt,
+    isWin ? { TEMP: 'D:/tmp', TMP: 'D:/tmp' } : {},
+  );
   if (!ci.ok) return finish(result, `npm ci failed:\n${extractErrors(ci.out)}`, started, s, wt);
-  const present = result.files.filter((f) => existsSync(join(wt, f)));
-  if (present.length) run('npx', ['prettier', '--write', '--ignore-unknown', ...present], wt);
+  let prepared;
+  try {
+    prepared = prepareInboxFiles(wt, result.files, run);
+  } catch (error) {
+    return finish(result, `preparation path refused: ${String(error)}`, started, s, wt);
+  }
+  result.stage = prepared.stage;
+  if (!prepared.ok)
+    return finish(
+      result,
+      `${prepared.stage} preparation failed:\n${extractErrors(prepared.out)}`,
+      started,
+      s,
+      wt,
+    );
+  prepared.files.forEach(guard);
+  result.files = [...touched].sort();
 
   // 4. Local check (machine time, no tokens).
   let checkLog = '';
@@ -276,7 +311,15 @@ function processTask(name) {
 
   // 5. Commit and push (a failed check still pushes, as a draft PR, so reviewers can read it).
   result.stage = 'commit';
-  git(wt, 'add', '-A');
+  assertInboxWorktree(wt, REPO, branch);
+  const staged = git(wt, '--literal-pathspecs', 'add', '-A', '--', ...result.files);
+  if (!staged.ok) return finish(result, `stage failed: ${staged.out}`, started, s, wt);
+  const index = git(wt, 'diff', '--cached', '--name-only', '-z');
+  if (!index.ok) return finish(result, `cannot inspect index: ${index.out}`, started, s, wt);
+  for (const path of index.out.split('\0').filter(Boolean)) {
+    if (!checkPath(path).ok || !result.files.includes(path))
+      return finish(result, `refusing unexpected staged path: ${path}`, started, s, wt);
+  }
   const msg = [
     `${issue ? `${issue}: ` : ''}${title}`,
     '',
@@ -287,18 +330,16 @@ function processTask(name) {
   ]
     .filter((l, i, a) => l !== '' || a[i - 1] !== '')
     .join('\n');
-  const cm = spawnSync('git', ['commit', '-q', '-F', '-'], {
-    cwd: wt,
-    input: msg,
-    encoding: 'utf8',
-  });
-  if (cm.status !== 0 && !/nothing to commit/.test(`${cm.stdout}${cm.stderr}`))
-    return finish(result, `commit failed: ${cm.stderr}`, started, s, wt);
+  assertInboxWorktree(wt, REPO, branch);
+  const cm = runGit(wt, ['commit', '-q', '-F', '-'], { input: msg });
+  if (!cm.ok && !/nothing to commit/.test(cm.out))
+    return finish(result, `commit failed: ${cm.out}`, started, s, wt);
   if (flag('--no-push')) {
     result.ok = result.checkOk !== false;
     return finish(result, null, started, s, wt);
   }
   result.stage = 'push';
+  assertInboxWorktree(wt, REPO, branch);
   const push = git(wt, 'push', '-q', '-u', 'origin', `HEAD:${branch}`);
   if (!push.ok) return finish(result, `push failed: ${push.out}`, started, s, wt);
 
