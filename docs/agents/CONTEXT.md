@@ -1,6 +1,6 @@
 # Context pack: Precision Tether Platformer (StickGame)
 
-`Context pack: 2026-10-08 @ ce61e8f`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-10 @ 51b9cc5`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -91,12 +91,27 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
 
 ## Art
 
-- The style is a hand-drawn notebook page: black ink, pencil hatching, and red ink for danger. The style bible is in `docs/art/`.
-- The hero is approved as sheet 0007 (no scarf), and the heads from sheet 0008 are approved for use.
-- The main inspiration is deadanddetached. Translate its qualities, and never copy pieces or identity marks. Never put the artist's name or images into an image generator.
+- **Base look (owner, 2026-10-09):** concepts 0014/0015. Layered black pen sketch on mostly empty college-ruled paper:
+  - a doubled contour plus a hatch skirt on the shaded side
+  - thin lines
+  - red only for danger
+- **Per-level variation:** themes may vary terrain, background and shading. Background can range from empty paper (0015) to faint ballpoint scenery (0014).
+- **Not this:**
+  - no real desk or stationery objects (rejected 0010)
+  - not goth-core
+  - not generic cute (rejected 0012)
+- **Kit and inspiration:**
+  - The level art kit is `assets/sheets/0016-level-kit-thin.png`, rendered by GMR-107.
+  - Next inspirations: Jump King and Celeste (Linear doc 07B).
+- **Hero:** approved sheet 0007 (no scarf), and the heads from 0008 are approved for use.
+- **References:** the owner-curated reference chat in BrowserGPT ("Apply StickGame Art Style") may be used for art generation. Never name the artist, never add references, and keep the originality rules in 07A Part 2B.
 
 ## Current state
 
-- Levels 1-1 "First Rope" and 1-2 "Release" are built and solver-verified. Level 1-3 (with patroller goons) is next.
-- Main contains the prototype systems, game flow, saves, checkpoints, the route solver, goons, and this agent workflow.
-- The live plan is in `docs/agents/HANDOFF.md`.
+- **Built:** levels 1-1, 1-2 and 1-3 (Section 1), all solver-verified.
+- **Systems:**
+  - racing timing with PB ghost and Backspace respawn
+  - death bodies with B/C controls and an eraser sweep
+  - kit-based pen-sketch renderer
+- **Exits:** no speed limit (owner).
+- **Live plan:** `docs/agents/HANDOFF.md`.
