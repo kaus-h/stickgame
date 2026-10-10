@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { expect, test, type Page } from '@playwright/test';
 
-// The committed 1-1 route crosses its first rope gap with a press at replay tick 163
-// and a release at replay tick 214. Input is queued by simulation tick, not wall time.
+// The committed 1-1 solution attaches at replay tick 163 and releases at tick 214.
+// playReplay() keys these inputs to the current (monotonic) simulation tick.
 const solution = JSON.parse(readFileSync('content/solutions/1-1.json', 'utf8')) as {
   replay: string;
   totalTicks: number;
@@ -26,8 +26,7 @@ interface Snap {
     locked: boolean;
   } | null;
 }
-// main.ts spreads the actual SimEvent into this object, adding the velocity captured
-// in beforeTick() under `before`. The SimEvent field is named `velocity`, not `after`.
+// main.ts spreads the actual ropeRelease SimEvent, then adds the pre-step `before` vector.
 interface ReleaseEvidence {
   type: 'ropeRelease';
   tick: number;
@@ -42,7 +41,7 @@ interface SwingObservation {
   attachedTick: number;
   locked: boolean;
 }
-type Hook = {
+interface Hook {
   __stickgame: {
     snapshot(): Snap;
     resources(): { cameras: number };
@@ -51,15 +50,16 @@ type Hook = {
     stopReplay(): void;
     releaseEvidence(): ReleaseEvidence | null;
   };
-};
+}
 
-const snap = (page: Page) => page.evaluate(() => (window as unknown as Hook).__stickgame.snapshot());
+const snap = (page: Page) =>
+  page.evaluate(() => (window as unknown as Hook).__stickgame.snapshot());
 
 async function open(page: Page, level: string): Promise<void> {
   await page.setViewportSize({ width: 1280, height: 720 });
   await page.goto(`/?level=${level}&renderer=canvas`);
   await page.waitForFunction(() => '__stickgame' in window);
-  // The hook is published before Phaser has finished creating the scene and binding input.
+  // The hook is published before Phaser finishes creating the scene and binding DOM input.
   await page.waitForFunction(
     () => (window as unknown as Hook).__stickgame.resources().cameras === 2,
   );
@@ -70,8 +70,8 @@ test.setTimeout(60_000);
 test('replayed first-anchor swing releases with the same exact-tick velocity', async ({ page }) => {
   await open(page, '1-1');
 
-  // Run and observe in a single browser-side operation: Playwright scheduling cannot skip
-  // the 51-tick attachment window or the transient ropeRelease evidence under CI load.
+  // Observe inside the page on animation frames. A round trip through Playwright at each
+  // checkpoint could miss the 51-tick tether window on a heavily loaded CI worker.
   const observed = await page.evaluate(
     ({ replay, attachAt, releaseAt }) => {
       const hook = (window as unknown as Hook).__stickgame;
@@ -89,7 +89,7 @@ test('replayed first-anchor swing releases with the same exact-tick velocity', a
           const state = hook.snapshot();
           const rope = state.rope;
           if (
-            !swing &&
+            swing === null &&
             rope?.attachedTick === startTick + attachAt &&
             rope.locked &&
             state.player.mode === 'tethered'
@@ -107,7 +107,7 @@ test('replayed first-anchor swing releases with the same exact-tick velocity', a
           const release = hook.releaseEvidence();
           if (release?.tick === startTick + releaseAt) {
             hook.stopReplay();
-            if (!swing) {
+            if (swing === null) {
               reject(new Error('The first rope released without an observed locked swing'));
               return;
             }
@@ -136,13 +136,14 @@ test('replayed first-anchor swing releases with the same exact-tick velocity', a
   expect(observed.swing.anchor).toBe(0);
   expect(observed.swing.point).toEqual({ x: 26.5, y: 2 });
 
-  // Simulation.detach() emits { type: 'ropeRelease', tick, velocity } before control()
-  // and physics.step(). The dev hook adds `before` from the same pre-step tick.
+  // Simulation.detach() emits { type, tick, velocity } before control() and physics.step().
+  // The dev hook's `before` is captured at that same simulation tick, not the next frame.
   expect(observed.release.type).toBe('ropeRelease');
   expect(observed.release.tick).toBe(observed.startTick + FIRST_RELEASE);
-  expect(observed.release.before).toBeDefined();
-  expect(observed.release.velocity.x).toBeCloseTo(observed.release.before!.x, 8);
-  expect(observed.release.velocity.y).toBeCloseTo(observed.release.before!.y, 8);
+  const before = observed.release.before;
+  expect(before).toBeDefined();
+  if (before === undefined) throw new Error('Missing pre-release tick velocity');
+  expect(observed.release.velocity).toEqual(before);
   expect(observed.release.velocity.x).toBeGreaterThan(0.5);
 });
 
@@ -153,24 +154,28 @@ test('real keyboard and mouse inputs reach the simulation (direction only)', asy
 
   const initial = await snap(page);
   await page.keyboard.down('KeyD');
-  await expect.poll(async () => (await snap(page)).player.position.x, {
-    timeout: 10_000,
-  }).toBeGreaterThan(initial.player.position.x + 0.2);
+  await expect
+    .poll(async () => (await snap(page)).player.position.x, { timeout: 10_000 })
+    .toBeGreaterThan(initial.player.position.x + 0.2);
   await page.keyboard.up('KeyD');
 
-  // Aim slightly ahead of the player, within the visible canvas. The snapshot's `aim`
-  // is the actual world-space pointer intent consumed by the simulation; it need not
-  // hit or attach to an anchor for this tolerant DOM-input smoke test.
+  // The world-space aim is a real mouse intent consumed by the sim; its validity or
+  // connection timing is intentionally not part of this tolerant DOM-input smoke test.
   const player = (await snap(page)).player.position;
   const screen = await page.evaluate(
     ([x, y]) => (window as unknown as Hook).__stickgame.worldToScreen(x, y),
     [player.x + 1.5, player.y - 1] as const,
   );
   await page.mouse.move(screen.x, screen.y);
-  await expect.poll(async () => {
-    const state = await snap(page);
-    return state.aim ? state.aim.x - state.player.position.x : -Infinity;
-  }, { timeout: 10_000 }).toBeGreaterThan(0.2);
+  await expect
+    .poll(
+      async () => {
+        const state = await snap(page);
+        return state.aim ? state.aim.x - state.player.position.x : -Infinity;
+      },
+      { timeout: 10_000 },
+    )
+    .toBeGreaterThan(0.2);
   await page.mouse.down();
   await page.mouse.up();
 });
