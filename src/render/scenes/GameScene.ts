@@ -6,14 +6,16 @@ import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { FailureFeedback } from '../feedback/FailureFeedback';
 import { drawHero } from '../hero/drawHero';
-import { dashedInk, hash, hatchPolygon, strokeInk, wobble, type Pt } from '../ink';
-import { addPaper, bakeGraphics, drawDoodles, drawFrame } from '../page/NotebookPage';
+import { dashedInk, strokeInk, type Pt } from '../ink';
+import { addPaper, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
 import { entryMarks, exitMissMessage } from '../exit';
 import { drawPatroller } from '../enemy';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
 import { BodiesLayer, type BodiesStats } from '../bodies/BodiesLayer';
+import { LevelKit } from '../kit/LevelKit';
+import { getLevelTheme } from '../../content';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 const PAPER = 0xf3efe6;
@@ -92,6 +94,11 @@ export class GameScene extends Phaser.Scene {
   private camCenter: Vec2 = vec2(0, 0);
   private lastTime = 0;
   private bodies!: BodiesLayer;
+  private kit!: LevelKit;
+
+  kitPresentation(): { ready: boolean; theme: string; tiles: number; surfacePixels: number } {
+    return { ready: !!this.kit, theme: getLevelTheme(this.opts.level), ...this.kit.stats() };
+  }
 
   constructor(private opts: GameSceneOptions) {
     super('game');
@@ -228,7 +235,8 @@ export class GameScene extends Phaser.Scene {
     if (this.opts.debug)
       this.overlay = new DebugOverlay(this, this.opts.level, () => {
         const b = this.bodies.stats();
-        return `bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+        const k = this.kit.stats();
+        return `art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas ${((k.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -335,11 +343,12 @@ export class GameScene extends Phaser.Scene {
   // --- static page -----------------------------------------------------------------------------
 
   private drawStaticPage(): void {
-    const { bounds, solids, anchors } = this.opts.level;
+    const { anchors } = this.opts.level;
     // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
     addPaper(this, this.opts.level);
     const g = this.add.graphics();
-    drawDoodles(g, this.opts.level);
+    if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level);
+    this.kit = new LevelKit(this, this.opts.level);
 
     // Moving-anchor tracks: faint pencil dots telegraph the motion.
     for (const a of anchors) {
@@ -387,43 +396,11 @@ export class GameScene extends Phaser.Scene {
       });
     }
 
-    solids.forEach((s, i) => {
-      const poly = s.points.map((p) => ({ x: m(p.x), y: m(p.y) }));
-      const seed = i * 7.31 + 1;
-      if (s.kind === 'hazard') {
-        hatchPolygon(g, poly, m(0.12), -0.9, 1.6, RED_PEN, 0.8, seed);
-        hatchPolygon(g, poly, m(0.16), 0.7, 1.3, RED_PEN, 0.55, seed + 3);
-        this.drawTeeth(g, s.points, seed);
-      } else {
-        hatchPolygon(g, poly, m(0.17), 0.8, 1.3, INK, 0.5, seed);
-      }
-      const closed = [...poly, poly[0] as Pt];
-      strokeInk(
-        g,
-        wobble(closed, seed, m(0.025), m(0.3)),
-        s.kind === 'hazard' ? 2.4 : 3,
-        INK,
-        1,
-        seed,
-      );
-      if (s.kind === 'solid') this.drawWalkableEdges(g, s.points, seed);
-    });
-
     this.drawCompartment(g);
 
-    // Bake everything static into world-space texture tiles (a few quads per frame).
-    const pad = 4;
-    bakeGraphics(
-      this,
-      g,
-      {
-        x: m(bounds.minX - pad),
-        y: m(bounds.minY - pad),
-        w: m(bounds.maxX - bounds.minX + pad * 2),
-        h: m(bounds.maxY - bounds.minY + pad * 2),
-      },
-      -50,
-    );
+    // Terrain is already baked by LevelKit. These sparse guides stay above it without a
+    // second full-world texture set (paper themes contain only tracks and entry marks).
+    g.setDepth(-48);
   }
 
   /** Pencil compartment outline and an inward ink arrow expose the authored opening. */
@@ -510,69 +487,7 @@ export class GameScene extends Phaser.Scene {
       .setDepth(-10);
   }
 
-  /**
-   * Walkable tops read first (doc 07 §13): a heavier second pen pass on upward-facing edges, and a
-   * band of tighter hatching just under them so platforms have a lit top and shaded body.
-   */
-  private drawWalkableEdges(
-    g: Phaser.GameObjects.Graphics,
-    points: readonly Vec2[],
-    seed: number,
-  ): void {
-    const n = points.length;
-    for (let i = 0; i < n; i++) {
-      const a = points[i] as Vec2;
-      const b = points[(i + 1) % n] as Vec2;
-      const dx = b.x - a.x;
-      const dy = b.y - a.y;
-      const len = Math.hypot(dx, dy);
-      if (len < 0.3) continue;
-      // Polygons are authored clockwise in +y-down space, so the outward normal is (dy, -dx).
-      const ny = -dx / len;
-      if (ny > -0.7) continue;
-      const pts = [
-        { x: m(a.x), y: m(a.y) },
-        { x: m(b.x), y: m(b.y) },
-      ];
-      strokeInk(g, wobble(pts, seed + i * 5, m(0.018), m(0.35)), 4.2, INK, 1, seed + i);
-      g.lineStyle(1.1, INK, 0.55);
-      const step = 0.11;
-      for (let t = step / 2; t < len; t += step) {
-        const x = a.x + (dx * t) / len;
-        const y = a.y + (dy * t) / len;
-        const depth = 0.12 + 0.1 * hash(seed + t * 13);
-        g.lineBetween(m(x), m(y + 0.06), m(x - 0.07), m(y + 0.06 + depth));
-      }
-    }
-  }
-
-  /** Thorny teeth along the upward-facing edges of a hazard, so danger reads by silhouette. */
-  private drawTeeth(g: Phaser.GameObjects.Graphics, points: readonly Vec2[], seed: number): void {
-    for (let i = 0; i < points.length; i++) {
-      const a = points[i] as Vec2;
-      const b = points[(i + 1) % points.length] as Vec2;
-      if (Math.abs(a.y - b.y) > 0.01 || Math.abs(b.x - a.x) < 0.5) continue;
-      const top = Math.min(...points.map((p) => p.y));
-      if (Math.abs(a.y - top) > 0.01) continue;
-      const left = Math.min(a.x, b.x);
-      const right = Math.max(a.x, b.x);
-      g.fillStyle(RED_PEN, 0.9);
-      g.lineStyle(2, INK, 1);
-      let k = 0;
-      for (let x = left + 0.1; x < right - 0.3; x += 0.42, k++) {
-        const h = 0.28 + (0.18 * ((seed * 13 + k * 7) % 5)) / 5;
-        // Teeth sit inside the collision shape (tips on its top edge): the art never extends past
-        // the lethal surface, so touching the drawing always means touching the hazard.
-        const p0 = { x: m(x), y: m(a.y + h) };
-        const p1 = { x: m(x + 0.16), y: m(a.y) };
-        const p2 = { x: m(x + 0.32), y: m(a.y + h) };
-        g.fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
-        strokeInk(g, wobble([p0, p1, p2], seed + k, 0.8, m(0.1)), 1.8, INK, 1, k);
-      }
-    }
-  }
-
-  // --- dynamic layer ---------------------------------------------------------------------------
+  // --- dynamic ink ---
 
   private drawDynamic(frame: RenderFrame, dt: number): void {
     const { previous, current, alpha } = frame;
@@ -843,19 +758,8 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private drawAnchor(g: Phaser.GameObjects.Graphics, p: Pt, i: number): void {
-    // The ring is the impact disc: art matches collision (AGENTS.md, Codex review on PR 6).
-    const r = m(this.opts.level.anchors[i]?.radius ?? 0.4);
-    const ring: Pt[] = [];
-    for (let k = 0; k <= 20; k++) {
-      const a = (k / 20) * Math.PI * 2;
-      ring.push({ x: p.x + Math.cos(a) * r, y: p.y + Math.sin(a) * r });
-    }
-    strokeInk(g, wobble(ring, i * 3.3, 0.9, m(0.08)), 3.4, INK, 1, i);
-    // Bolt plate above the ring.
-    g.fillStyle(INK, 1);
-    g.fillRect(p.x - m(0.08), p.y - r - m(0.2), m(0.16), m(0.14));
-    g.lineStyle(2.4, INK, 1).lineBetween(p.x, p.y - r - m(0.08), p.x, p.y - r);
+  private drawAnchor(_g: Phaser.GameObjects.Graphics, p: Pt, i: number): void {
+    this.kit.moveAnchor(i, p.x, p.y);
   }
 
   /**

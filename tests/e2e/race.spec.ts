@@ -77,6 +77,11 @@ test('Backspace returns to the checkpoint while the run timer keeps running', as
   await page.evaluate(() => {
     (window as unknown as Hook).__stickgame.stopReplay();
   });
+  const stoppedAt = await snap(page);
+  await page.waitForFunction(
+    (tick) => (window as unknown as Hook).__stickgame.snapshot().tick > tick,
+    stoppedAt.tick,
+  );
   const before = await snap(page);
   expect(before.checkpoint).toBe(0);
   await page.keyboard.press('Backspace');
@@ -86,12 +91,13 @@ test('Backspace returns to the checkpoint while the run timer keeps running', as
   expect(after.lives).toBe(before.lives + 1);
   expect(after.runTick).toBeGreaterThan(before.runTick); // the run clock never reset
   expect(after.lifeTick).toBeLessThan(after.runTick);
-  // Standing at the checkpoint (the replay's held direction may have nudged it a few ticks).
+  // Replay input was released before reset; asynchronous observation must not keep walking.
   expect(Math.abs(after.player.position.x - CHECKPOINT_A.x)).toBeLessThan(2);
   expect(Math.abs(after.player.position.y - CHECKPOINT_A.y)).toBeLessThan(1);
   await page.waitForTimeout(300);
   const later = await snap(page);
   expect(later.runTick).toBeGreaterThan(after.runTick);
+  expect(Math.abs(later.player.position.x - CHECKPOINT_A.x)).toBeLessThan(0.05);
   const hud = (await race(page)).hud;
   expect(hud.run.text).toMatch(/^\d\d:\d\d\.\d\d$/);
   expect(hud.life.text).toMatch(/^life \d\d:\d\d\.\d\d$/);

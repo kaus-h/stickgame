@@ -1,0 +1,339 @@
+{
+  "source": "0016-level-kit-thin.png",
+  "pxPerMeter1x": 64,
+  "objects": [
+    {
+      "name": "ledge-top",
+      "sourceBox": {
+        "x": 49,
+        "y": 42,
+        "width": 1183,
+        "height": 210
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        4.946,
+        0.892
+      ],
+      "size1x": [
+        317,
+        57
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 145,
+        "collisionEdgeXSheetPx": [
+          55,
+          1226
+        ]
+      }
+    },
+    {
+      "name": "platform-left",
+      "sourceBox": {
+        "x": 63,
+        "y": 287,
+        "width": 287,
+        "height": 245
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        1.212,
+        1.038
+      ],
+      "size1x": [
+        78,
+        66
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 350,
+        "collisionEdgeXSheetPx": [
+          67,
+          345
+        ]
+      }
+    },
+    {
+      "name": "platform-mid",
+      "sourceBox": {
+        "x": 553,
+        "y": 308,
+        "width": 231,
+        "height": 196
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.979,
+        0.833
+      ],
+      "size1x": [
+        63,
+        53
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 367,
+        "collisionEdgeXSheetPx": [
+          558,
+          779
+        ]
+      }
+    },
+    {
+      "name": "platform-right",
+      "sourceBox": {
+        "x": 959,
+        "y": 294,
+        "width": 294,
+        "height": 245
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        1.242,
+        1.038
+      ],
+      "size1x": [
+        79,
+        66
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 355,
+        "collisionEdgeXSheetPx": [
+          965,
+          1247
+        ]
+      }
+    },
+    {
+      "name": "cliff-wall",
+      "sourceBox": {
+        "x": 1351,
+        "y": 35,
+        "width": 280,
+        "height": 588
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        1.183,
+        2.467
+      ],
+      "size1x": [
+        76,
+        158
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 127,
+        "collisionEdgeXSheetPx": [
+          1360,
+          1624
+        ]
+      }
+    },
+    {
+      "name": "ceiling",
+      "sourceBox": {
+        "x": 84,
+        "y": 588,
+        "width": 616,
+        "height": 112
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        2.583,
+        0.483
+      ],
+      "size1x": [
+        165,
+        31
+      ],
+      "metadata": {
+        "collisionTopYSheetPx": 596,
+        "undersideBottomYSheetPx": 695,
+        "collisionEdgeXSheetPx": [
+          88,
+          696
+        ]
+      }
+    },
+    {
+      "name": "spikes",
+      "sourceBox": {
+        "x": 784,
+        "y": 574,
+        "width": 385,
+        "height": 105
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        1.621,
+        0.454
+      ],
+      "size1x": [
+        104,
+        29
+      ],
+      "metadata": {
+        "hazardBoundsSheetPx": {
+          "x": 789,
+          "y": 579,
+          "width": 374,
+          "height": 96
+        },
+        "baseYSheetPx": 668
+      }
+    },
+    {
+      "name": "ink-pool",
+      "sourceBox": {
+        "x": 49,
+        "y": 770,
+        "width": 826,
+        "height": 112
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        3.458,
+        0.483
+      ],
+      "size1x": [
+        221,
+        31
+      ],
+      "metadata": {
+        "hazardTopYSheetPx": 805,
+        "hazardBoundsSheetPx": {
+          "x": 55,
+          "y": 788,
+          "width": 808,
+          "height": 89
+        }
+      }
+    },
+    {
+      "name": "anchor-ring",
+      "sourceBox": {
+        "x": 938,
+        "y": 742,
+        "width": 126,
+        "height": 140
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.542,
+        0.6
+      ],
+      "size1x": [
+        35,
+        38
+      ],
+      "metadata": {
+        "centerSheetPx": [
+          1001,
+          812
+        ],
+        "outerRadiusSheetPx": 56,
+        "innerRadiusSheetPx": 40
+      }
+    },
+    {
+      "name": "exit-door",
+      "sourceBox": {
+        "x": 1113,
+        "y": 728,
+        "width": 231,
+        "height": 161
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.979,
+        0.688
+      ],
+      "size1x": [
+        63,
+        44
+      ],
+      "metadata": {
+        "openingBoundsSheetPx": {
+          "x": 1178,
+          "y": 775,
+          "width": 88,
+          "height": 94
+        },
+        "thresholdYSheetPx": 869
+      }
+    },
+    {
+      "name": "decoration-grass-tall",
+      "sourceBox": {
+        "x": 1379,
+        "y": 665,
+        "width": 105,
+        "height": 105
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.454,
+        0.454
+      ],
+      "size1x": [
+        29,
+        29
+      ]
+    },
+    {
+      "name": "decoration-grass-short",
+      "sourceBox": {
+        "x": 1526,
+        "y": 686,
+        "width": 91,
+        "height": 77
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.396,
+        0.338
+      ],
+      "size1x": [
+        25,
+        22
+      ]
+    },
+    {
+      "name": "decoration-flower",
+      "sourceBox": {
+        "x": 1414,
+        "y": 791,
+        "width": 56,
+        "height": 91
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.25,
+        0.396
+      ],
+      "size1x": [
+        16,
+        25
+      ]
+    },
+    {
+      "name": "decoration-rocks",
+      "sourceBox": {
+        "x": 1512,
+        "y": 826,
+        "width": 112,
+        "height": 49
+      },
+      "sourcePxPerMeter": 240,
+      "sizeMeters": [
+        0.483,
+        0.221
+      ],
+      "size1x": [
+        31,
+        14
+      ]
+    }
+  ],
+  "scaleVariants": [
+    "1x"
+  ]
+}

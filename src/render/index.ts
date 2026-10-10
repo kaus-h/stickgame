@@ -8,3 +8,5 @@ export type { TouchControlsViewState } from './TouchControlsView';
 export type { RaceView, SplitFlash } from './frame';
 export { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from './race';
 export type { DeltaTone } from './race';
+
+export { loadLevelKit } from './kit/LevelKit';
