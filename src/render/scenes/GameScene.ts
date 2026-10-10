@@ -95,6 +95,8 @@ export class GameScene extends Phaser.Scene {
   private lastTime = 0;
   private bodies!: BodiesLayer;
   private kit!: LevelKit;
+  /** Completion presentation owns the camera until this scene is replaced. */
+  private eraserCamera = false;
 
   kitPresentation(): { ready: boolean; theme: string; tiles: number; surfacePixels: number } {
     return { ready: !!this.kit, theme: getLevelTheme(this.opts.level), ...this.kit.stats() };
@@ -122,7 +124,22 @@ export class GameScene extends Phaser.Scene {
 
   /** After an accepted exit: the eraser rubs out the bodies, then `done` (at once if none). */
   eraseBodies(done: () => void): void {
-    this.bodies.erase(done);
+    if (this.bodies.sweeping) return;
+    this.eraserCamera = this.bodies.stats().count > 0;
+    if (this.eraserCamera && !this.reducedMotion) this.fitEraserCamera();
+    this.bodies.erase(done, (worldX) => {
+      const b = this.opts.level.bounds;
+      this.cameras.main.centerOn(worldX, m((b.minY + b.maxY) / 2));
+    });
+  }
+
+  /** Dev evidence: pixels, from the same timeline used to crop bodies and move the camera. */
+  eraserPresentation() {
+    return {
+      scrollX: this.cameras.main.scrollX,
+      zoom: this.cameras.main.zoom,
+      ...this.bodies.sweepPresentation(),
+    };
   }
 
   bodyStats(): BodiesStats {
@@ -148,6 +165,7 @@ export class GameScene extends Phaser.Scene {
   }
 
   create(): void {
+    this.eraserCamera = false;
     this.splats = [];
     this.stomps = [];
     this.lastTime = 0;
@@ -258,6 +276,7 @@ export class GameScene extends Phaser.Scene {
       drawFrame(this.frameG, this.scale.height);
       this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
+      if (this.eraserCamera && !this.reducedMotion) this.fitEraserCamera();
     };
     this.scale.on('resize', resize);
     this.events.once('shutdown', () => {
@@ -322,8 +341,24 @@ export class GameScene extends Phaser.Scene {
     cam.setBounds(m(b.minX), m(b.minY), m(b.maxX - b.minX), m(b.maxY - b.minY));
   }
 
+  /** Show the full height of the page while following the completion eraser. */
+  private fitEraserCamera(): void {
+    const b = this.opts.level.bounds;
+    this.cameras.main.setZoom(
+      Math.min(
+        cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA) / m(1),
+        this.scale.height / m(b.maxY - b.minY),
+      ),
+    );
+    this.cameras.main.setBounds(m(b.minX), m(b.minY), m(b.maxX - b.minX), m(b.maxY - b.minY));
+  }
+
   private followCamera({ previous, current, alpha }: RenderFrame, dt: number): void {
-    if (this.opts.overview) return;
+    if (this.eraserCamera && !this.bodies.sweeping && current.resets > previous.resets) {
+      this.eraserCamera = false;
+      this.fitCamera();
+    }
+    if (this.opts.overview || this.eraserCamera) return;
     const t = this.blend(previous, current, alpha);
 
     const p = previous.player.position;
