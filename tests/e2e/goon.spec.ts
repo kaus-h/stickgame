@@ -73,12 +73,10 @@ test('a moving goon stomp continues into the next rope opportunity and resets cl
 }) => {
   await page.goto('/?level=lab-goon-drop&renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
-  await page.waitForFunction(
-    () => {
-      const hook = (window as unknown as Hook).__stickgame;
-      return hook.resources().cameras === 2 && hook.enemyPresentation().ready;
-    },
-  );
+  await page.waitForFunction(() => {
+    const hook = (window as unknown as Hook).__stickgame;
+    return hook.resources().cameras === 2 && hook.enemyPresentation().ready;
+  });
   const initialResources = await page.evaluate(() =>
     (window as unknown as Hook).__stickgame.resources(),
   );
@@ -180,9 +178,9 @@ test('a moving goon stomp continues into the next rope opportunity and resets cl
   expect(observed.reset.deaths).toBe(0);
   expect(observed.reset.resets).toBeGreaterThanOrEqual(2); // hook restart + replay reset
   expect(observed.reset.completion).toBeNull();
-  expect(
-    await page.evaluate(() => (window as unknown as Hook).__stickgame.resources()),
-  ).toEqual(initialResources);
+  expect(await page.evaluate(() => (window as unknown as Hook).__stickgame.resources())).toEqual(
+    initialResources,
+  );
 });
 
 test('unsafe goon contact records its cause and shows feedback during the immediate retry', async ({
@@ -214,8 +212,8 @@ test('unsafe goon contact records its cause and shows feedback during the immedi
     )
     .toBe(true);
   expect(
-    await page.evaluate(() =>
-      (window as unknown as { __stickgame: Probe }).__stickgame.enemyPresentation().text,
+    await page.evaluate(
+      () => (window as unknown as { __stickgame: Probe }).__stickgame.enemyPresentation().text,
     ),
   ).toContain('goon');
   const screenshot = info.outputPath('goon-contact-retry.png');
