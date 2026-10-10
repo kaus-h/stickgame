@@ -1,0 +1,34 @@
+{
+  "seams": [
+    {
+      "x": 7,
+      "leftRed": 1,
+      "rightRed": 1,
+      "difference": 0
+    },
+    {
+      "x": 14,
+      "leftRed": 0.9785575048732943,
+      "rightRed": 0.9746588693957114,
+      "difference": 0.003898635477582846
+    },
+    {
+      "x": 21,
+      "leftRed": 1,
+      "rightRed": 1,
+      "difference": 0
+    },
+    {
+      "x": 28,
+      "leftRed": 0.9785575048732943,
+      "rightRed": 0.9746588693957114,
+      "difference": 0.003898635477582846
+    }
+  ],
+  "skirtFade": {
+    "interiorDark": 0.34045584045584043,
+    "endDark": 0.1141826923076923,
+    "sideDark": 0,
+    "sideInk": 0.08791208791208792
+  }
+}
