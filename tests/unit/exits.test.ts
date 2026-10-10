@@ -61,8 +61,7 @@ describe('swept compartment entry', () => {
     const exit = compileLevel(miss).exit;
     if (!exit || !('entry' in exit)) throw new Error('expected typed exit');
     expect(
-      evaluateExitEntry(exit, { x: 9, y: 6.5 }, { x: 11, y: 6.5 }, { x: 12, y: 0 }, 0.3)
-        ?.reason,
+      evaluateExitEntry(exit, { x: 9, y: 6.5 }, { x: 11, y: 6.5 }, { x: 12, y: 0 }, 0.3)?.reason,
     ).toBe('speed');
   });
   it('reports a reversed-side entry and ignores outbound movement', () => {

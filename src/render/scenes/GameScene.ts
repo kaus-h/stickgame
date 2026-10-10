@@ -497,7 +497,7 @@ export class GameScene extends Phaser.Scene {
         m(tip.y - normal.y * 0.25 + normal.x * sign * 0.18),
       );
     const label = entry
-      ? `${'family' in exit && exit.family === 'slot' ? 'Slot' : 'family' in exit && exit.family === 'shaft' ? 'Shaft' : 'Wide exit'}\n${String(entry.speed.min)}–${String(entry.speed.max)} m/s · ${String(entry.angle.min)}–${String(entry.angle.max)}°\nStay within the entry marks`
+      ? `${'family' in exit && exit.family === 'slot' ? 'Slot' : 'family' in exit && exit.family === 'shaft' ? 'Shaft' : 'Wide exit'}\n${String(entry.angle.min)}–${String(entry.angle.max)}°\nStay within the entry marks`
       : 'Exit';
     this.add
       .text(m((min.x + max.x) / 2), m(min.y - 0.3), label, {

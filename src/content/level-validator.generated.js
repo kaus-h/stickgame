@@ -145,7 +145,7 @@ const schema6 = {
         entry: {
           type: 'object',
           additionalProperties: false,
-          required: ['side', 'angle', 'speed', 'alignment'],
+          required: ['side', 'angle', 'alignment'],
           properties: {
             side: { enum: ['left', 'right', 'top', 'bottom'] },
             angle: { $ref: '#/definitions/angleWindow' },
@@ -1918,7 +1918,7 @@ const schema15 = {
     entry: {
       type: 'object',
       additionalProperties: false,
-      required: ['side', 'angle', 'speed', 'alignment'],
+      required: ['side', 'angle', 'alignment'],
       properties: {
         side: { enum: ['left', 'right', 'top', 'bottom'] },
         angle: { $ref: '#/definitions/angleWindow' },
@@ -2771,13 +2771,13 @@ function validate52(
           }
           errors++;
         }
-        if (data10.speed === undefined) {
+        if (data10.alignment === undefined) {
           const err15 = {
             instancePath: instancePath + '/entry',
             schemaPath: '#/properties/entry/required',
             keyword: 'required',
-            params: { missingProperty: 'speed' },
-            message: "must have required property '" + 'speed' + "'",
+            params: { missingProperty: 'alignment' },
+            message: "must have required property '" + 'alignment' + "'",
           };
           if (vErrors === null) {
             vErrors = [err15];
@@ -2786,24 +2786,9 @@ function validate52(
           }
           errors++;
         }
-        if (data10.alignment === undefined) {
-          const err16 = {
-            instancePath: instancePath + '/entry',
-            schemaPath: '#/properties/entry/required',
-            keyword: 'required',
-            params: { missingProperty: 'alignment' },
-            message: "must have required property '" + 'alignment' + "'",
-          };
-          if (vErrors === null) {
-            vErrors = [err16];
-          } else {
-            vErrors.push(err16);
-          }
-          errors++;
-        }
         for (const key1 in data10) {
           if (!(key1 === 'side' || key1 === 'angle' || key1 === 'speed' || key1 === 'alignment')) {
-            const err17 = {
+            const err16 = {
               instancePath: instancePath + '/entry',
               schemaPath: '#/properties/entry/additionalProperties',
               keyword: 'additionalProperties',
@@ -2811,9 +2796,9 @@ function validate52(
               message: 'must NOT have additional properties',
             };
             if (vErrors === null) {
-              vErrors = [err17];
+              vErrors = [err16];
             } else {
-              vErrors.push(err17);
+              vErrors.push(err16);
             }
             errors++;
           }
@@ -2826,7 +2811,7 @@ function validate52(
             data11 === 'top' ||
             data11 === 'bottom'
           )) {
-            const err18 = {
+            const err17 = {
               instancePath: instancePath + '/entry/side',
               schemaPath: '#/properties/entry/properties/side/enum',
               keyword: 'enum',
@@ -2834,9 +2819,9 @@ function validate52(
               message: 'must be equal to one of the allowed values',
             };
             if (vErrors === null) {
-              vErrors = [err18];
+              vErrors = [err17];
             } else {
-              vErrors.push(err18);
+              vErrors.push(err17);
             }
             errors++;
           }
@@ -2881,7 +2866,7 @@ function validate52(
           }
         }
       } else {
-        const err19 = {
+        const err18 = {
           instancePath: instancePath + '/entry',
           schemaPath: '#/properties/entry/type',
           keyword: 'type',
@@ -2889,15 +2874,15 @@ function validate52(
           message: 'must be object',
         };
         if (vErrors === null) {
-          vErrors = [err19];
+          vErrors = [err18];
         } else {
-          vErrors.push(err19);
+          vErrors.push(err18);
         }
         errors++;
       }
     }
   } else {
-    const err20 = {
+    const err19 = {
       instancePath,
       schemaPath: '#/type',
       keyword: 'type',
@@ -2905,9 +2890,9 @@ function validate52(
       message: 'must be object',
     };
     if (vErrors === null) {
-      vErrors = [err20];
+      vErrors = [err19];
     } else {
-      vErrors.push(err20);
+      vErrors.push(err19);
     }
     errors++;
   }
