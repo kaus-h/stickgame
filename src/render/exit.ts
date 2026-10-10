@@ -18,7 +18,8 @@ export function exitMissMessage(attempt: ExitAttempt, exit: LevelDef['exit']): s
   const entry = exit && 'entry' in exit ? exit.entry : null;
   switch (attempt.reason) {
     case 'speed':
-      return entry && attempt.speed > entry.speed.max ? 'Too fast' : 'Too slow';
+      if (!entry?.speed) return '';
+      return attempt.speed > entry.speed.max ? 'Too fast' : 'Too slow';
     case 'angle':
       return entry && attempt.angleCos > Math.cos((entry.angle.min * Math.PI) / 180)
         ? 'Use the marked entry angle'
