@@ -1,0 +1,9 @@
+{
+  "baseline": "main 3ef1167, original LevelKit.ts restored temporarily",
+  "browser": "chromium",
+  "expectedFailures": 2,
+  "floorContactInk": { "before": 0, "requiredMinimum": 0.02 },
+  "ceilingUndersideInk": { "before": 0.004629629629629629, "requiredMinimum": 0.01 },
+  "restored": "GMR-111 renderer restored immediately after the intentional failing run",
+  "outsideBottomBeforeViewportFill": { "ink": 0, "requiredMinimum": 0.02 }
+}

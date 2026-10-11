@@ -218,7 +218,7 @@ for (const levelId of LEVEL_IDS) {
   });
 }
 
-test('1-2: kit skirts fade into paper and hazards retain their paper gaps', async ({
+test('1-2: grounded kit mass continues to the hazard bed and hazards retain paper gaps', async ({
   page,
 }, info) => {
   const pageErrors: string[] = [];
@@ -228,8 +228,8 @@ test('1-2: kit skirts fade into paper and hazards retain their paper gaps', asyn
   await waitForKit(page);
   await attachScreenshot(page, info, '1-2-kit-paper-hazard-detail');
 
-  // c1-start has a crest at y=8m. The cross-section fades over 1.65m and leaves its lower
-  // rectangle edge unpainted, so the collision body does not acquire a false closed bottom.
+  // c1-start meets the wall and hazard bed. GMR-111 requires continuous ground mass here;
+  // isolated-platform fading is tested separately in terrain-connections.spec.ts.
   const upperSkirt = await sampleWorldRect(page, {
     minX: 7.4,
     maxX: 8.6,
@@ -255,16 +255,14 @@ test('1-2: kit skirts fade into paper and hazards retain their paper gaps', asyn
     maxY: 11.38,
   });
   expect(share(upperSkirt, 'dark'), 'upper skirt should contain ink').toBeGreaterThan(0.02);
-  expect(share(lowerSkirt, 'dark'), 'ink density should fade down the skirt').toBeLessThan(
-    share(upperSkirt, 'dark') * 0.8,
+  expect(share(lowerSkirt, 'dark'), 'ground hatching should continue downward').toBeGreaterThan(
+    0.02,
   );
   expect(
     share(interior, 'paper'),
-    'platform interior below the feather should be paper',
-  ).toBeGreaterThan(0.7);
-  expect(share(lowerEdge, 'dark'), 'no dark line should close the platform bottom').toBeLessThan(
-    0.03,
-  );
+    'thin ground hatching should retain open paper between strokes',
+  ).toBeGreaterThan(0.45);
+  expect(share(lowerEdge, 'dark'), 'ground mass should meet the hazard bed').toBeGreaterThan(0.02);
 
   // A tooth patch and the lethal floor each contain red marks and visible paper between them.
   const spikePatch = await sampleWorldRect(page, {
@@ -288,7 +286,7 @@ test('1-2: kit skirts fade into paper and hazards retain their paper gaps', asyn
   expect(pageErrors).toEqual([]);
 });
 
-test('1-2: pool tile joins stay even and the ledge skirt feathers at its end', async ({
+test('1-2: pool tile joins stay even and grounded ledge sides remain readable', async ({
   page,
 }, info) => {
   const pageErrors: string[] = [];
@@ -369,12 +367,11 @@ test('1-2: pool tile joins stay even and the ledge skirt feathers at its end', a
   }
 
   expect(skirtFade.interiorDark, 'nearby skirt hatch should contain ink').toBeGreaterThan(0.02);
-  expect(
-    skirtFade.endDark,
-    'the final 0.24m skirt band should fade toward the ledge edge',
-  ).toBeLessThan(skirtFade.interiorDark * 0.8);
+  expect(skirtFade.endDark, 'connected ground continues to its exposed side').toBeGreaterThan(0.02);
   expect(skirtFade.sideInk, 'the side contour should remain visible').toBeGreaterThan(0.005);
-  expect(skirtFade.sideInk, 'the side contour should stay thin').toBeLessThan(0.2);
+  expect(skirtFade.sideInk, 'the side contour and hatch should retain paper gaps').toBeLessThan(
+    0.75,
+  );
   expect(pageErrors).toEqual([]);
 });
 

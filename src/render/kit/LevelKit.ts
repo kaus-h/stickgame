@@ -7,6 +7,8 @@ import spikesUrl from '../../../assets/art/kit-0016/1x/spikes.png';
 import poolUrl from '../../../assets/art/kit-0016/1x/ink-pool.png';
 import ringUrl from '../../../assets/art/kit-0016/1x/anchor-ring.png';
 import doorUrl from '../../../assets/art/kit-0016/1x/exit-door.png';
+import { classifyTerrainEdges, type TerrainEdge } from './terrainEdges';
+import { BorderMass } from './BorderMass';
 
 const urls = {
   ledge: ledgeUrl,
@@ -148,12 +150,35 @@ export class LevelKit {
   private readonly keys: string[] = [];
   private readonly art = images;
   private surfacePixels = 0;
+  private readonly edges = new Map<SolidDef, TerrainEdge[]>();
+  private readonly corners: { vertex: TerrainEdge['a']; edges: TerrainEdge[] }[] = [];
+  private readonly border: BorderMass;
 
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly level: LevelDef,
   ) {
     if (!this.art) throw new Error('Level kit must be decoded before scene creation');
+    this.border = new BorderMass(scene, level);
+    const updateBorder = (): void => {
+      this.border.update();
+    };
+    scene.events.on('prerender', updateBorder);
+    scene.events.once('shutdown', () => {
+      scene.events.off('prerender', updateBorder);
+    });
+    for (const solid of level.solids.filter((s) => s.kind === 'solid'))
+      this.edges.set(solid, classifyTerrainEdges(level, solid));
+    const endpoints = new Map<string, { vertex: TerrainEdge['a']; edges: TerrainEdge[] }>();
+    for (const edge of [...this.edges.values()].flat().filter((e) => e.contact === 'exposed')) {
+      for (const vertex of [edge.a, edge.b]) {
+        const key = `${String(Math.round(vertex.x * 1e7))},${String(Math.round(vertex.y * 1e7))}`;
+        const group = endpoints.get(key) ?? { vertex, edges: [] };
+        group.edges.push(edge);
+        endpoints.set(key, group);
+      }
+    }
+    this.corners.push(...[...endpoints.values()].filter((group) => group.edges.length === 2));
     const ringKey = 'kit-0016-ring';
     if (!scene.textures.exists(ringKey)) scene.textures.addImage(ringKey, this.art.ring);
     const center = specs.ring.metadata?.centerSheetPx ?? [1001, 812];
@@ -186,7 +211,11 @@ export class LevelKit {
   }
 
   stats(): { tiles: number; surfacePixels: number } {
-    return { tiles: this.keys.length, surfacePixels: this.surfacePixels };
+    const border = this.border.stats();
+    return {
+      tiles: this.keys.length + border.tiles,
+      surfacePixels: this.surfacePixels + border.surfacePixels,
+    };
   }
 
   private bake(): void {
@@ -227,7 +256,13 @@ export class LevelKit {
         this.surfacePixels += texture.width * texture.height;
         const c = texture.getContext();
         c.translate(-x, -y);
+        this.paintMass(
+          c,
+          visible.filter((s) => s.kind === 'solid' && !this.floating(s)),
+          { x, y, w: texture.width, h: texture.height },
+        );
         for (const solid of visible.filter((s) => s.kind === 'solid')) this.paintSolid(c, solid);
+        this.paintCorners(c);
         for (const solid of visible.filter((s) => s.kind === 'hazard')) this.paintHazard(c, solid);
         this.paintExit(c);
         texture.refresh();
@@ -276,71 +311,173 @@ export class LevelKit {
     c.globalAlpha = alpha;
   }
 
+  private floating(solid: SolidDef): boolean {
+    return (this.edges.get(solid) ?? []).every((edge) => edge.contact === 'exposed');
+  }
+
+  /** One world-locked hatch field continues across joined polygons and the page borders. */
+  private paintMass(c: CanvasRenderingContext2D, solids: SolidDef[], tile: Box): void {
+    if (solids.length === 0) return;
+    c.save();
+    c.beginPath();
+    c.rect(tile.x, tile.y, tile.w, tile.h);
+    c.clip();
+    c.beginPath();
+    for (const solid of solids) {
+      solid.points.forEach((p, i) => {
+        if (i === 0) c.moveTo(m(p.x), m(p.y));
+        else c.lineTo(m(p.x), m(p.y));
+      });
+      c.closePath();
+    }
+    c.clip();
+    c.strokeStyle = '#16161a';
+    c.lineWidth = 0.85;
+    const left = Math.floor(tile.x / 12) * 12 - 12;
+    const right = tile.x + tile.w + 12;
+    const top = tile.y - 12;
+    const bottom = tile.y + tile.h + 12;
+    for (let pass = 0; pass < 2; pass++) {
+      const slope = pass === 0 ? -1.55 : 0.68;
+      const spacing = pass === 0 ? 8 : 22;
+      c.globalAlpha = pass === 0 ? 0.78 : 0.46;
+      const offsets = [
+        top - slope * left,
+        top - slope * right,
+        bottom - slope * left,
+        bottom - slope * right,
+      ];
+      for (
+        let offset = Math.floor(Math.min(...offsets) / spacing) * spacing;
+        offset <= Math.max(...offsets);
+        offset += spacing
+      ) {
+        c.lineWidth = 0.65 + (Math.sin(offset * 0.31) + 1) * 0.2;
+        c.beginPath();
+        for (let x = left; x <= right; x += 12) {
+          const y =
+            slope * x +
+            offset +
+            Math.sin(offset * 0.13) * 2.4 +
+            Math.sin(x * 0.057 + offset * 0.21) * 1.8 +
+            Math.sin(x * 0.19 - offset * 0.07) * 0.6;
+          if (x === left) c.moveTo(x, y);
+          else c.lineTo(x, y);
+        }
+        c.stroke();
+      }
+    }
+    c.restore();
+  }
+
   private paintSolid(c: CanvasRenderingContext2D, solid: SolidDef): void {
-    const box = bounds(solid);
-    const wall = box.h > m(4) && box.h > box.w * 3;
-    const ceiling = Math.min(...solid.points.map((p) => p.y)) <= this.level.bounds.minY;
-    // Cosmetic foliage sits above walkable tops. There is deliberately no bottom outline.
-    for (let i = 0; i < solid.points.length; i++) {
-      const p = solid.points[i],
-        q = solid.points[(i + 1) % solid.points.length];
-      if (!p || !q) continue;
-      const dx = m(q.x - p.x),
-        dy = m(q.y - p.y),
-        length = Math.hypot(dx, dy);
+    const floating = this.floating(solid);
+    const edges = this.edges.get(solid) ?? [];
+    const ceiling =
+      edges.some((edge) => edge.side === 'top' && edge.contact === 'bounds') ||
+      /ceiling|roof|hang/i.test(solid.id);
+    for (const edge of edges) {
+      if (edge.contact !== 'exposed') continue;
+      const dx = m(edge.b.x - edge.a.x),
+        dy = m(edge.b.y - edge.a.y);
+      const length = Math.hypot(dx, dy);
       if (length === 0) continue;
-      const top = dx > 0 && dx / length >= 0.7 && !ceiling;
-      const underside = dx < 0 && -dx / length >= 0.7 && ceiling;
-      const side = Math.abs(dy) / length > 0.7;
-      if (!top && !underside && !side) continue;
+      const top = edge.side === 'top' || (edge.side === 'slope' && dx > 0);
       c.save();
-      c.translate(m(p.x), m(p.y));
+      c.translate(m(edge.a.x), m(edge.a.y));
       c.rotate(Math.atan2(dy, dx));
-      if (top) this.foliage(c, length);
+      if (top && !ceiling) this.foliage(c, length);
       c.restore();
       c.save();
       outline(c, solid);
       c.clip();
-      c.translate(m(p.x), m(p.y));
+      c.translate(m(edge.a.x), m(edge.a.y));
       c.rotate(Math.atan2(dy, dx));
-      if (top || underside || (side && wall)) {
-        // Clockwise collision has its interior to the right of every edge. On walls this
-        // is the same feathered skirt rotated, without repeated flowers down the margin.
-        this.hatchSkirt(
-          c,
-          length,
-          side ? Math.min(m(1.65), box.w * 0.45) : m(1.65),
-          top || underside,
-        );
+      if (floating && top) this.hatchSkirt(c, length, m(1.65), true);
+      // Thin doubled ink follows only the exposed boundary. Contact intervals are omitted,
+      // including partial T joins, so outer and inner corners belong to a single mass.
+      for (let pass = 0; pass < 2; pass++) {
         c.strokeStyle = '#16161a';
-        c.lineWidth = top ? 2 : 1.1;
-        c.beginPath();
-        c.moveTo(0, 0.5);
-        c.lineTo(length, 0.5);
-        c.stroke();
-      }
-      if (side && !wall) {
-        // Two loose contour trails from the top corner; neither reaches the bottom.
-        const depth = Math.min(length, m(1.65));
-        const down = dy > 0;
-        for (let pass = 0; pass < 2; pass++) {
-          for (let t = 0; t < depth; t += 8) {
-            const start = down ? t : length - t;
-            const end = down ? Math.min(t + 8, depth) : length - Math.min(t + 8, depth);
-            c.globalAlpha = 0.75 * (1 - t / depth) * (1 - t / depth);
-            c.lineWidth = pass === 0 ? 1.2 : 0.7;
-            c.strokeStyle = '#16161a';
-            c.beginPath();
-            c.moveTo(start, 1 + pass * 2 + Math.sin(t * 0.13));
-            c.lineTo(end, 1 + pass * 2 + Math.sin((t + 8) * 0.13));
-            c.stroke();
-          }
+        c.lineWidth = pass === 0 && top ? 1.8 : pass === 0 ? 1.3 : 0.7;
+        for (let t = 0; t < length; t += 8) {
+          const end = Math.min(t + 8, length);
+          const side = edge.side === 'left' || edge.side === 'right';
+          const down = dy > 0;
+          const along = down ? t : length - t;
+          c.globalAlpha =
+            floating && side
+              ? 0.75 * Math.max(0, 1 - along / m(1.65)) * Math.max(0, 1 - along / m(1.65))
+              : pass === 0
+                ? 0.92
+                : 0.55;
+          // Full solids keep a thin visible underside (07B); the fading infill stays paper.
+          c.beginPath();
+          c.moveTo(t, 0.7 + pass * 1.8 + Math.sin(t * 0.13));
+          c.lineTo(end, 0.7 + pass * 1.8 + Math.sin(end * 0.13));
+          c.stroke();
         }
       }
       c.restore();
+      if (ceiling && edge.side === 'bottom') {
+        // Small ink drips hang into air; never foliage on the underside.
+        c.save();
+        c.translate(m(edge.a.x), m(edge.a.y));
+        c.rotate(Math.atan2(dy, dx));
+        c.strokeStyle = '#16161a';
+        c.lineWidth = 0.9;
+        c.globalAlpha = 0.75;
+        for (let t = 18; t < length - 12; t += 43) {
+          c.beginPath();
+          c.moveTo(t, 0);
+          c.lineTo(t + Math.sin(t) * 1.1, -3 - (Math.sin(t * 0.3) + 1) * 3);
+          c.stroke();
+        }
+        c.restore();
+      }
     }
   }
 
+  /** Join the two offset contour strokes across convex and concave exposed corner turns. */
+  private paintCorners(c: CanvasRenderingContext2D): void {
+    c.save();
+    c.beginPath();
+    for (const solid of this.level.solids.filter((s) => s.kind === 'solid')) {
+      solid.points.forEach((point, index) => {
+        if (index === 0) c.moveTo(m(point.x), m(point.y));
+        else c.lineTo(m(point.x), m(point.y));
+      });
+      c.closePath();
+    }
+    c.clip();
+    c.strokeStyle = '#16161a';
+    for (const { vertex, edges } of this.corners) {
+      const directions = edges.map((edge) => {
+        const dx = edge.b.x - edge.a.x,
+          dy = edge.b.y - edge.a.y;
+        const length = Math.hypot(dx, dy);
+        const fromStart = Math.hypot(vertex.x - edge.a.x, vertex.y - edge.a.y) < 1e-6;
+        return {
+          x: (dx / length) * (fromStart ? 1 : -1),
+          y: (dy / length) * (fromStart ? 1 : -1),
+          nx: -dy / length,
+          ny: dx / length,
+        };
+      });
+      const a = directions[0],
+        b = directions[1];
+      if (!a || !b || Math.abs(a.x * b.y - a.y * b.x) < 0.01) continue;
+      for (const offset of [0.7, 2.5]) {
+        c.globalAlpha = offset < 1 ? 0.88 : 0.5;
+        c.lineWidth = offset < 1 ? 1.2 : 0.7;
+        c.beginPath();
+        c.moveTo(m(vertex.x) + a.x * 5 + a.nx * offset, m(vertex.y) + a.y * 5 + a.ny * offset);
+        c.lineTo(m(vertex.x) + (a.nx + b.nx) * offset, m(vertex.y) + (a.ny + b.ny) * offset);
+        c.lineTo(m(vertex.x) + b.x * 5 + b.nx * offset, m(vertex.y) + b.y * 5 + b.ny * offset);
+        c.stroke();
+      }
+    }
+    c.restore();
+  }
   private paintHazard(c: CanvasRenderingContext2D, solid: SolidDef): void {
     const box = bounds(solid),
       pool = this.art?.pool,
