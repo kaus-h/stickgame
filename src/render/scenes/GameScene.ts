@@ -247,7 +247,7 @@ export class GameScene extends Phaser.Scene {
       .text(0, 0, '', {
         ...hand,
         fontSize: '22px',
-        color: '#c5302a',
+        color: '#16161a',
         backgroundColor: '#f3efe6',
         padding: { x: 5, y: 2 },
       })
@@ -490,21 +490,10 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
       side === 'left' ? 1 : side === 'right' ? -1 : 0,
       side === 'top' ? 1 : side === 'bottom' ? -1 : 0,
     );
-    // Mouth bracket: ink ticks at the band ends point back at the player, joined across the band,
-    // so it reads "go between these" and never as a collision wall (GMR-56).
-    for (const mark of marks ?? []) {
-      strokeInk(
-        g,
-        [
-          { x: m(mark.x), y: m(mark.y) },
-          { x: m(mark.x - normal.x * 0.3), y: m(mark.y - normal.y * 0.3) },
-        ],
-        2.6,
-        INK,
-        0.9,
-        103,
-      );
-    }
+    // Mouth bracket: ink dots at the band ends, joined across the band below (GMR-56). Dots, not
+    // ticks: in the blind test, ticks parallel to the arrow were read as speed marks.
+    g.fillStyle(INK, 0.9);
+    for (const mark of marks ?? []) g.fillCircle(m(mark.x), m(mark.y), m(0.08));
     const start = vec2(midpoint.x - normal.x * 0.65, midpoint.y - normal.y * 0.65);
     const tip = vec2(midpoint.x + normal.x * 0.45, midpoint.y + normal.y * 0.45);
     g.lineStyle(2.5, INK, 0.9).lineBetween(m(start.x), m(start.y), m(tip.x), m(tip.y));
@@ -699,7 +688,7 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
     if (visibleMiss) {
       const at = { x: m(miss.at.x), y: m(miss.at.y) };
       const fade = Math.min(1, (90 - missAge) / 30);
-      g.lineStyle(2.5, RED_PEN, fade);
+      g.lineStyle(2.5, INK, fade);
       const r = m(0.16);
       g.lineBetween(at.x - r, at.y - r, at.x + r, at.y + r);
       g.lineBetween(at.x - r, at.y + r, at.x + r, at.y - r);
@@ -709,13 +698,14 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
         .setText(exitMissMessage(miss, this.opts.level.exit));
     }
 
-    // Aim reticle: pencil when nothing is selected, ink when a rope press would connect, red pen
-    // when an anchor is selected but the shot is invalid. The impact point gets a small cross.
+    // Aim reticle: ink when a rope press would connect, pencil otherwise. Red is reserved for
+    // lethal things (GMR-56 H1), so an invalid shot is pencil too; its impact cross still shows
+    // which anchor is selected.
     const target = current.target;
     if (target?.impact) {
       const ip = { x: m(target.impact.x), y: m(target.impact.y) };
       const c = m(0.1);
-      g.lineStyle(2, target.valid ? INK : RED_PEN, 0.95);
+      g.lineStyle(2, target.valid ? INK : PENCIL, 0.95);
       g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
       g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
     }
@@ -725,12 +715,12 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
       const from = { x: m(current.aim.x), y: m(current.aim.y) };
       const to = { x: m(target.impact.x), y: m(target.impact.y) };
       g.lineStyle(m(0.16), HIGHLIGHTER, 0.5).lineBetween(from.x, from.y, to.x, to.y);
-      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : RED_PEN);
+      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : PENCIL);
     }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
       const r = m(0.18);
-      const tone = !target || target.anchor === null ? PENCIL : target.valid ? INK : RED_PEN;
+      const tone = target?.valid ? INK : PENCIL;
       g.lineStyle(1.6, tone, 0.9);
       g.strokeCircle(a.x, a.y, r);
       g.lineBetween(a.x - r * 1.6, a.y, a.x - r * 0.6, a.y);
