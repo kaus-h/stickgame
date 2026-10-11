@@ -1,0 +1,146 @@
+[
+  {
+    "id": "1-1",
+    "mode": "play",
+    "level": {
+      "id": "1-1",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 21,
+      "surfacePixels": 13914112,
+      "fingerprint": "2857100c"
+    },
+    "resources": {
+      "textures": 35,
+      "cameras": 2
+    }
+  },
+  {
+    "id": "1-1",
+    "mode": "overview",
+    "level": {
+      "id": "1-1",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 24,
+      "surfacePixels": 14472768,
+      "fingerprint": "2857100c"
+    },
+    "resources": {
+      "textures": 38,
+      "cameras": 2
+    }
+  },
+  {
+    "id": "1-2",
+    "mode": "play",
+    "level": {
+      "id": "1-2",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 25,
+      "surfacePixels": 18153472,
+      "fingerprint": "52e221e9"
+    },
+    "resources": {
+      "textures": 39,
+      "cameras": 2
+    }
+  },
+  {
+    "id": "1-2",
+    "mode": "overview",
+    "level": {
+      "id": "1-2",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 32,
+      "surfacePixels": 18949712,
+      "fingerprint": "52e221e9"
+    },
+    "resources": {
+      "textures": 46,
+      "cameras": 2
+    }
+  },
+  {
+    "id": "1-3",
+    "mode": "play",
+    "level": {
+      "id": "1-3",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 24,
+      "surfacePixels": 20234240,
+      "fingerprint": "a19dc448"
+    },
+    "resources": {
+      "textures": 38,
+      "cameras": 2
+    }
+  },
+  {
+    "id": "1-3",
+    "mode": "overview",
+    "level": {
+      "id": "1-3",
+      "revision": 0,
+      "spawn": {
+        "x": 3,
+        "y": 7.65
+      },
+      "error": null
+    },
+    "kit": {
+      "ready": true,
+      "theme": "paper",
+      "tiles": 29,
+      "surfacePixels": 20823512,
+      "fingerprint": "a19dc448"
+    },
+    "resources": {
+      "textures": 43,
+      "cameras": 2
+    }
+  }
+]
