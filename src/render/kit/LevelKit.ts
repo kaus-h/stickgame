@@ -9,6 +9,9 @@ import ringUrl from '../../../assets/art/kit-0016/1x/anchor-ring.png';
 import doorUrl from '../../../assets/art/kit-0016/1x/exit-door.png';
 import { classifyTerrainEdges, type TerrainEdge } from './terrainEdges';
 import { BorderMass } from './BorderMass';
+import { loadKit17, paintKit17Terrain, resolveKitVersion } from './Kit17Terrain';
+import { loadKit17Background } from './Kit17Background';
+import { loadKit17Pool, paintKit17Pool } from './Kit17Pool';
 
 const urls = {
   ledge: ledgeUrl,
@@ -59,6 +62,7 @@ const specs: Record<Part, Spec> = {
 };
 let images: Images | null = null;
 let pending: Promise<void> | null = null;
+let kit17Pending: Promise<void> | null = null;
 let skirt: HTMLCanvasElement | null = null;
 
 /** Decode once at initial boot, using browser images rather than the omitted Phaser Loader. */
@@ -102,7 +106,12 @@ export function loadLevelKit(): Promise<void> {
     c.fillStyle = fade;
     c.fillRect(0, 0, skirt.width, skirt.height);
   });
-  return pending;
+  const kitId = resolveKitVersion(typeof window === 'undefined' ? '' : window.location.search);
+  kit17Pending ??=
+    kitId === '0017'
+      ? Promise.all([loadKit17(), loadKit17Pool(), loadKit17Background()]).then(() => undefined)
+      : Promise.resolve();
+  return Promise.all([pending, kit17Pending]).then(() => undefined);
 }
 
 /** Sheet guides transformed through the crop padding and the actual rounded output dimensions. */
@@ -150,6 +159,9 @@ export class LevelKit {
   private readonly keys: string[] = [];
   private readonly art = images;
   private surfacePixels = 0;
+  private readonly kitId: '0016' | '0017';
+  private readonly usedParts = new Set<string>();
+  private readonly allExposedEdges: TerrainEdge[] = [];
   private readonly edges = new Map<SolidDef, TerrainEdge[]>();
   private readonly corners: { vertex: TerrainEdge['a']; edges: TerrainEdge[] }[] = [];
   private readonly border: BorderMass;
@@ -159,6 +171,7 @@ export class LevelKit {
     private readonly level: LevelDef,
   ) {
     if (!this.art) throw new Error('Level kit must be decoded before scene creation');
+    this.kitId = resolveKitVersion(typeof window === 'undefined' ? '' : window.location.search);
     this.border = new BorderMass(scene, level);
     const updateBorder = (): void => {
       this.border.update();
@@ -169,6 +182,8 @@ export class LevelKit {
     });
     for (const solid of level.solids.filter((s) => s.kind === 'solid'))
       this.edges.set(solid, classifyTerrainEdges(level, solid));
+    for (const edge of [...this.edges.values()].flat())
+      if (edge.contact === 'exposed') this.allExposedEdges.push(edge);
     const endpoints = new Map<string, { vertex: TerrainEdge['a']; edges: TerrainEdge[] }>();
     for (const edge of [...this.edges.values()].flat().filter((e) => e.contact === 'exposed')) {
       for (const vertex of [edge.a, edge.b]) {
@@ -210,11 +225,13 @@ export class LevelKit {
     this.rings[index]?.setPosition(x, y);
   }
 
-  stats(): { tiles: number; surfacePixels: number } {
+  stats(): { tiles: number; surfacePixels: number; kitId: '0016' | '0017'; usedParts: string[] } {
     const border = this.border.stats();
     return {
       tiles: this.keys.length + border.tiles,
       surfacePixels: this.surfacePixels + border.surfacePixels,
+      kitId: this.kitId,
+      usedParts: [...this.usedParts].sort(),
     };
   }
 
@@ -256,13 +273,36 @@ export class LevelKit {
         this.surfacePixels += texture.width * texture.height;
         const c = texture.getContext();
         c.translate(-x, -y);
+        const solids = visible.filter((s) => s.kind === 'solid');
+        // Connected rock mass and its world-locked hatch remain the base layer in both kits.
+        // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
         this.paintMass(
           c,
-          visible.filter((s) => s.kind === 'solid' && !this.floating(s)),
-          { x, y, w: texture.width, h: texture.height },
+          solids.filter((s) => !this.floating(s)),
+          {
+            x,
+            y,
+            w: texture.width,
+            h: texture.height,
+          },
+          this.kitId === '0017' ? 0.7 : 1,
         );
-        for (const solid of visible.filter((s) => s.kind === 'solid')) this.paintSolid(c, solid);
-        this.paintCorners(c);
+        if (this.kitId === '0017') {
+          for (const solid of solids) {
+            paintKit17Terrain(
+              c,
+              this.level,
+              solid,
+              this.usedParts,
+              this.edges.get(solid),
+              this.allExposedEdges,
+            );
+            this.paintCeilingDrips(c, solid, this.edges.get(solid) ?? []);
+          }
+        } else {
+          for (const solid of solids) this.paintSolid(c, solid);
+          this.paintCorners(c);
+        }
         for (const solid of visible.filter((s) => s.kind === 'hazard')) this.paintHazard(c, solid);
         this.paintExit(c);
         texture.refresh();
@@ -316,7 +356,7 @@ export class LevelKit {
   }
 
   /** One world-locked hatch field continues across joined polygons and the page borders. */
-  private paintMass(c: CanvasRenderingContext2D, solids: SolidDef[], tile: Box): void {
+  private paintMass(c: CanvasRenderingContext2D, solids: SolidDef[], tile: Box, alpha = 1): void {
     if (solids.length === 0) return;
     c.save();
     c.beginPath();
@@ -340,7 +380,7 @@ export class LevelKit {
     for (let pass = 0; pass < 2; pass++) {
       const slope = pass === 0 ? -1.55 : 0.68;
       const spacing = pass === 0 ? 8 : 22;
-      c.globalAlpha = pass === 0 ? 0.78 : 0.46;
+      c.globalAlpha = alpha * (pass === 0 ? 0.78 : 0.46);
       const offsets = [
         top - slope * left,
         top - slope * right,
@@ -418,22 +458,39 @@ export class LevelKit {
         }
       }
       c.restore();
-      if (ceiling && edge.side === 'bottom') {
-        // Small ink drips hang into air; never foliage on the underside.
-        c.save();
-        c.translate(m(edge.a.x), m(edge.a.y));
-        c.rotate(Math.atan2(dy, dx));
-        c.strokeStyle = '#16161a';
-        c.lineWidth = 0.9;
-        c.globalAlpha = 0.75;
-        for (let t = 18; t < length - 12; t += 43) {
-          c.beginPath();
-          c.moveTo(t, 0);
-          c.lineTo(t + Math.sin(t) * 1.1, -3 - (Math.sin(t * 0.3) + 1) * 3);
-          c.stroke();
-        }
-        c.restore();
+    }
+    this.paintCeilingDrips(c, solid, edges);
+  }
+
+  private paintCeilingDrips(
+    c: CanvasRenderingContext2D,
+    solid: SolidDef,
+    edges: readonly TerrainEdge[],
+  ): void {
+    const ceiling =
+      edges.some((edge) => edge.side === 'top' && edge.contact === 'bounds') ||
+      /ceiling|roof|hang/i.test(solid.id);
+    if (!ceiling) return;
+    for (const edge of edges) {
+      if (edge.contact !== 'exposed' || edge.side !== 'bottom') continue;
+      const dx = m(edge.b.x - edge.a.x);
+      const dy = m(edge.b.y - edge.a.y);
+      const length = Math.hypot(dx, dy);
+      if (length === 0) continue;
+      // Preserve GMR-111's sparse 3–9 px underside marks in both terrain kits.
+      c.save();
+      c.translate(m(edge.a.x), m(edge.a.y));
+      c.rotate(Math.atan2(dy, dx));
+      c.strokeStyle = '#16161a';
+      c.lineWidth = 0.9;
+      c.globalAlpha = 0.75;
+      for (let t = 18; t < length - 12; t += 43) {
+        c.beginPath();
+        c.moveTo(t, 0);
+        c.lineTo(t + Math.sin(t) * 1.1, -3 - (Math.sin(t * 0.3) + 1) * 3);
+        c.stroke();
       }
+      c.restore();
     }
   }
 
@@ -479,6 +536,10 @@ export class LevelKit {
     c.restore();
   }
   private paintHazard(c: CanvasRenderingContext2D, solid: SolidDef): void {
+    if (this.kitId === '0017' && kitHazardKind(solid.id) === 'pool') {
+      paintKit17Pool(c, this.level, solid, this.usedParts);
+      return;
+    }
     const box = bounds(solid),
       pool = this.art?.pool,
       spikes = this.art?.spikes;

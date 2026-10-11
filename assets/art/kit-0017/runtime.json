@@ -1,0 +1,446 @@
+{
+  "objects": [
+    {
+      "name": "t01-solid-infill",
+      "metadata": { "semantic": "infill", "role": "interior-texture", "interiorCropRatio": 0.3 }
+    },
+    {
+      "name": "t02-top-edge-a",
+      "metadata": {
+        "semantic": "top-edge",
+        "role": "ledge",
+        "orientation": "top",
+        "shapeRole": "standard",
+        "datum": {
+          "points": [
+            [1, 4],
+            [82, 4]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t03-top-edge-b",
+      "metadata": {
+        "semantic": "top-edge",
+        "role": "ledge",
+        "orientation": "top",
+        "shapeRole": "standard",
+        "datum": {
+          "points": [
+            [1, 4],
+            [81, 4]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t04-bottom-edge",
+      "metadata": {
+        "semantic": "bottom-edge",
+        "role": "underside",
+        "orientation": "bottom",
+        "datum": {
+          "points": [
+            [1, 72],
+            [81, 72]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t05-left-edge",
+      "metadata": {
+        "role": "wall-strip",
+        "orientation": "left",
+        "datum": {
+          "points": [
+            [1, 0],
+            [1, 75]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t06-right-edge",
+      "metadata": {
+        "role": "wall-strip",
+        "orientation": "right",
+        "datum": {
+          "points": [
+            [48, 0],
+            [48, 78]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t07-interior-seam",
+      "metadata": {
+        "semantic": "interior-seam",
+        "role": "interior-texture",
+        "interiorCropRatio": 0.3
+      }
+    },
+    {
+      "name": "t08-outer-tl",
+      "metadata": {
+        "role": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "top-left",
+        "datum": {
+          "segments": [
+            [
+              [1, 4],
+              [46, 4]
+            ],
+            [
+              [1, 4],
+              [1, 46]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t09-outer-tr",
+      "metadata": {
+        "role": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "top-right",
+        "datum": {
+          "segments": [
+            [
+              [80, 4],
+              [34, 4]
+            ],
+            [
+              [80, 4],
+              [80, 45]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t10-outer-bl",
+      "metadata": {
+        "role": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-left",
+        "datum": {
+          "segments": [
+            [
+              [1, 73],
+              [46, 73]
+            ],
+            [
+              [1, 73],
+              [1, 31]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t11-outer-br",
+      "metadata": {
+        "role": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-right",
+        "datum": {
+          "segments": [
+            [
+              [76, 74],
+              [32, 74]
+            ],
+            [
+              [76, 74],
+              [76, 32]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t12-inner-tl",
+      "metadata": {
+        "role": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "top-left",
+        "datum": {
+          "segments": [
+            [
+              [1, 4],
+              [45, 4]
+            ],
+            [
+              [1, 4],
+              [1, 44]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t13-inner-tr",
+      "metadata": {
+        "role": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "top-right",
+        "datum": {
+          "segments": [
+            [
+              [75, 4],
+              [32, 4]
+            ],
+            [
+              [75, 4],
+              [75, 42]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t14-inner-bl",
+      "metadata": {
+        "role": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "bottom-left",
+        "datum": {
+          "segments": [
+            [
+              [1, 78],
+              [46, 78]
+            ],
+            [
+              [1, 78],
+              [1, 33]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t15-inner-br",
+      "metadata": {
+        "role": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "bottom-right",
+        "datum": {
+          "segments": [
+            [
+              [79, 80],
+              [34, 80]
+            ],
+            [
+              [79, 80],
+              [79, 34]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t16-vertical-wall-strip",
+      "metadata": {
+        "semantic": "wall-strip",
+        "role": "wall-strip",
+        "orientation": "vertical",
+        "datum": {
+          "points": [
+            [5, 0],
+            [5, 83]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t17-wall-top-cap",
+      "metadata": {
+        "semantic": "wall-top-cap",
+        "role": "ledge",
+        "orientation": "top",
+        "shapeRole": "short-island",
+        "datum": {
+          "points": [
+            [1, 2],
+            [81, 2]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t18-wall-bottom-cap",
+      "metadata": {
+        "semantic": "wall-bottom-cap",
+        "role": "underside",
+        "orientation": "bottom",
+        "datum": {
+          "points": [
+            [1, 49],
+            [75, 49]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t19-left-wall-attachment",
+      "metadata": {
+        "semantic": "wall-bracket",
+        "role": "wall-bracket",
+        "orientation": "left",
+        "datum": {
+          "segments": [
+            [
+              [1, 5],
+              [59, 5]
+            ],
+            [
+              [1, 5],
+              [1, 82]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t20-right-wall-attachment",
+      "metadata": {
+        "semantic": "wall-bracket",
+        "role": "wall-bracket",
+        "orientation": "right",
+        "datum": {
+          "segments": [
+            [
+              [1, 5],
+              [59, 5]
+            ],
+            [
+              [59, 5],
+              [59, 82]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t21-ceiling-span",
+      "metadata": {
+        "semantic": "ceiling-span",
+        "role": "underside",
+        "orientation": "bottom",
+        "shapeRole": "layered",
+        "datum": {
+          "points": [
+            [1, 31],
+            [103, 31]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t22-ceiling-left-join",
+      "metadata": {
+        "semantic": "ceiling-join",
+        "role": "ceiling-join",
+        "orientation": "left",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-left",
+        "datum": {
+          "segments": [
+            [
+              [1, 79],
+              [48, 79]
+            ],
+            [
+              [1, 79],
+              [1, 34]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t23-ceiling-right-join",
+      "metadata": {
+        "semantic": "ceiling-join",
+        "role": "ceiling-join",
+        "orientation": "right",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-right",
+        "datum": {
+          "segments": [
+            [
+              [79, 78],
+              [34, 78]
+            ],
+            [
+              [79, 78],
+              [79, 33]
+            ]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t25-left-ledge-end",
+      "metadata": {
+        "semantic": "ledge-end",
+        "role": "ledge-end",
+        "orientation": "left",
+        "datum": {
+          "points": [
+            [1, 4],
+            [78, 4]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t26-right-ledge-end",
+      "metadata": {
+        "semantic": "ledge-end",
+        "role": "ledge-end",
+        "orientation": "right",
+        "datum": {
+          "points": [
+            [1, 4],
+            [77, 4]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t27-thin-solid-bridge",
+      "metadata": {
+        "semantic": "bridge",
+        "role": "ledge",
+        "orientation": "top",
+        "shapeRole": "bridge",
+        "datum": {
+          "points": [
+            [1, 2],
+            [159, 2]
+          ]
+        }
+      }
+    },
+    {
+      "name": "t28-isolated-platform",
+      "metadata": {
+        "semantic": "short-island",
+        "role": "ledge",
+        "orientation": "top",
+        "shapeRole": "short-island",
+        "datum": {
+          "points": [
+            [1, 3],
+            [80, 3]
+          ]
+        }
+      }
+    }
+  ]
+}

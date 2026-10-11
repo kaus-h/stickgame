@@ -177,13 +177,13 @@ test('1-3: a wall-floor T-junction joins the left-bound terrain without an inner
     0.02,
   );
   expect(
-    share(exposedWallEdge, 'dark'),
+    share(exposedWallEdge, 'ink'),
     'the exposed wall edge is the contour control',
   ).toBeGreaterThan(0.005);
   expect(
-    share(join, 'dark'),
+    share(join, 'ink'),
     'the connected floor-wall join should not retain a doubled internal contour',
-  ).toBeLessThan(share(exposedWallEdge, 'dark') * 0.8);
+  ).toBeLessThan(share(exposedWallEdge, 'ink') * 0.8);
   expect(pageErrors).toEqual([]);
 });
 
@@ -212,8 +212,9 @@ test('1-1: an isolated overhead platform has underside drips and keeps the paper
   const underside = await readPixels(page, {
     minX: 102,
     maxX: 118,
-    minY: -0.55,
-    maxY: -0.42,
+    // Sample the actual contact line; 0017's lighter hatch is not the collision datum.
+    minY: -0.45,
+    maxY: -0.35,
   });
   const drips = await readPixels(page, {
     minX: 102,

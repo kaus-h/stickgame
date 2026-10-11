@@ -1,5 +1,7 @@
 # 0016 collision-aligned level art (GMR-107)
 
+GMR-112 makes [kit 0017](kit-0017.md) the default terrain/scenery kit. This mapping remains the compatibility renderer selected with `?kit=0016`, and still supplies the spike, anchor and exit artwork to both kits.
+
 The owner approved the layered black pen look of 0014/0015 with thinner strokes, supplied as `assets/sheets/0016-level-kit-thin.png` (Decision Register 12, 2026-10-09). This change applies that approved sheet to authored collision, keeping the hero, simulation, physics and geometry untouched. Red in the kit is confined to lethal spikes and ink. The ring remains the clearest interactable, with the existing highlighter/impact marker and moving-pivot guide.
 
 ## Constraints, open choices and acceptance

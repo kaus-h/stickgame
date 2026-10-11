@@ -254,15 +254,16 @@ test('1-2: grounded kit mass continues to the hazard bed and hazards retain pape
     minY: 11.15,
     maxY: 11.38,
   });
-  expect(share(upperSkirt, 'dark'), 'upper skirt should contain ink').toBeGreaterThan(0.02);
-  expect(share(lowerSkirt, 'dark'), 'ground hatching should continue downward').toBeGreaterThan(
-    0.02,
-  );
+  expect(share(upperSkirt, 'ink'), 'lighter upper skirt should contain ink').toBeGreaterThan(0.02);
+  expect(
+    share(lowerSkirt, 'ink'),
+    'lighter ground hatching should continue downward',
+  ).toBeGreaterThan(0.02);
   expect(
     share(interior, 'paper'),
     'thin ground hatching should retain open paper between strokes',
   ).toBeGreaterThan(0.45);
-  expect(share(lowerEdge, 'dark'), 'ground mass should meet the hazard bed').toBeGreaterThan(0.02);
+  expect(share(lowerEdge, 'ink'), 'ground mass should meet the hazard bed').toBeGreaterThan(0.02);
 
   // A tooth patch and the lethal floor each contain red marks and visible paper between them.
   const spikePatch = await sampleWorldRect(page, {
@@ -274,8 +275,9 @@ test('1-2: grounded kit mass continues to the hazard bed and hazards retain pape
   const poolPatch = await sampleWorldRect(page, {
     minX: 1,
     maxX: 3,
-    minY: 11.55,
-    maxY: 12.85,
+    // 0017 reserves red for the dangerous meniscus rather than a filled depth stripe.
+    minY: 11.4,
+    maxY: 11.65,
   });
   expect(share(spikePatch, 'red'), 'spikes should be visibly red').toBeGreaterThan(0.005);
   expect(share(spikePatch, 'paper'), 'spikes should have paper-negative gaps').toBeGreaterThan(
@@ -291,9 +293,9 @@ test('1-2: pool tile joins stay even and grounded ledge sides remain readable', 
 }, info) => {
   const pageErrors: string[] = [];
   page.on('pageerror', (error) => pageErrors.push(error.message));
-  // The wider viewport exposes several full 7m pool repeats at the left-side start framing.
+  // The compatibility kit retains its calibrated seven-metre pool repeats.
   await page.setViewportSize({ width: 2560, height: 900 });
-  await page.goto(levelUrl('1-2'));
+  await page.goto(`${levelUrl('1-2')}&kit=0016`);
   await waitForKit(page);
 
   const seams = await Promise.all(

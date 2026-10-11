@@ -15,6 +15,8 @@ import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
 import { BodiesLayer, type BodiesStats } from '../bodies/BodiesLayer';
 import { LevelKit } from '../kit/LevelKit';
+import { Kit17Background } from '../kit/Kit17Background';
+import { resolveKitVersion } from '../kit/Kit17Terrain';
 import { getLevelTheme } from '../../content';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
@@ -95,11 +97,29 @@ export class GameScene extends Phaser.Scene {
   private lastTime = 0;
   private bodies!: BodiesLayer;
   private kit!: LevelKit;
+  private kit17Background: Kit17Background | null = null;
   /** Completion presentation owns the camera until this scene is replaced. */
   private eraserCamera = false;
 
-  kitPresentation(): { ready: boolean; theme: string; tiles: number; surfacePixels: number } {
-    return { ready: !!this.kit, theme: getLevelTheme(this.opts.level), ...this.kit.stats() };
+  kitPresentation(): {
+    ready: boolean;
+    theme: string;
+    tiles: number;
+    surfacePixels: number;
+    kitId?: string;
+    backgrounds: ReturnType<Kit17Background['presentation']>;
+  } {
+    return {
+      ready: !!this.kit,
+      theme: getLevelTheme(this.opts.level),
+      ...this.kit.stats(),
+      backgrounds: this.kit17Background?.presentation() ?? {
+        active: false,
+        layers: [],
+        textures: 0,
+        surfacePixels: 0,
+      },
+    };
   }
 
   constructor(private opts: GameSceneOptions) {
@@ -169,6 +189,10 @@ export class GameScene extends Phaser.Scene {
     this.splats = [];
     this.stomps = [];
     this.lastTime = 0;
+    this.reducedMotion =
+      this.opts.reducedMotion?.() ??
+      (typeof window !== 'undefined' &&
+        window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
     this.bodies = new BodiesLayer(
@@ -190,10 +214,6 @@ export class GameScene extends Phaser.Scene {
       .setDepth(20)
       .setVisible(false);
     this.feedback = new FailureFeedback();
-    this.reducedMotion =
-      this.opts.reducedMotion?.() ??
-      (typeof window !== 'undefined' &&
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
@@ -254,7 +274,8 @@ export class GameScene extends Phaser.Scene {
       this.overlay = new DebugOverlay(this, this.opts.level, () => {
         const b = this.bodies.stats();
         const k = this.kit.stats();
-        return `art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas ${((k.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+        const bg = this.kit17Background?.presentation();
+        return `art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -277,6 +298,7 @@ export class GameScene extends Phaser.Scene {
       this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
       if (this.eraserCamera && !this.reducedMotion) this.fitEraserCamera();
+      this.kit17Background?.update(this.cameras.main, this.reducedMotion);
     };
     this.scale.on('resize', resize);
     this.events.once('shutdown', () => {
@@ -288,6 +310,7 @@ export class GameScene extends Phaser.Scene {
       this.bodies.destroy();
     });
     this.fitCamera();
+    this.kit17Background?.update(this.cameras.main, this.reducedMotion);
     const spawn = this.opts.level.spawn;
     this.camCenter = spawn;
   }
@@ -311,6 +334,7 @@ export class GameScene extends Phaser.Scene {
     const dt = Math.min(0.05, Math.max(0, (time - this.lastTime) / 1000 || deltaMs / 1000));
     this.lastTime = time;
     this.followCamera(frame, dt);
+    this.kit17Background?.update(this.cameras.main, this.reducedMotion);
     // Body physics caps its own catch-up; presentation effects keep their wall-time duration.
     this.bodies.update(Math.max(0, deltaMs / 1000));
     this.drawDynamic(frame, dt);
@@ -381,6 +405,10 @@ export class GameScene extends Phaser.Scene {
     const { anchors } = this.opts.level;
     // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
     addPaper(this, this.opts.level);
+    this.kit17Background =
+      typeof window !== 'undefined' && resolveKitVersion(window.location.search) === '0017'
+        ? new Kit17Background(this)
+        : null;
     const g = this.add.graphics();
     if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level);
     this.kit = new LevelKit(this, this.opts.level);
