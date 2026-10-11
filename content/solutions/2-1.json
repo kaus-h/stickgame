@@ -1,0 +1,396 @@
+{
+  "format": 1,
+  "level": "2-1",
+  "solved": true,
+  "start": "spawn",
+  "totalTicks": 1184,
+  "chambers": [
+    {
+      "id": "2-1-c1",
+      "problem": "One slow mover over a gap: connect while it is ahead of you and let it carry you.",
+      "challengeFamily": "moving-anchor intercept",
+      "goal": { "kind": "region", "min": { "x": 28, "y": -6 }, "max": { "x": 53, "y": 11.4 } },
+      "startTick": 0,
+      "solved": true,
+      "endTick": 181,
+      "ticks": 181,
+      "plan": [
+        { "t": 0, "action": "move", "axis": 1 },
+        { "t": 72, "action": "jump", "hold": 46 },
+        { "t": 103, "action": "rope", "anchor": 0, "offset": 0, "release": 167 }
+      ],
+      "windows": [
+        {
+          "step": 0,
+          "action": "move",
+          "event": "press",
+          "tick": 0,
+          "earliest": 0,
+          "latest": 5,
+          "size": 6,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "press",
+          "tick": 72,
+          "earliest": -10,
+          "latest": 9,
+          "size": 20,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 1,
+          "action": "jump",
+          "event": "release",
+          "tick": 118,
+          "earliest": -32,
+          "latest": 40,
+          "size": 73,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "rope",
+          "event": "press",
+          "tick": 103,
+          "earliest": -13,
+          "latest": 12,
+          "size": 26,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 2,
+          "action": "rope",
+          "event": "release",
+          "tick": 167,
+          "earliest": -34,
+          "latest": 35,
+          "size": 70,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 1,
+        "action": "jump",
+        "event": "press",
+        "tick": 72,
+        "earliest": -10,
+        "latest": 9,
+        "size": 20,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 3255, "simTicks": 907600, "deathsEncountered": 12907 }
+    },
+    {
+      "id": "2-1-c2",
+      "problem": "A lift: connect while the pivot is low and rising and it lifts you over the spikes; connect at the top and the dropping pivot sinks you into them.",
+      "challengeFamily": "moving-anchor intercept",
+      "goal": { "kind": "region", "min": { "x": 53, "y": -6 }, "max": { "x": 83, "y": 11.4 } },
+      "startTick": 181,
+      "solved": true,
+      "endTick": 376,
+      "ticks": 195,
+      "plan": [
+        { "t": 231, "action": "jump", "hold": 52 },
+        { "t": 261, "action": "rope", "anchor": 1, "offset": 1, "release": 318 },
+        { "t": 317, "action": "move", "axis": -1 },
+        { "t": 321, "action": "move", "axis": 1 }
+      ],
+      "windows": [
+        {
+          "step": 3,
+          "action": "jump",
+          "event": "press",
+          "tick": 231,
+          "earliest": -2,
+          "latest": 2,
+          "size": 5,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 3,
+          "action": "jump",
+          "event": "release",
+          "tick": 283,
+          "earliest": -30,
+          "latest": 40,
+          "size": 71,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "rope",
+          "event": "press",
+          "tick": 261,
+          "earliest": -7,
+          "latest": 6,
+          "size": 14,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "rope",
+          "event": "release",
+          "tick": 318,
+          "earliest": -11,
+          "latest": 12,
+          "size": 24,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "move",
+          "event": "press",
+          "tick": 317,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "move",
+          "event": "press",
+          "tick": 321,
+          "earliest": -4,
+          "latest": 1,
+          "size": 6,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 3,
+        "action": "jump",
+        "event": "press",
+        "tick": 231,
+        "earliest": -2,
+        "latest": 2,
+        "size": 5,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 1133, "simTicks": 139990, "deathsEncountered": 9643 }
+    },
+    {
+      "id": "2-1-c3",
+      "problem": "Ride a long mover across the pit and let go before it turns back; hold on too long and it swings you into the wall spikes.",
+      "challengeFamily": "moving-anchor ride",
+      "goal": { "kind": "checkpoint", "index": 0, "id": "2-1-cpA" },
+      "startTick": 376,
+      "solved": true,
+      "endTick": 657,
+      "ticks": 281,
+      "plan": [{ "t": 411, "action": "rope", "anchor": 2, "offset": 1, "release": 645 }],
+      "windows": [
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "press",
+          "tick": 411,
+          "earliest": -14,
+          "latest": 14,
+          "size": 29,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "release",
+          "tick": 645,
+          "earliest": -28,
+          "latest": 28,
+          "size": 57,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 7,
+        "action": "rope",
+        "event": "press",
+        "tick": 411,
+        "earliest": -14,
+        "latest": 14,
+        "size": 29,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 641, "simTicks": 117708, "deathsEncountered": 5542 }
+    },
+    {
+      "id": "2-1-c4",
+      "problem": "Hand-off: release the first mover so the vertical one is low when you reach it; the hanging spikes punish a high arc.",
+      "challengeFamily": "multi-anchor chain",
+      "goal": { "kind": "checkpoint", "index": 1, "id": "2-1-cpB" },
+      "startTick": 657,
+      "solved": true,
+      "endTick": 943,
+      "ticks": 286,
+      "plan": [
+        { "t": 746, "action": "rope", "anchor": 3, "offset": 3, "release": 811 },
+        { "t": 834, "action": "rope", "anchor": 4, "offset": 0, "release": 907 }
+      ],
+      "windows": [
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "press",
+          "tick": 746,
+          "earliest": -16,
+          "latest": 18,
+          "size": 35,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "release",
+          "tick": 811,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "press",
+          "tick": 834,
+          "earliest": -13,
+          "latest": 13,
+          "size": 27,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "release",
+          "tick": 907,
+          "earliest": -36,
+          "latest": 40,
+          "size": 77,
+          "capped": true,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 8,
+        "action": "rope",
+        "event": "release",
+        "tick": 811,
+        "earliest": -4,
+        "latest": 4,
+        "size": 9,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 7, "simTicks": 3803, "deathsEncountered": 18 }
+    },
+    {
+      "id": "2-1-c5",
+      "problem": "Low corridor: swing under a spiked ceiling on a mover; release early and flat.",
+      "challengeFamily": "narrow corridor",
+      "goal": { "kind": "region", "min": { "x": 154, "y": -6 }, "max": { "x": 171, "y": 11.4 } },
+      "startTick": 943,
+      "solved": true,
+      "endTick": 1120,
+      "ticks": 177,
+      "plan": [
+        { "t": 972, "action": "jump", "hold": 43 },
+        { "t": 1023, "action": "rope", "anchor": 6, "offset": 2, "release": 1039 }
+      ],
+      "windows": [
+        {
+          "step": 10,
+          "action": "jump",
+          "event": "press",
+          "tick": 972,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 10,
+          "action": "jump",
+          "event": "release",
+          "tick": 1015,
+          "earliest": -23,
+          "latest": 24,
+          "size": 48,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "press",
+          "tick": 1023,
+          "earliest": -4,
+          "latest": 3,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "release",
+          "tick": 1039,
+          "earliest": -2,
+          "latest": 2,
+          "size": 5,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 11,
+        "action": "rope",
+        "event": "release",
+        "tick": 1039,
+        "earliest": -2,
+        "latest": 2,
+        "size": 5,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 1776, "simTicks": 401751, "deathsEncountered": 18514 }
+    },
+    {
+      "id": "2-1-c6",
+      "problem": "Run into the slot: horizontal, not too fast, middle of the mouth.",
+      "challengeFamily": "exit",
+      "goal": { "kind": "exit" },
+      "startTick": 1120,
+      "solved": true,
+      "endTick": 1184,
+      "ticks": 64,
+      "plan": [],
+      "windows": [],
+      "tightestWindow": null,
+      "search": { "expansions": 2, "simTicks": 496, "deathsEncountered": 0 }
+    }
+  ],
+  "notes": [],
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"2-1\",\"s\":0,\"n\":1184,\"i\":[[0,[\"m\",1]],[72,\"j\"],[103,[\"a\",20.21356619697338,2.5],\"r\"],[118,\"J\"],[167,\"R\"],[231,\"j\"],[261,[\"a\",41.28,-0.16844036979670846],\"r\"],[283,\"J\"],[317,[\"m\",-1]],[318,\"R\"],[321,[\"m\",1]],[411,[\"a\",61.35240190585652,1],\"r\"],[645,\"R\"],[746,[\"a\",101.9894785777485,1.72],\"r\"],[811,\"R\"],[834,[\"a\",112,-0.4722987663390592],\"r\"],[907,\"R\"],[972,\"j\"],[1015,\"J\"],[1023,[\"a\",135.45216578990986,3.5],\"r\"],[1039,\"R\"]]}"
+}
