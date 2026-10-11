@@ -145,6 +145,9 @@ const outline = (c: CanvasRenderingContext2D, solid: SolidDef): void => {
 };
 
 /** Static collision-aligned ink is baked into world tiles; only moving rings are live images. */
+/** Largest drawn door opening, m: the 1-1 and 1-2 mouths. Wider mouths keep this size. */
+const MAX_DOOR_OPENING = 3;
+
 export class LevelKit {
   private readonly rings: Phaser.GameObjects.Image[] = [];
   private readonly keys: string[] = [];
@@ -208,6 +211,11 @@ export class LevelKit {
 
   moveAnchor(index: number, x: number, y: number): void {
     this.rings[index]?.setPosition(x, y);
+  }
+
+  /** Reach cue (GMR-56): out-of-reach rings fade to pencil. */
+  setAnchorAlpha(index: number, alpha: number): void {
+    this.rings[index]?.setAlpha(alpha);
   }
 
   stats(): { tiles: number; surfacePixels: number } {
@@ -539,19 +547,28 @@ export class LevelKit {
       z = kitGuide('door', opening.x + opening.width, opening.y + opening.height);
     const side = 'entry' in exit ? exit.entry.side : 'left';
     const vertical = side === 'top' || side === 'bottom';
-    const length = m(vertical ? exit.max.x - exit.min.x : exit.max.y - exit.min.y);
+    if (vertical) {
+      // Shafts: the hut stands upright on the compartment floor under the mouth ("drop into the
+      // room"); turning it on its side read as a sideways building (GMR-56).
+      const room = m(exit.max.y - exit.min.y);
+      const upright = Math.min(room * 0.6, m(MAX_DOOR_OPENING)) / (z.y - a.y);
+      c.drawImage(
+        image,
+        m((exit.min.x + exit.max.x) / 2) - ((a.x + z.x) / 2) * upright,
+        m(exit.max.y) - z.y * upright,
+        image.width * upright,
+        image.height * upright,
+      );
+      return;
+    }
+    const length = m(exit.max.y - exit.min.y);
     // Keep the hut recognizable, then expose the complete authored entry with its original marks.
-    const scale = length / (z.y - a.y);
+    // The door is a symbol, not a frame: it never grows past MAX_DOOR_OPENING and sits centred
+    // on wider mouths, whose extent the entry bracket shows instead (GMR-56).
+    const scale = Math.min(length, m(MAX_DOOR_OPENING)) / (z.y - a.y);
     c.save();
-    const x = m(
-      vertical ? (exit.min.x + exit.max.x) / 2 : side === 'left' ? exit.min.x : exit.max.x,
-    );
-    const y = m(
-      vertical ? (side === 'top' ? exit.min.y : exit.max.y) : (exit.min.y + exit.max.y) / 2,
-    );
-    c.translate(x, y);
-    if (vertical) c.rotate(side === 'top' ? Math.PI / 2 : -Math.PI / 2);
-    else if (side === 'right') c.scale(-1, 1);
+    c.translate(m(side === 'left' ? exit.min.x : exit.max.x), m((exit.min.y + exit.max.y) / 2));
+    if (side === 'right') c.scale(-1, 1);
     c.drawImage(
       image,
       -a.x * scale,
