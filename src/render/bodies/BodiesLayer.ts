@@ -14,7 +14,9 @@ export const BODY_ALPHA = 0.35;
 const BODY_DEPTH = -60;
 const POP_TIME = 0.12;
 const CLEAR_TIME = 0.25;
-const SWEEP_TIME = 1.1;
+const MIN_SWEEP_TIME = 1.2;
+const MAX_SWEEP_TIME = 4;
+const SWEEP_METERS_PER_SECOND = 50;
 const FADE_SWEEP_TIME = 0.2;
 const SMUDGE_TIME = 1.5;
 /** One shared frozen-body texture: 128 slots of 128 px, large enough for normal hero bounds. */
@@ -46,6 +48,18 @@ interface BakedBody {
   readonly frame?: string;
 }
 
+interface Sweep {
+  t: number;
+  readonly duration: number;
+  readonly startX: number;
+  readonly endX: number;
+  worldX: number | null;
+  readonly done: () => void;
+  readonly follow: ((worldX: number) => void) | undefined;
+  readonly touched: Set<number>;
+  readonly erased: Set<number>;
+}
+
 /**
  * Death bodies on screen (GMR-104): translucent ragdolls where the hero died. Settling bodies are
  * redrawn each frame; frozen ones are baked into frames of one shared RenderTexture atlas. B
@@ -68,7 +82,7 @@ export class BodiesLayer {
   private shown: boolean;
   private pop: number;
   private clearT: number | null = null;
-  private sweep: { t: number; done: () => void; touched: Set<number> } | null = null;
+  private sweep: Sweep | null = null;
   private smudges: Smudge[] = [];
   private readonly skip = (e: Event): void => {
     if (e instanceof KeyboardEvent && e.repeat) return;
@@ -77,7 +91,7 @@ export class BodiesLayer {
 
   constructor(
     private readonly scene: Phaser.Scene,
-    level: LevelDef,
+    private readonly level: LevelDef,
     gravity: number,
     visible: boolean,
     private readonly reducedMotion: () => boolean,
@@ -110,6 +124,16 @@ export class BodiesLayer {
     };
   }
 
+  /** Render-only completion progress, in world pixels. Reduced motion has no traveling world X. */
+  sweepPresentation(): { worldX: number | null; erased: number[]; duration: number | null } {
+    const sweep = this.sweep;
+    return {
+      worldX: sweep?.worldX ?? null,
+      erased: sweep ? [...sweep.erased] : [],
+      duration: sweep?.duration ?? null,
+    };
+  }
+
   onDeath(death: Pick<DeathRecord, 'tick' | 'at' | 'velocity'>): void {
     if (this.sweep) return;
     this.pile.spawn(death);
@@ -136,7 +160,7 @@ export class BodiesLayer {
    * Level complete: rub out the visible bodies with the eraser, then call `done`. Calls `done`
    * straight away when there is nothing to erase. Any key or tap skips the sweep.
    */
-  erase(done: () => void): void {
+  erase(done: () => void, follow?: (worldX: number) => void): void {
     if (this.sweep) return;
     if (this.pile.kept === 0) {
       this.removeAll();
@@ -145,8 +169,25 @@ export class BodiesLayer {
     }
     this.clearT = null;
     this.pile.freezeAll();
-    this.sweep = { t: 0, done, touched: new Set() };
+    const exitMax = this.level.exit?.max;
+    const startX = m(this.level.bounds.minX);
+    const endX = m(exitMax ? exitMax.x : this.level.bounds.maxX);
+    const duration = this.reducedMotion()
+      ? FADE_SWEEP_TIME
+      : completionSweepDuration(Math.abs(endX - startX) / m(1));
+    this.sweep = {
+      t: 0,
+      duration,
+      startX,
+      endX,
+      worldX: this.reducedMotion() ? null : startX,
+      done,
+      follow,
+      touched: new Set(),
+      erased: new Set(),
+    };
     this.listen(true);
+    if (!this.reducedMotion()) follow?.(startX);
   }
 
   update(dt: number): void {
@@ -164,7 +205,7 @@ export class BodiesLayer {
     this.syncBaked(scale, fade, compositesActive);
     this.drawLive(scale, compositesActive);
     this.drawClearScribble();
-    this.updateSweep(dt);
+    this.updateSweep(dt, scale);
     this.drawSmudges(dt);
     if (this.clearT !== null && this.clearT >= CLEAR_TIME) {
       this.clearT = null;
@@ -401,7 +442,7 @@ export class BodiesLayer {
     }
   }
 
-  private updateSweep(dt: number): void {
+  private updateSweep(dt: number, scale: number): void {
     const g = this.eraserG;
     g.clear();
     const sw = this.sweep;
@@ -411,18 +452,24 @@ export class BodiesLayer {
       if (sw.t >= FADE_SWEEP_TIME) this.finishSweep();
       return;
     }
+    const progress = Math.min(1, sw.t / sw.duration);
+    const eased = progress * progress * (3 - 2 * progress);
+    sw.worldX = sw.startX + (sw.endX - sw.startX) * eased;
+    sw.follow?.(sw.worldX);
     const W = this.scene.scale.width;
     const H = this.scene.scale.height;
-    const e = Math.min(1, sw.t / SWEEP_TIME);
-    const ease = e * e * (3 - 2 * e);
-    const sx = -0.2 * W + 1.4 * W * ease;
+    const cam = this.scene.cameras.main;
+    const zoom = cam.zoom || 1;
+    // worldView can lag a centerOn call until Phaser's next prerender. Derive its left edge from
+    // scroll/viewport state so camera and eraser stay aligned on the very same update.
+    const worldOriginX = cam.scrollX + cam.width / 2 - cam.width / (2 * zoom);
+    const size = Math.max(70, Math.min(150, W * 0.1));
+    const sx = (sw.worldX - worldOriginX) * zoom + size * 0.3;
     const phase = sw.t * Math.PI * 2 * 4.5;
     const sy = H * 0.5 + Math.sin(phase) * H * 0.32;
-    const size = Math.max(70, Math.min(150, W * 0.1));
     drawEraser(g, sx, sy, size, Math.cos(phase) * 0.22 - 0.12);
-    // Rub out everything left of the eraser's trailing edge (it scrubs the full height).
-    const cam = this.scene.cameras.main;
-    const worldX = cam.worldView.x + (sx - size * 0.3) / cam.zoom;
+    // Rub out everything left of the traveling world-space edge; camera movement cannot skew it.
+    const worldX = sw.worldX;
     for (const b of this.pile.bodies) {
       const baked = this.baked.get(b.id);
       if (!baked) continue;
@@ -440,14 +487,22 @@ export class BodiesLayer {
           age: 0,
         });
       }
-      image.setCrop(cut, 0, image.width - cut, image.height).setVisible(cut < image.width);
+      if (cut >= image.width) sw.erased.add(b.id);
+      image
+        .setCrop(cut, 0, image.width - cut, image.height)
+        .setVisible(scale > 0.01 && cut < image.width);
     }
-    if (e >= 1) this.finishSweep();
+    if (progress >= 1) this.finishSweep();
   }
 
   private finishSweep(): void {
     const sw = this.sweep;
     if (!sw) return;
+    // A key or tap skips the whole presentation, including the remaining camera travel.
+    if (!this.reducedMotion() && sw.worldX !== sw.endX) {
+      sw.worldX = sw.endX;
+      sw.follow?.(sw.endX);
+    }
     this.sweep = null;
     this.listen(false);
     this.eraserG.clear();
@@ -494,6 +549,14 @@ function popIn(p: number): number {
   const s = 1.7;
   const t = p - 1;
   return 1 + (s + 1) * t * t * t + s * t * t;
+}
+
+/** Completion sweep pace in render-world meters; clamp very short/long levels to a usable time. */
+export function completionSweepDuration(distanceMeters: number): number {
+  return Math.max(
+    MIN_SWEEP_TIME,
+    Math.min(MAX_SWEEP_TIME, distanceMeters / SWEEP_METERS_PER_SECOND),
+  );
 }
 
 function bounds(rd: Ragdoll): { x: number; y: number; w: number; h: number } {
