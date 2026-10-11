@@ -249,12 +249,31 @@ export class LevelKit {
     }
   }
   /** Long source hatches hang from the collision crest and disappear into the paper. */
-  private hatchSkirt(c: CanvasRenderingContext2D, length: number, depth = m(1.65)): void {
+  private hatchSkirt(
+    c: CanvasRenderingContext2D,
+    length: number,
+    depth = m(1.65),
+    featherEnds = false,
+  ): void {
     if (!skirt) return;
-    for (let x = 0; x < length; x += skirt.width) {
-      const w = Math.min(skirt.width, length - x);
-      c.drawImage(skirt, 0, 0, w, skirt.height, x, 0, w, depth);
+    const alpha = c.globalAlpha;
+    const feather = featherEnds ? Math.min(m(0.28), length / 2) : 0;
+    for (let x = 0; x < length;) {
+      const sourceX = x % skirt.width;
+      let width = Math.min(skirt.width - sourceX, length - x);
+      if (feather > 0) {
+        // Only the two short end bands need extra samples; the interior keeps native stamps.
+        if (x < feather) width = Math.min(width, 2, feather - x);
+        else if (x >= length - feather) width = Math.min(width, 2);
+        else width = Math.min(width, length - feather - x);
+        const center = x + width / 2;
+        const fade = Math.min(1, Math.min(center, length - center) / feather);
+        c.globalAlpha = alpha * fade * fade * (3 - 2 * fade);
+      }
+      c.drawImage(skirt, sourceX, 0, width, skirt.height, x, 0, width, depth);
+      x += width;
     }
+    c.globalAlpha = alpha;
   }
 
   private paintSolid(c: CanvasRenderingContext2D, solid: SolidDef): void {
@@ -287,7 +306,12 @@ export class LevelKit {
       if (top || underside || (side && wall)) {
         // Clockwise collision has its interior to the right of every edge. On walls this
         // is the same feathered skirt rotated, without repeated flowers down the margin.
-        this.hatchSkirt(c, length, side ? Math.min(m(1.65), box.w * 0.45) : m(1.65));
+        this.hatchSkirt(
+          c,
+          length,
+          side ? Math.min(m(1.65), box.w * 0.45) : m(1.65),
+          top || underside,
+        );
         c.strokeStyle = '#16161a';
         c.lineWidth = top ? 2 : 1.1;
         c.beginPath();
@@ -332,19 +356,15 @@ export class LevelKit {
         z = kitGuide('pool', 793, 882);
       const repeat = m(7),
         depth = Math.min(box.h, m(1.8));
-      for (let x = 0; x < box.w; x += repeat) {
-        const w = Math.min(repeat, box.w - x);
-        c.drawImage(
-          pool,
-          a.x,
-          a.y,
-          ((z.x - a.x) * w) / repeat,
-          z.y - a.y,
-          box.x + x,
-          box.y,
-          w,
-          depth,
-        );
+      for (let x = 0, index = 0; x < box.w; x += repeat, index++) {
+        // Adjacent mirrored repeats share the same source edge, including its ragged top.
+        // Draw full stamps and let the collision clip trim the final partial repeat.
+        const mirrored = index % 2 === 1;
+        c.save();
+        c.translate(box.x + x + (mirrored ? repeat : 0), box.y);
+        if (mirrored) c.scale(-1, 1);
+        c.drawImage(pool, a.x, a.y, z.x - a.x, z.y - a.y, 0, 0, repeat, depth);
+        c.restore();
       }
     } else {
       const raw = specs.spikes.metadata?.hazardBoundsSheetPx;

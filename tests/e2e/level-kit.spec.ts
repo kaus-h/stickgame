@@ -34,6 +34,7 @@ interface LevelJson {
 interface PixelStats {
   total: number;
   dark: number;
+  ink: number;
   paper: number;
   red: number;
 }
@@ -119,7 +120,7 @@ async function sampleWorldRect(page: Page, rect: WorldRect): Promise<PixelStats>
     const bottom = Math.min(canvas.height, Math.ceil(end.y * scaleY));
     if (right <= x || bottom <= y) throw new Error('World sample is outside the canvas');
     const pixels = context.getImageData(x, y, right - x, bottom - y).data;
-    const stats: PixelStats = { total: 0, dark: 0, paper: 0, red: 0 };
+    const stats: PixelStats = { total: 0, dark: 0, ink: 0, paper: 0, red: 0 };
     for (let i = 0; i < pixels.length; i += 4) {
       const red = pixels[i] ?? 255;
       const green = pixels[i + 1] ?? 255;
@@ -127,6 +128,7 @@ async function sampleWorldRect(page: Page, rect: WorldRect): Promise<PixelStats>
       const luminance = 0.2126 * red + 0.7152 * green + 0.0722 * blue;
       stats.total++;
       if (luminance < 125) stats.dark++;
+      if (luminance < 185) stats.ink++;
       // Warm, bright paper remains distinct from the blue ruling and red danger hatch.
       if (luminance > 210 && red - green < 24 && red - blue < 36) stats.paper++;
       if (red > 115 && red > green * 1.3 && red > blue * 1.3) stats.red++;
@@ -135,7 +137,7 @@ async function sampleWorldRect(page: Page, rect: WorldRect): Promise<PixelStats>
   }, rect);
 }
 
-const share = (stats: PixelStats, key: 'dark' | 'paper' | 'red'): number =>
+const share = (stats: PixelStats, key: 'dark' | 'ink' | 'paper' | 'red'): number =>
   stats.total ? stats[key] / stats.total : 0;
 
 async function checkLevelKitLevel(page: Page, info: TestInfo, levelId: (typeof LEVEL_IDS)[number]) {
@@ -283,6 +285,96 @@ test('1-2: kit skirts fade into paper and hazards retain their paper gaps', asyn
   );
   expect(share(poolPatch, 'red'), 'pool should contain red hatch').toBeGreaterThan(0.08);
   expect(share(poolPatch, 'paper'), 'pool hatching should leave paper gaps').toBeGreaterThan(0.08);
+  expect(pageErrors).toEqual([]);
+});
+
+test('1-2: pool tile joins stay even and the ledge skirt feathers at its end', async ({
+  page,
+}, info) => {
+  const pageErrors: string[] = [];
+  page.on('pageerror', (error) => pageErrors.push(error.message));
+  // The wider viewport exposes several full 7m pool repeats at the left-side start framing.
+  await page.setViewportSize({ width: 2560, height: 900 });
+  await page.goto(levelUrl('1-2'));
+  await waitForKit(page);
+
+  const seams = await Promise.all(
+    [7, 14, 21, 28].map(async (x) => {
+      const left = await sampleWorldRect(page, {
+        minX: x - 0.16,
+        maxX: x - 0.04,
+        minY: 11.9,
+        maxY: 12.8,
+      });
+      const right = await sampleWorldRect(page, {
+        minX: x + 0.04,
+        maxX: x + 0.16,
+        minY: 11.9,
+        maxY: 12.8,
+      });
+      return {
+        x,
+        leftRed: share(left, 'red'),
+        rightRed: share(right, 'red'),
+        difference: Math.abs(share(left, 'red') - share(right, 'red')),
+      };
+    }),
+  );
+
+  // c1-start ends at x=12m. Compare the final skirt band to nearby hatch below the crest, then
+  // check that the thin side contour survives without becoming a broad dark end cap.
+  const skirtInterior = await sampleWorldRect(page, {
+    minX: 11.15,
+    maxX: 11.5,
+    minY: 8.12,
+    maxY: 8.8,
+  });
+  const skirtEnd = await sampleWorldRect(page, {
+    minX: 11.76,
+    maxX: 11.96,
+    minY: 8.12,
+    maxY: 8.8,
+  });
+  const sideContour = await sampleWorldRect(page, {
+    minX: 11.97,
+    maxX: 12.03,
+    minY: 8.2,
+    maxY: 9.4,
+  });
+  const skirtFade = {
+    interiorDark: share(skirtInterior, 'dark'),
+    endDark: share(skirtEnd, 'dark'),
+    sideDark: share(sideContour, 'dark'),
+    sideInk: share(sideContour, 'ink'),
+  };
+
+  // Attach all measurements before assertions so a red run still leaves useful diagnostics.
+  await info.attach('Pool seam and skirt fade pixel metrics', {
+    body: JSON.stringify({ seams, skirtFade }, null, 2),
+    contentType: 'application/json',
+  });
+
+  for (const seam of seams) {
+    expect(seam.leftRed, `pool should remain visible left of x=${String(seam.x)}m`).toBeGreaterThan(
+      0.01,
+    );
+    expect(
+      seam.rightRed,
+      `pool should remain visible right of x=${String(seam.x)}m`,
+    ).toBeGreaterThan(0.01);
+    expect(
+      seam.difference,
+      `red coverage should match across the x=${String(seam.x)}m tile join`,
+    ).toBeLessThanOrEqual(0.015);
+  }
+
+  expect(skirtFade.interiorDark, 'nearby skirt hatch should contain ink').toBeGreaterThan(0.02);
+  expect(
+    skirtFade.endDark,
+    'the final 0.24m skirt band should fade toward the ledge edge',
+  ).toBeLessThan(skirtFade.interiorDark * 0.8);
+  expect(skirtFade.sideInk, 'the side contour should remain visible').toBeGreaterThan(0.005);
+  expect(skirtFade.sideInk, 'the side contour should stay thin').toBeLessThan(0.2);
   expect(pageErrors).toEqual([]);
 });
 
