@@ -231,6 +231,29 @@ function createLayer(reducedMotion = false) {
   return { layer, graphics, textures, images };
 }
 
+function makeLongLevel(distanceMeters: number) {
+  return {
+    ...level,
+    bounds: { ...level.bounds, minX: 0, maxX: distanceMeters },
+    exit: {
+      min: vec2(distanceMeters - 1, 0),
+      max: vec2(distanceMeters, 10),
+    },
+  };
+}
+
+function inverseSmoothstep(value: number): number {
+  let low = 0;
+  let high = 1;
+  for (let i = 0; i < 40; i++) {
+    const mid = (low + high) / 2;
+    const eased = mid * mid * (3 - 2 * mid);
+    if (eased < value) low = mid;
+    else high = mid;
+  }
+  return (low + high) / 2;
+}
+
 afterEach(() => {
   eventListeners.clear();
   vi.unstubAllGlobals();
@@ -296,7 +319,7 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     layer.destroy();
   });
 
-  it('finishes the visible eraser sweep within 1.2 seconds and allows a pointer skip', () => {
+  it('finishes the visible eraser sweep within its route-scaled duration and allows pointer skip', () => {
     vi.stubGlobal('window', fakeWindow);
     const { layer, images, textures } = createLayer();
     layer.onDeath(death);
@@ -310,13 +333,15 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     const done = vi.fn();
     layer.erase(done);
 
+    const duration = layer.sweepPresentation().duration as number;
     let elapsed = 0;
-    while (layer.sweeping && elapsed < 1.2) {
+    while (layer.sweeping && elapsed <= duration + 1 / 60) {
       layer.update(1 / 60);
       elapsed += 1 / 60;
     }
     expect(layer.sweeping).toBe(false);
-    expect(elapsed).toBeLessThanOrEqual(1.2);
+    expect(elapsed).toBeGreaterThanOrEqual(duration);
+    expect(elapsed).toBeLessThanOrEqual(duration + 1 / 60);
     expect(done).toHaveBeenCalledOnce();
     expect(fakeWindow.addEventListener).toHaveBeenCalledWith('pointerdown', expect.any(Function));
     expect(image?.setCrop).toHaveBeenCalled();
@@ -343,13 +368,114 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     layer.destroy();
   });
 
-  it('runs the accepted-exit eraser sweep even when the body pile is hidden', () => {
+  it('reports a smooth world-space sweep from the level start to its exit', () => {
     vi.stubGlobal('window', fakeWindow);
-    const { layer } = createLayer();
+    const { scene } = harness();
+    const longLevel = makeLongLevel(150);
+    const layer = new BodiesLayer(
+      scene,
+      longLevel,
+      30,
+      true,
+      () => false,
+      () => 1,
+    );
+    layer.onDeath(death);
+    layer.pile.freezeAll();
+    const follow = vi.fn();
+    const done = vi.fn();
+
+    layer.erase(done, follow);
+
+    expect(follow).toHaveBeenCalledTimes(1);
+    expect(follow).toHaveBeenLastCalledWith(0);
+    expect(layer.sweepPresentation()).toEqual({ worldX: 0, erased: [], duration: 3 });
+
+    layer.update(1.5);
+    expect(follow).toHaveBeenLastCalledWith((150 * 64) / 2);
+    expect(layer.sweepPresentation()).toEqual({
+      worldX: (150 * 64) / 2,
+      erased: [0],
+      duration: 3,
+    });
+
+    layer.update(1.5);
+    expect(follow).toHaveBeenLastCalledWith(150 * 64);
+    expect(done).toHaveBeenCalledOnce();
+    expect(layer.sweepPresentation()).toEqual({ worldX: null, erased: [], duration: null });
+    layer.destroy();
+  });
+
+  it('uses a 2.8–3.6 second sweep across 140–180 metre routes', () => {
+    vi.stubGlobal('window', fakeWindow);
+    for (const distance of [140, 180]) {
+      const { scene } = harness();
+      const layer = new BodiesLayer(
+        scene,
+        makeLongLevel(distance),
+        30,
+        true,
+        () => false,
+        () => 1,
+      );
+      layer.onDeath(death);
+      layer.pile.freezeAll();
+      layer.erase(vi.fn());
+      const duration = layer.sweepPresentation().duration;
+      expect(duration).toBeGreaterThanOrEqual(2.5);
+      expect(duration).toBeLessThanOrEqual(4);
+      expect(duration).toBeCloseTo(distance / 50, 9);
+      layer.destroy();
+    }
+  });
+
+  it('skips to the end of the world-space sweep on a key and clears listeners', () => {
+    vi.stubGlobal('window', fakeWindow);
+    class TestKeyboardEvent extends Event {
+      readonly repeat = false;
+    }
+    vi.stubGlobal('KeyboardEvent', TestKeyboardEvent);
+    const { scene } = harness();
+    const longLevel = makeLongLevel(150);
+    const layer = new BodiesLayer(
+      scene,
+      longLevel,
+      30,
+      true,
+      () => false,
+      () => 1,
+    );
+    layer.onDeath(death);
+    layer.pile.freezeAll();
+    const follow = vi.fn();
+    const done = vi.fn();
+    layer.erase(done, follow);
+
+    const listener = eventListeners.get('keydown');
+    if (typeof listener === 'function') listener(new TestKeyboardEvent('keydown'));
+    else listener?.handleEvent(new TestKeyboardEvent('keydown'));
+
+    expect(follow).toHaveBeenLastCalledWith(150 * 64);
+    expect(layer.sweeping).toBe(false);
+    expect(done).toHaveBeenCalledOnce();
+    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith(
+      'pointerdown',
+      expect.any(Function),
+    );
+    layer.destroy();
+  });
+
+  it('keeps a hidden body hidden while the moving edge partially crops it', () => {
+    vi.stubGlobal('window', fakeWindow);
+    const { layer, images } = createLayer();
     layer.onDeath(death);
     layer.pile.freezeAll();
     layer.setVisible(false);
     layer.update(0.12);
+    const image = images[0];
+    if (!image) throw new Error('hidden body was not baked');
+    expect(image.visible).toBe(false);
 
     const done = vi.fn();
     layer.erase(done);
@@ -357,11 +483,24 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     expect(layer.sweeping).toBe(true);
     expect(done).not.toHaveBeenCalled();
 
-    let elapsed = 0;
-    while (layer.sweeping && elapsed < 1.2) {
-      layer.update(1 / 60);
-      elapsed += 1 / 60;
-    }
+    const duration = layer.sweepPresentation().duration as number;
+    const imageLeft = image.x - image.width * image.originX;
+    const middleX = imageLeft + image.width / 2;
+    const startX = level.bounds.minX * 64;
+    const endX = (level.exit?.max.x ?? level.bounds.maxX) * 64;
+    const easedProgress = (middleX - startX) / (endX - startX);
+    layer.update(duration * inverseSmoothstep(easedProgress));
+
+    const crops = vi.mocked(image.setCrop).mock.calls;
+    const latestCrop = crops.at(-1);
+    expect(latestCrop).toBeDefined();
+    expect(latestCrop?.[0]).toBeGreaterThan(0);
+    expect(latestCrop?.[0]).toBeLessThan(image.width);
+    expect(latestCrop?.[2]).toBeGreaterThan(0);
+    expect(image.visible).toBe(false);
+
+    const remaining = duration * (1 - inverseSmoothstep(easedProgress));
+    layer.update(remaining + 1 / 60);
     expect(layer.sweeping).toBe(false);
     expect(done).toHaveBeenCalledOnce();
     layer.destroy();
@@ -374,7 +513,8 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     const done = vi.fn();
 
     layer.erase(done);
-    layer.update(1.2);
+    const duration = layer.sweepPresentation().duration as number;
+    layer.update(duration + 0.1);
 
     expect(layer.sweeping).toBe(false);
     expect(done).toHaveBeenCalledOnce();
@@ -392,13 +532,17 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     layer.update(0.12);
     const image = images[0];
     const done = vi.fn();
-    layer.erase(done);
+    const follow = vi.fn();
+    layer.erase(done, follow);
+    expect(layer.sweepPresentation()).toEqual({ worldX: null, erased: [], duration: 0.2 });
+    expect(follow).not.toHaveBeenCalled();
     layer.update(0.19);
     expect(layer.sweeping).toBe(true);
     layer.update(0.02);
     expect(image?.alphas.at(-1)).toBeCloseTo(BODY_ALPHA * 0.05);
     expect(layer.sweeping).toBe(false);
     expect(done).toHaveBeenCalledOnce();
+    expect(follow).not.toHaveBeenCalled();
 
     layer.onDeath(death);
     layer.pile.freezeAll();

@@ -538,6 +538,7 @@ async function start(): Promise<void> {
         },
         // GMR-104: death bodies (count, settling, visible) and dev-only body placement.
         bodies: () => devScene.bodyStats(),
+        eraser: () => devScene.eraserPresentation(),
         addBody: (x: number, y: number, vx = 0, vy = 0, tick = 0) => {
           devScene.addBody({ tick, at: vec2(x, y), velocity: vec2(vx, vy) });
         },
