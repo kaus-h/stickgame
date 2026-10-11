@@ -32,3 +32,28 @@ export function exitMissMessage(attempt: ExitAttempt, exit: LevelDef['exit']): s
       return 'Give yourself more clearance';
   }
 }
+
+/**
+ * Speed streaks behind the entry arrow's tail (GMR-56 exit grammar, the comic "whoosh"): 3 = come
+ * in from a fast swing, 1 = faster than a run, 0 = run speed or slower, or no speed rule. The blind
+ * readability test showed a single chevron read as arrow fletching, so slow needs no mark at all
+ * and the miss text after an attempt covers "Too fast".
+ */
+export function speedStreaks(
+  speed: { readonly min: number; readonly max: number } | undefined,
+): 0 | 1 | 3 {
+  if (!speed || speed.max <= 9) return 0;
+  return speed.min >= 15 ? 3 : 1;
+}
+
+/** One line for the debug overlay: the exit's family and windows, which signage never spells out. */
+export function exitSpec(exit: LevelDef['exit']): string {
+  if (!exit) return 'exit none';
+  if (!('entry' in exit)) return 'exit (legacy box)';
+  const { entry } = exit;
+  const family = 'family' in exit ? exit.family : 'wide';
+  const speed = entry.speed
+    ? ` | speed ${String(entry.speed.min)}–${String(entry.speed.max)} m/s`
+    : '';
+  return `exit ${family} from ${entry.side} | angle ${String(entry.angle.min)}–${String(entry.angle.max)}° | align ${String(entry.alignment.min)}–${String(entry.alignment.max)}${speed}`;
+}

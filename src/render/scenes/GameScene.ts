@@ -9,7 +9,8 @@ import { drawHero } from '../hero/drawHero';
 import { dashedInk, strokeInk, type Pt } from '../ink';
 import { addPaper, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
-import { entryMarks, exitMissMessage } from '../exit';
+import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
+import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA } from '../reach';
 import { drawPatroller } from '../enemy';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
@@ -58,6 +59,8 @@ export interface GameSceneOptions {
   readonly gravity?: number;
   /** Whether death bodies are shown (the B setting); read when a level's scene is built. */
   readonly bodiesVisible?: () => boolean;
+  /** Max rope length (runtime tuning, m): anchors beyond it are drawn faded (GMR-56). */
+  readonly ropeReach?: number;
 }
 
 /** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
@@ -95,6 +98,8 @@ export class GameScene extends Phaser.Scene {
   private lastTime = 0;
   private bodies!: BodiesLayer;
   private kit!: LevelKit;
+  /** Drawn alpha per anchor, eased toward the reach cue (GMR-56). */
+  private readonly anchorAlpha: number[] = [];
   /** Completion presentation owns the camera until this scene is replaced. */
   private eraserCamera = false;
 
@@ -242,7 +247,7 @@ export class GameScene extends Phaser.Scene {
       .text(0, 0, '', {
         ...hand,
         fontSize: '22px',
-        color: '#c5302a',
+        color: '#16161a',
         backgroundColor: '#f3efe6',
         padding: { x: 5, y: 2 },
       })
@@ -254,7 +259,8 @@ export class GameScene extends Phaser.Scene {
       this.overlay = new DebugOverlay(this, this.opts.level, () => {
         const b = this.bodies.stats();
         const k = this.kit.stats();
-        return `art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas ${((k.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+        return `${exitSpec(this.opts.level.exit)}
+art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas ${((k.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -484,20 +490,10 @@ export class GameScene extends Phaser.Scene {
       side === 'left' ? 1 : side === 'right' ? -1 : 0,
       side === 'top' ? 1 : side === 'bottom' ? -1 : 0,
     );
-    // Short ink ticks mark the allowed center band, never a fictitious collision wall.
-    for (const mark of marks ?? []) {
-      strokeInk(
-        g,
-        [
-          { x: m(mark.x - normal.x * 0.18), y: m(mark.y - normal.y * 0.18) },
-          { x: m(mark.x + normal.x * 0.18), y: m(mark.y + normal.y * 0.18) },
-        ],
-        3,
-        INK,
-        0.9,
-        103,
-      );
-    }
+    // Mouth bracket: ink dots at the band ends, joined across the band below (GMR-56). Dots, not
+    // ticks: in the blind test, ticks parallel to the arrow were read as speed marks.
+    g.fillStyle(INK, 0.9);
+    for (const mark of marks ?? []) g.fillCircle(m(mark.x), m(mark.y), m(0.08));
     const start = vec2(midpoint.x - normal.x * 0.65, midpoint.y - normal.y * 0.65);
     const tip = vec2(midpoint.x + normal.x * 0.45, midpoint.y + normal.y * 0.45);
     g.lineStyle(2.5, INK, 0.9).lineBetween(m(start.x), m(start.y), m(tip.x), m(tip.y));
@@ -508,18 +504,84 @@ export class GameScene extends Phaser.Scene {
         m(tip.x - normal.x * 0.25 - normal.y * sign * 0.18),
         m(tip.y - normal.y * 0.25 + normal.x * sign * 0.18),
       );
-    const label = entry
-      ? `${'family' in exit && exit.family === 'slot' ? 'Slot' : 'family' in exit && exit.family === 'shaft' ? 'Shaft' : 'Wide exit'}\n${String(entry.angle.min)}–${String(entry.angle.max)}°\nStay within the entry marks`
-      : 'Exit';
-    this.add
-      .text(m((min.x + max.x) / 2), m(min.y - 0.3), label, {
-        fontFamily: '"Caveat", "Patrick Hand", cursive',
-        fontSize: '21px',
-        color: '#5a5a5a',
-        align: 'center',
-      })
-      .setOrigin(0.5, 1)
-      .setDepth(-10);
+    if (marks) {
+      strokeInk(
+        g,
+        [
+          { x: m(marks[0].x), y: m(marks[0].y) },
+          { x: m(marks[1].x), y: m(marks[1].y) },
+        ],
+        2,
+        INK,
+        0.8,
+        107,
+      );
+    }
+    if (entry) {
+      this.drawEntryFan(g, midpoint, normal, entry.angle);
+      // Speed streaks trail the arrow's tail: three for "come in from a fast swing".
+      const streaks = speedStreaks(entry.speed);
+      const offsets = streaks === 3 ? [-0.22, 0, 0.22] : streaks === 1 ? [0] : [];
+      for (const [k, o] of offsets.entries()) {
+        const back = 0.12 + (k % 2) * 0.1;
+        const from = vec2(
+          start.x - normal.x * back - normal.y * o,
+          start.y - normal.y * back + normal.x * o,
+        );
+        const len = 0.85 - Math.abs(o);
+        strokeInk(
+          g,
+          [
+            { x: m(from.x), y: m(from.y) },
+            { x: m(from.x - normal.x * len), y: m(from.y - normal.y * len) },
+          ],
+          2,
+          INK,
+          0.85,
+          111 + k,
+        );
+      }
+    }
+  }
+
+  /**
+   * The allowed entry cone, drawn on the approach side around the inward normal: two dashed
+   * pencil rays at ±max and an arc between them (plus inner rays when min > 0). Wordless signage
+   * for the angle window (GMR-56); the numbers live in the debug overlay.
+   */
+  private drawEntryFan(
+    g: Phaser.GameObjects.Graphics,
+    mouth: Vec2,
+    normal: Vec2,
+    angle: { readonly min: number; readonly max: number },
+  ): void {
+    const out = Math.atan2(-normal.y, -normal.x);
+    const reach = 1.7;
+    const arcR = 1.25;
+    const ray = (deg: number, sign: number): void => {
+      const a = out + (sign * deg * Math.PI) / 180;
+      dashedInk(
+        g,
+        { x: m(mouth.x + Math.cos(a) * 0.35), y: m(mouth.y + Math.sin(a) * 0.35) },
+        { x: m(mouth.x + Math.cos(a) * reach), y: m(mouth.y + Math.sin(a) * reach) },
+        m(0.12),
+        m(0.1),
+        1.3,
+        PENCIL,
+      );
+    };
+    for (const sign of [-1, 1]) {
+      ray(angle.max, sign);
+      if (angle.min > 0) ray(angle.min, sign);
+    }
+    const half = (Math.max(angle.max, 4) * Math.PI) / 180;
+    const steps = Math.max(4, Math.ceil(angle.max / 6));
+    const arc: Pt[] = [];
+    for (let i = 0; i <= steps; i++) {
+      const a = out - half + (2 * half * i) / steps;
+      arc.push({ x: m(mouth.x + Math.cos(a) * arcR), y: m(mouth.y + Math.sin(a) * arcR) });
+    }
+    strokeInk(g, arc, 1.3, PENCIL, 0.8, 109);
   }
 
   // --- dynamic ink ---
@@ -557,13 +619,25 @@ export class GameScene extends Phaser.Scene {
       }
     }
 
-    // Anchors.
+    // Anchors: full ink in rope reach, faded pencil beyond it (GMR-56 H3).
     current.anchors.forEach((a, i) => {
       const prev = previous.anchors[i] ?? a;
       const p = lerpV(prev, a, t);
       const active = current.rope?.anchor === i;
       const targeted = current.target?.valid === true && current.target.anchor === i;
       if (active || targeted) this.highlighter(g, p, i);
+      const reach = this.opts.ropeReach;
+      const radius = this.opts.level.anchors[i]?.radius ?? 0.4;
+      const target =
+        active ||
+        targeted ||
+        reach === undefined ||
+        anchorInReach(current.player.position, a, radius, reach)
+          ? 1
+          : OUT_OF_REACH_ALPHA;
+      const shown = easeAlpha(this.anchorAlpha[i] ?? target, target, dt);
+      this.anchorAlpha[i] = shown;
+      this.kit.setAnchorAlpha(i, shown);
       this.drawAnchor(g, p, i);
       const v = current.anchorVelocities[i];
       if (v) this.drawAnchorHeading(g, p, v, i);
@@ -614,7 +688,7 @@ export class GameScene extends Phaser.Scene {
     if (visibleMiss) {
       const at = { x: m(miss.at.x), y: m(miss.at.y) };
       const fade = Math.min(1, (90 - missAge) / 30);
-      g.lineStyle(2.5, RED_PEN, fade);
+      g.lineStyle(2.5, INK, fade);
       const r = m(0.16);
       g.lineBetween(at.x - r, at.y - r, at.x + r, at.y + r);
       g.lineBetween(at.x - r, at.y + r, at.x + r, at.y - r);
@@ -624,13 +698,14 @@ export class GameScene extends Phaser.Scene {
         .setText(exitMissMessage(miss, this.opts.level.exit));
     }
 
-    // Aim reticle: pencil when nothing is selected, ink when a rope press would connect, red pen
-    // when an anchor is selected but the shot is invalid. The impact point gets a small cross.
+    // Aim reticle: ink when a rope press would connect, pencil otherwise. Red is reserved for
+    // lethal things (GMR-56 H1), so an invalid shot is pencil too; its impact cross still shows
+    // which anchor is selected.
     const target = current.target;
     if (target?.impact) {
       const ip = { x: m(target.impact.x), y: m(target.impact.y) };
       const c = m(0.1);
-      g.lineStyle(2, target.valid ? INK : RED_PEN, 0.95);
+      g.lineStyle(2, target.valid ? INK : PENCIL, 0.95);
       g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
       g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
     }
@@ -640,12 +715,12 @@ export class GameScene extends Phaser.Scene {
       const from = { x: m(current.aim.x), y: m(current.aim.y) };
       const to = { x: m(target.impact.x), y: m(target.impact.y) };
       g.lineStyle(m(0.16), HIGHLIGHTER, 0.5).lineBetween(from.x, from.y, to.x, to.y);
-      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : RED_PEN);
+      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : PENCIL);
     }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
       const r = m(0.18);
-      const tone = !target || target.anchor === null ? PENCIL : target.valid ? INK : RED_PEN;
+      const tone = target?.valid ? INK : PENCIL;
       g.lineStyle(1.6, tone, 0.9);
       g.strokeCircle(a.x, a.y, r);
       g.lineBetween(a.x - r * 1.6, a.y, a.x - r * 0.6, a.y);
