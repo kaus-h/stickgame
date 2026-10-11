@@ -455,7 +455,9 @@ async function start(): Promise<void> {
         }),
         resources: () => ({
           textures: game.textures.getTextureKeys().length,
-          cameras: devScene.cameras.cameras.length,
+          // The dev hook is published before Phaser finishes creating the scene.
+          cameras:
+            (devScene as Partial<Pick<Phaser.Scene, 'cameras'>>).cameras?.cameras.length ?? 0,
         }),
         exitPresentation: () => {
           const result = devScene.children.getByName('exit-result') as
