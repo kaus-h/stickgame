@@ -47,15 +47,18 @@ The inbox folder is `D:\tmp\inbox` (override with `--inbox` or `STICKGAME_INBOX`
 **What the script does:**
 
 1. Creates a fresh worktree on `inbox/<task-slug>` from `origin/main`, or from the existing branch if this is a fix round.
-2. Applies the task and formats the touched files with Prettier.
+2. Applies the task, installs worktree dependencies, regenerates `src/content/level-validator.generated.js` with `npm run levels:compile-schema` if the level schema was touched, then formats existing touched and generated files with the local Prettier through Node. Schema or formatting failures stop the task before check/commit and include the diagnostic in `RESULT.md`.
 3. Runs `npm run check`.
 4. Commits, pushes, and opens a PR. The PR is a draft if the check failed, and its comment carries the error excerpt. A fix round instead adds a comment to the existing PR and toggles draft or ready.
 5. Moves the task to `done/` or `failed/`, writes a `RESULT.md` next to it, and appends one line to `log.jsonl`.
+
+Git commands pin the requested checkout and discard inherited repository/index selectors and injected Git configuration. Before apply, commit, and push, the inbox verifies the exact linked worktree, branch, and repository ownership. It stages only validated task and generated paths and refuses an unexpected staged path; the owner checkout and `.claude/` files are never committed. Error excerpts fall back to the last 30 log lines when no error pattern matches.
 
 **Refused:**
 
 - paths outside the repo
 - `.git/`, `node_modules/`, `.claude/`, `.env*`
+- symlinks and junctions in task input trees or destination path components
 
 **Flagged for Opus:**
 
