@@ -55,6 +55,7 @@
     "pngjs": "7.0.0",
     "planck": "1.4.2",
     "prettier": "3.9.9",
+    "terser": "5.44.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vite": "8.3.3",

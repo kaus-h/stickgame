@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { defineConfig, type Plugin } from 'vite';
+import { minify } from 'terser';
 import { ensurePhaserBuild, phaserBuildFile } from './scripts/build-phaser.mjs';
 
 /** Every file under `dir`, sorted, so the hash does not depend on directory iteration order. */
@@ -61,8 +62,30 @@ function slimPhaser(): Plugin {
   };
 }
 
+/** Safe compression complements Vite's native minifier and preserves its source-map chain. */
+function compactChunks(): Plugin {
+  return {
+    name: 'compact-chunks',
+    apply: 'build',
+    renderChunk: {
+      order: 'post',
+      async handler(code) {
+        const result = await minify(code, {
+          module: true,
+          ecma: 2020,
+          compress: { passes: 3 },
+          mangle: true,
+          sourceMap: true,
+        });
+        if (!result.code) throw new Error('Chunk compression returned no code');
+        return { code: result.code, map: typeof result.map === 'string' ? result.map : null };
+      },
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [slimPhaser()],
+  plugins: [slimPhaser(), compactChunks()],
   define: {
     __BUILD_HASH__: JSON.stringify(computeBuildHash()),
   },
