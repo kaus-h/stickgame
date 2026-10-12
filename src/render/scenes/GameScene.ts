@@ -72,6 +72,7 @@ const PB_GHOST_ALPHA = 0.35;
  */
 export class GameScene extends Phaser.Scene {
   private dynamic!: Phaser.GameObjects.Graphics;
+  private anchorFx!: Phaser.GameObjects.Graphics;
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
   private lifeTimer!: Phaser.GameObjects.Text;
@@ -188,6 +189,8 @@ export class GameScene extends Phaser.Scene {
     this.ghostG = this.add.graphics().setAlpha(0.22);
     this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
     this.dynamic = this.add.graphics();
+    // Above the anchor rings (depth 1): erases timed rings segment by segment (GMR-60, H3).
+    this.anchorFx = this.add.graphics().setDepth(1.5);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
       .setOrigin(0.5, 1)
@@ -590,6 +593,7 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
     const { previous, current, alpha } = frame;
     const g = this.dynamic;
     g.clear();
+    this.anchorFx.clear();
     const t = this.blend(previous, current, alpha);
 
     for (const enemy of current.enemies) {
@@ -873,11 +877,11 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
   }
 
   /**
-   * Timed and one-use marks (GMR-60, doc 09 H3). A timed anchor wears 8 short ink arcs just outside
-   * its ring. Over the last half of its on span (at least 0.5 s) they erase one by one, so the
-   * player sees the rope's time running out. While it is off the ring is faded inside a dashed
-   * pencil circle and the arcs draw back in as it returns. A one-use anchor carries a pen crack; once
-   * released it is erased, leaving only a faint pencil ghost of the crack.
+   * Timed and one-use marks (GMR-60, doc 09 H3). A timed ring is drawn as 8 segments that erase in
+   * turn: over the last half of its on span (at least 0.5 s) paper-coloured arcs rub out the ring
+   * one eighth at a time, clockwise from 12 o'clock. While it is off, the faded ring sits inside a
+   * dashed pencil circle and its segments draw back in as it returns. A one-use anchor carries a pen
+   * crack; once released it is erased, leaving a faint pencil ghost of the crack.
    */
   private drawAnchorState(
     g: Phaser.GameObjects.Graphics,
@@ -886,31 +890,40 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
     state: SimSnapshot['anchorStates'][number],
     seed: number,
   ): void {
+    const fx = this.anchorFx;
     if (state.span !== null && state.ticksLeft !== null) {
-      const arcs = 8;
-      let lit: number;
+      const segments = 8;
+      let erased: number;
       if (state.active) {
         const warn = Math.max(30, Math.round(state.span / 2));
-        lit = state.ticksLeft >= warn ? arcs : Math.ceil((arcs * state.ticksLeft) / warn);
+        erased =
+          state.ticksLeft >= warn ? 0 : segments - Math.ceil((segments * state.ticksLeft) / warn);
       } else {
-        lit = Math.floor((arcs * (state.span - state.ticksLeft)) / state.span);
+        erased = segments - Math.floor((segments * (state.span - state.ticksLeft)) / state.span);
         g.lineStyle(1.4, PENCIL, 0.8);
         for (let k = 0; k < 16; k += 2) {
-          const a0 = (k / 16) * Math.PI * 2;
-          const a1 = ((k + 1) / 16) * Math.PI * 2;
           g.beginPath();
-          g.arc(p.x, p.y, r * 1.05, a0, a1);
+          g.arc(p.x, p.y, r * 1.25, (k / 16) * Math.PI * 2, ((k + 1) / 16) * Math.PI * 2);
           g.strokePath();
         }
       }
-      const R = r * 1.32;
-      g.lineStyle(2.4, state.active ? INK : PENCIL, state.active ? 0.9 : 0.6);
-      for (let k = 0; k < lit; k++) {
-        // Clockwise from 12 o'clock; the last arc left is the one at 12.
-        const mid = -Math.PI / 2 + ((arcs - 1 - k + 0.5) / arcs) * Math.PI * 2;
-        g.beginPath();
-        g.arc(p.x, p.y, R, mid - 0.24, mid + 0.24);
-        g.strokePath();
+      fx.lineStyle(r * 0.5, PAPER, 1);
+      for (let k = 0; k < erased; k++) {
+        const a0 = -Math.PI / 2 + (k / segments) * Math.PI * 2;
+        fx.beginPath();
+        fx.arc(p.x, p.y, r * 0.86, a0 - 0.02, a0 + (Math.PI * 2) / segments + 0.02);
+        fx.strokePath();
+      }
+      // Hairline gaps between the 8 segments: the ring reads as a clock even when full.
+      fx.lineStyle(Math.max(1.5, r * 0.07), PAPER, 1);
+      for (let k = 0; k < segments; k++) {
+        const a = -Math.PI / 2 + (k / segments) * Math.PI * 2;
+        fx.lineBetween(
+          p.x + Math.cos(a) * r * 0.6,
+          p.y + Math.sin(a) * r * 0.6,
+          p.x + Math.cos(a) * r * 1.12,
+          p.y + Math.sin(a) * r * 1.12,
+        );
       }
     }
     if (state.oneUse) {
@@ -921,7 +934,7 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
         { x: p.x + r * 0.2, y: p.y + r * 0.72 },
       ];
       strokeInk(
-        g,
+        state.spent ? g : fx,
         crack,
         state.spent ? 1.2 : 2.2,
         state.spent ? PENCIL : INK,

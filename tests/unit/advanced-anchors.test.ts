@@ -13,11 +13,12 @@ import {
 const tuning = parseRuntimeTuning(runtimeJson).sim;
 
 /** The player hangs in open air 4 m below one anchor (no solids), aimed at it. */
-function make(anchor: Partial<AnchorDef>) {
+function make(anchor: Partial<AnchorDef>, spawn = { x: 0, y: 4 }, checkpoint = false) {
   const level: LevelDef = {
     id: 'adv',
     name: 'adv',
-    spawn: { x: 0, y: 4 },
+    spawn,
+    ...(checkpoint ? { checkpoints: [{ id: 'cp', position: spawn }] } : {}),
     bounds: { minX: -20, maxX: 20, minY: -20, maxY: 40 },
     killY: 40,
     solids: [],
@@ -55,37 +56,37 @@ describe('timed anchors (GMR-60)', () => {
     );
   });
 
-  it('lets go of the rope when its on span ends and keeps the swing velocity', () => {
-    const { sim, events, step, press } = make({ timed: { on: 1, off: 1 } });
+  it('lets go of the rope on the tick its on span ends, keeping the swing velocity', () => {
+    // Start 3 m to the side so the release happens mid-swing, with speed on both axes.
+    const { sim, events, step, press } = make({ timed: { on: 1, off: 1 } }, { x: 3, y: 4 });
     press();
     expect(sim.snapshot().rope).not.toBeNull();
-    let before = sim.snapshot().player.velocity;
-    while (sim.snapshot().attemptTick < 60) {
-      before = sim.snapshot().player.velocity;
-      step();
-    }
-    step(); // the tick that starts with the anchor off releases the rope
+    while (sim.snapshot().attemptTick < 60) step();
+    // Same tick: the snapshot never shows an off anchor still holding the rope.
+    const snap = sim.snapshot();
+    expect(snap.anchorStates[0]?.active).toBe(false);
+    expect(snap.rope).toBeNull();
     const release = events.find((e) => e.type === 'ropeRelease');
     expect(release).toMatchObject({ type: 'ropeRelease', cause: 'timed' });
-    expect(sim.snapshot().rope).toBeNull();
-    // The release itself does not change the velocity (doc 04); gravity acts as usual afterwards.
-    if (release?.type === 'ropeRelease') {
-      expect(release.velocity.x).toBeCloseTo(before.x, 6);
-    }
+    if (release?.type !== 'ropeRelease') throw new Error('no release');
+    expect(Math.abs(release.velocity.x)).toBeGreaterThan(0.5);
+    expect(Math.abs(release.velocity.y)).toBeGreaterThan(0.5);
+    // The release itself leaves the velocity exactly as the swing had it (doc 04).
+    expect(snap.player.velocity.x).toBe(release.velocity.x);
+    expect(snap.player.velocity.y).toBe(release.velocity.y);
   });
 
-  it('cannot be targeted while off, and can again when it comes back', () => {
-    const { sim, events, step, press } = make({ timed: { on: 1, off: 1, phase: 0.5 } });
-    press(); // tick 0 is in the off span
+  it('cannot be targeted while off, can be again once it is back, and restarts on reset', () => {
+    const { sim, events, step, press } = make({ timed: { on: 1, off: 0.25, phase: 0.8 } });
+    press(); // tick 0 is in the 15-tick off span (short, so the falling player stays in reach)
     expect(sim.snapshot().rope).toBeNull();
     expect(events.some((e) => e.type === 'ropeInvalid' && e.reason === 'no-anchor')).toBe(true);
     expect(sim.snapshot().anchorStates[0]?.active).toBe(false);
+    while (sim.snapshot().anchorStates[0]?.active !== true) step();
+    press();
+    expect(sim.snapshot().rope?.anchor).toBe(0);
     sim.reset();
-    for (let i = 0; i < 61; i++) step(); // through the off span (reset restarts the cycle)
-    step([{ type: 'ropeAim', target: { x: 0, y: 0 } }]);
-    sim.reset();
-    // After a reset the cycle restarts in the off span again: identical behaviour every attempt.
-    expect(sim.snapshot().anchorStates[0]).toMatchObject({ active: false, ticksLeft: 60 });
+    expect(sim.snapshot().anchorStates[0]).toMatchObject({ active: false, ticksLeft: 15 });
   });
 });
 
@@ -103,6 +104,18 @@ describe('one-use anchors (GMR-60)', () => {
     expect(sim.snapshot().anchorStates[0]?.spent).toBe(false);
     press();
     expect(sim.snapshot().rope).not.toBeNull();
+  });
+});
+
+describe('one-use anchors on checkpoint respawn (GMR-60)', () => {
+  it('a voluntary respawn restores spent anchors and restarts timers', () => {
+    const { sim, step, press } = make({ oneUse: true }, { x: 0, y: 4 }, true);
+    step(); // standing in the checkpoint trigger activates it
+    press();
+    step([{ type: 'ropeRelease' }]);
+    expect(sim.snapshot().anchorStates[0]?.spent).toBe(true);
+    step([{ type: 'respawn' }]);
+    expect(sim.snapshot().anchorStates[0]?.spent).toBe(false);
   });
 });
 

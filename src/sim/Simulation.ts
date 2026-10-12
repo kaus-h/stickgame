@@ -354,7 +354,6 @@ export class Simulation {
     else if (intents.some((i) => i.type === 'respawn')) this.respawnAtCheckpoint();
 
     this.moveAnchors();
-    this.expireTimedRope();
     this.applyRopeActions();
     this.control();
     const beforePhysics = this.physics.bodyState(this.body);
@@ -369,6 +368,8 @@ export class Simulation {
         : enemy,
     );
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
+    // After the tick advances, so a snapshot never shows an off anchor still holding the rope.
+    this.expireTimedRope();
   }
 
   /** Back to the authored initial state inside the same physics world. */

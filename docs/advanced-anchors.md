@@ -10,9 +10,9 @@ Opus design. The look follows doc 09 H3 (locked).
 
 - **Usable for `on` seconds, then unusable for `off` seconds, repeating.** The schedule is counted in whole simulation ticks from the start of the attempt (`src/sim/anchorTimer.ts`). That makes it exact and frame-rate independent, and it restarts identically on every reset and checkpoint respawn. `phase` (0..1) shifts the cycle at tick 0.
 - **While off, it can't be targeted.** A press reports `ropeInvalid: no-anchor`, as for empty space. Selection and the impact point are otherwise unchanged (doc 09 C1).
-- **If the on span ends while you're attached, the rope lets go.** The event is `ropeRelease` with `cause: 'timed'`, and the swing velocity is kept, exactly as for a player release (doc 04: releasing keeps the swing's velocity). The rope-length rule is untouched.
+- **If the on span ends while you're attached, the rope lets go at the end of that tick, so a snapshot never shows an off anchor holding a rope.** The event is `ropeRelease` with `cause: 'timed'`, and the swing velocity is kept, exactly as for a player release (doc 04: releasing keeps the swing's velocity). The rope-length rule is untouched.
 - **Content limits** (parser and schema): `on` ≥ 1 s, so there is always room for the warning; `off` ≥ 0.25 s.
-- **Telegraph:** eight ink arcs sit just outside the ring. Over the last half of the on span (at least 0.5 s) they erase one by one, clockwise. While off, the ring is faded inside a dashed pencil circle, and the arcs draw back in pencil as it returns.
+- **Telegraph (H3):** the ring is drawn as 8 segments. Over the last half of the on span (at least 0.5 s), paper-coloured arcs rub out the ring itself one segment at a time, clockwise from 12 o'clock. While it's off, the faded ring sits inside a dashed pencil circle and its segments draw back in as it returns.
 
 ## One-use anchor
 
