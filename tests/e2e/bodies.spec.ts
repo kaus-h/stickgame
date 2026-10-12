@@ -129,7 +129,7 @@ test('a real goon-contact death leaves a body, and restart keeps the body and de
 
 test('title-flow results wait for the completion eraser to be skipped', async ({ page }) => {
   await load(page, '/?renderer=canvas');
-  await expect(page.getByRole('heading', { name: 'Precision Tether' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'StickSwing' })).toBeVisible();
   await page.keyboard.press('Enter');
   await expect
     .poll(async () =>

@@ -22,7 +22,7 @@ test.setTimeout(60_000);
 test('title → play → pause → resume; the simulation only runs while playing', async ({ page }) => {
   await page.goto('/?renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
-  await expect(page.getByRole('heading', { name: 'Precision Tether' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'StickSwing' })).toBeVisible();
   expect(await screen(page)).toBe('title');
   const t0 = await tick(page);
   await page.waitForTimeout(300);
