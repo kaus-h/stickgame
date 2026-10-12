@@ -121,9 +121,10 @@ When a milestone completes:
    ≤60 lines) and regenerate `docs/agents/CONTEXT.md`. Merge both.
 2. Put durable rules in AGENTS.md, canon docs or memory, not only in HANDOFF.
 3. Tell the owner what landed and what needs them.
-4. Start a fresh session: create a one-time scheduled task (run now) with the prompt "Read
-   AGENTS.md, docs/agents/workflow.md and docs/agents/HANDOFF.md, then continue the roadmap as
-   head of design and orchestration." Then stop working in the current session.
+4. End with a ready-to-paste prompt for the owner to start a new chat ("Read AGENTS.md,
+   docs/agents/workflow.md and docs/agents/HANDOFF.md, then continue the roadmap as head of
+   design and lead builder", plus the first steps). Never create scheduled tasks or routines to
+   start sessions. Then stop working in the current session.
 
 ## 8. Stop and ask the owner
 

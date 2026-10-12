@@ -103,8 +103,8 @@ Long sessions get compacted, which is expensive. At the end of each milestone, *
 
 1. Updates [`HANDOFF.md`](HANDOFF.md) (state, open PRs, next issues, decisions) and regenerates [`CONTEXT.md`](CONTEXT.md).
 2. Records durable rules in memory and canon decisions in the canon docs.
-3. Starts a fresh session with a one-time scheduled task (`create_scheduled_task`, run now) whose prompt is: "Read AGENTS.md, docs/agents/workflow.md and docs/agents/HANDOFF.md; continue the roadmap as head of design and orchestration (Opus 5.5)."
-4. Ends the current session.
+3. Reports to the owner and **ends with a ready-to-paste prompt** in a code block. The owner pastes it into a new chat. It says to read AGENTS.md, workflow.md, HANDOFF.md and memory and continue as head of design and lead builder, and it names the first 1–3 steps. **Never start sessions through scheduled tasks or routines:** they open as routine chats, not project sessions (owner, 2026-10-12).
+4. Stops.
 
 ## Safety
 
