@@ -5,7 +5,9 @@ import type { FrameSource, RenderFrame } from '../frame';
 import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { FailureFeedback } from '../feedback/FailureFeedback';
-import { drawHero } from '../hero/drawHero';
+import { HeroAnimator } from '../hero/animator';
+import { drawHero, heroHeadTransform, type HeroPose } from '../hero/drawHero';
+import { HeroHead } from '../hero/heads';
 import { dashedInk, strokeInk, type Pt } from '../ink';
 import { addPaper, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
@@ -72,6 +74,10 @@ const PB_GHOST_ALPHA = 0.35;
  */
 export class GameScene extends Phaser.Scene {
   private dynamic!: Phaser.GameObjects.Graphics;
+  /** Hero squash, stretch, lean and head choice (GMR-69); presentation only. */
+  private readonly animator = new HeroAnimator();
+  private head!: HeroHead;
+  private animResets = -1;
   private hud!: Phaser.GameObjects.Graphics;
   private timer!: Phaser.GameObjects.Text;
   private lifeTimer!: Phaser.GameObjects.Text;
@@ -188,6 +194,7 @@ export class GameScene extends Phaser.Scene {
     this.ghostG = this.add.graphics().setAlpha(0.22);
     this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
     this.dynamic = this.add.graphics();
+    this.head = new HeroHead(this, 2);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
       .setOrigin(0.5, 1)
@@ -917,7 +924,22 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
       const prevPoint = frame.previous.rope?.point ?? s.rope.point;
       hand = this.handPoint(c, lerpV(prevPoint, s.rope.point, frame.alpha));
     }
-    drawHero(g, {
+    if (s.resets !== this.animResets) {
+      this.animResets = s.resets;
+      this.animator.reset();
+    }
+    const anim = this.animator.step(
+      {
+        mode: s.player.mode,
+        velocity: s.player.velocity,
+        rope:
+          s.player.mode === 'tethered' && s.rope
+            ? vec2(s.rope.point.x - s.player.position.x, s.rope.point.y - s.player.position.y)
+            : null,
+      },
+      Math.min(0.05, this.game.loop.delta / 1000),
+    );
+    const pose: HeroPose = {
       c,
       facing: s.player.facing,
       velocity: s.player.velocity,
@@ -925,7 +947,11 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
       hand,
       time: this.time.now / 1000,
       line: this.lineScale(),
-    });
+      anim,
+      spriteHead: this.head.ready,
+    };
+    drawHero(g, pose);
+    this.head.place(heroHeadTransform(pose), anim.head, s.player.facing);
   }
 
   /** Keep ink strokes at least ~their desktop weight on screen when the camera zooms out (phones). */
