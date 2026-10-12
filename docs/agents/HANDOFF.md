@@ -21,7 +21,7 @@ _Last updated: 2026-10-12, at the 400k-context handoff. **The owner's direction:
 ## Open PRs (both need CI green, a BrowserGPT MERGE verdict and `safe-merge.sh`)
 
 - **#76 (docs):** the Living Notebook plan, the 400k handoff rule and this HANDOFF.
-- **#77 (Living Notebook, branch `living-notebook`), five commits:**
+- **#77 (Living Notebook, branch `living-notebook`), four commits:**
   - **Line boil:** a world-locked Displacement filter at 8 fps.
   - **Camera stack, front to back:** paper (never boils), then crisp (the hero and spikes, which never boil, per the owner), then the boiling world, then the UI. A camera after a filtered camera drops its composite in Phaser 4, so the crisp camera sits _below_ the world camera.
   - **Drawn red ink pools:** a live ripple and bubbles.

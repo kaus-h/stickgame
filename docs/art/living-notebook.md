@@ -11,7 +11,7 @@
 
 ## Pillars
 
-1. **Line boil:** ink redraws on a 3-frame cycle at about 8 fps, like hand-drawn animation. It is deterministic (seeded variants, not noise), and reduced motion holds a single frame.
+1. **Line boil:** ink redraws on a 3-frame cycle at about 8 fps, like hand-drawn animation. It is deterministic (seeded variants, not noise), and reduced motion holds a single frame. **The hero and spikes never boil** (owner), and neither does the paper.
 2. **Drawn hazards:** red ballpoint scribble pools with a boiling wavy surface, slow drips and bubbles that pop into loops. Spikes are inked thorns.
 3. **Juice in ink:**
    - speed hatching behind fast motion;
