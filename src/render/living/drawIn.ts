@@ -64,7 +64,10 @@ export class DrawIn {
           (this.tiles[n] = this.scene.add.image(0, 0, PAPER_KEY).setOrigin(0, 0).setDepth(60));
         n++;
         const cut = Math.max(0, Math.floor(front) - gx);
-        tile.setPosition(gx, gy).setCrop(cut, 0, TILE - cut, TILE).setVisible(true);
+        tile
+          .setPosition(gx, gy)
+          .setCrop(cut, 0, TILE - cut, TILE)
+          .setVisible(true);
       }
     for (let i = n; i < this.tiles.length; i++) this.tiles[i]?.setVisible(false);
     // The pen front: a ragged band of quick diagonal strokes, darkest at the leading edge.
