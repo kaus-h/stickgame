@@ -21,7 +21,7 @@ import { dashedInk, strokeInk, type Pt } from '../ink';
 import { addPaper, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
 import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
-import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA } from '../reach';
+import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller } from '../enemy';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
@@ -35,6 +35,10 @@ import { getLevelTheme } from '../../content';
 const PAPER = 0xf3efe6;
 const INK = 0x16161a;
 const PENCIL = 0x8a8a8a;
+/** High contrast (GMR-50): pencil marks darken toward ink but stay distinguishable from it. */
+const PENCIL_HC = 0x4a4a52;
+/** Larger aim reticle (GMR-50): the reticle and impact cross scale by this. */
+const LARGE_RETICLE = 1.6;
 const RED_PEN = 0xc5302a;
 const HIGHLIGHTER = 0xffe14a;
 
@@ -76,6 +80,13 @@ export interface GameSceneOptions {
   readonly ropeReach?: number;
   /** Extra debug-overlay line from outside the scene (music state, GMR-42). */
   readonly debugExtra?: () => string;
+  /** Accessibility settings (GMR-50), read every frame; a high-contrast change rebuilds the scene. */
+  readonly accessibility?: () => AccessibilityView;
+}
+
+export interface AccessibilityView {
+  readonly highContrast: boolean;
+  readonly largeReticle: boolean;
 }
 
 /** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
@@ -114,6 +125,10 @@ export class GameScene extends Phaser.Scene {
   private causeLabel!: Phaser.GameObjects.Text;
   private feedback = new FailureFeedback();
   private reducedMotion = false;
+  private highContrast = false;
+  private reticleScale = 1;
+  /** PENCIL, or PENCIL_HC under high contrast. */
+  private pencil = PENCIL;
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
   private camCenter: Vec2 = vec2(0, 0);
@@ -218,6 +233,8 @@ export class GameScene extends Phaser.Scene {
       this.opts.reducedMotion?.() ??
       (typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.highContrast = this.opts.accessibility?.().highContrast ?? false;
+    this.pencil = this.highContrast ? PENCIL_HC : PENCIL;
     this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
     this.bodies = new BodiesLayer(
@@ -309,7 +326,8 @@ ${this.opts.debugExtra()}`
           : '';
         return `${exitSpec(this.opts.level.exit)}${extra}
 art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB
-bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
+a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -454,7 +472,9 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
     // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
     addPaper(this, this.opts.level);
     this.kit17Background =
-      typeof window !== 'undefined' && resolveKitVersion(window.location.search) === '0017'
+      !this.highContrast &&
+      typeof window !== 'undefined' &&
+      resolveKitVersion(window.location.search) === '0017'
         ? new Kit17Background(this)
         : null;
     const g = this.add.graphics();
@@ -469,7 +489,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       const dy = a.path.to.y - a.position.y;
       const len = Math.hypot(dx, dy);
       if (len < 1e-6) continue;
-      g.fillStyle(PENCIL, 0.7);
+      g.fillStyle(this.pencil, 0.7);
       for (let d = 0; d <= len; d += 0.35)
         g.fillCircle(m(a.position.x + (dx * d) / len), m(a.position.y + (dy * d) / len), 1.6);
       // Ink stop bars where the anchor turns round, and pencil chevrons just inside each end
@@ -496,7 +516,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
         const tip = { x: e.x - ux * dir * 0.45, y: e.y - uy * dir * 0.45 };
         const back = 0.22;
         const wing = 0.16;
-        g.lineStyle(1.8, PENCIL, 0.9);
+        g.lineStyle(1.8, this.pencil, 0.9);
         for (const side of [-1, 1]) {
           g.lineBetween(
             m(tip.x),
@@ -534,7 +554,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
           { x: m(next.x), y: m(next.y) },
         ],
         1.8,
-        PENCIL,
+        this.pencil,
         0.7,
         i + 91,
       );
@@ -638,7 +658,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
         m(0.12),
         m(0.1),
         1.3,
-        PENCIL,
+        this.pencil,
       );
     };
     for (const sign of [-1, 1]) {
@@ -652,12 +672,20 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       const a = out - half + (2 * half * i) / steps;
       arc.push({ x: m(mouth.x + Math.cos(a) * arcR), y: m(mouth.y + Math.sin(a) * arcR) });
     }
-    strokeInk(g, arc, 1.3, PENCIL, 0.8, 109);
+    strokeInk(g, arc, 1.3, this.pencil, 0.8, 109);
   }
 
   // --- dynamic ink ---
 
   private drawDynamic(frame: RenderFrame, dt: number): void {
+    // Accessibility (GMR-50): the reticle size follows the setting live; high contrast also
+    // restyles the static layers, so a change rebuilds the scene (as a level change does).
+    const a11y = this.opts.accessibility?.();
+    this.reticleScale = a11y?.largeReticle ? LARGE_RETICLE : 1;
+    if ((a11y?.highContrast ?? false) !== this.highContrast) {
+      this.scene.restart();
+      return;
+    }
     const { previous, current, alpha } = frame;
     const g = this.dynamic;
     g.clear();
@@ -706,7 +734,9 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
         reach === undefined ||
         anchorInReach(current.player.position, a, radius, reach)
           ? 1
-          : OUT_OF_REACH_ALPHA;
+          : this.highContrast
+            ? OUT_OF_REACH_ALPHA_HC
+            : OUT_OF_REACH_ALPHA;
       const state = current.anchorStates[i];
       // Timed off or one-use spent (GMR-60): the ring fades out; its marks below say why.
       const gone = state?.spent ? 0 : state && !state.active ? 0.18 : 1;
@@ -736,7 +766,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
           m(0.12),
           m(0.2),
           1.2,
-          PENCIL,
+          this.pencil,
         );
       }
       const c = m(0.16);
@@ -751,7 +781,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       const prevPoint = previous.rope?.point ?? current.rope.point;
       const anchor = lerpV(prevPoint, current.rope.point, t);
       const hand = this.handPoint(player, anchor);
-      dashedInk(g, anchor, hand, m(0.2), m(0.13), 2.6, INK);
+      dashedInk(g, anchor, hand, m(0.2), m(0.13), this.highContrast ? 3.4 : 2.6, INK);
     }
 
     this.drawPlayer(g, player, current, frame);
@@ -780,8 +810,8 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
     const target = current.target;
     if (target?.impact) {
       const ip = { x: m(target.impact.x), y: m(target.impact.y) };
-      const c = m(0.1);
-      g.lineStyle(2, target.valid ? INK : PENCIL, 0.95);
+      const c = m(0.1) * this.reticleScale;
+      g.lineStyle(2 * this.reticleScale, target.valid ? INK : this.pencil, 0.95);
       g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
       g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
     }
@@ -791,13 +821,13 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       const from = { x: m(current.aim.x), y: m(current.aim.y) };
       const to = { x: m(target.impact.x), y: m(target.impact.y) };
       g.lineStyle(m(0.16), HIGHLIGHTER, 0.5).lineBetween(from.x, from.y, to.x, to.y);
-      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : PENCIL);
+      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : this.pencil);
     }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
-      const r = m(0.18);
-      const tone = target?.valid ? INK : PENCIL;
-      g.lineStyle(1.6, tone, 0.9);
+      const r = m(0.18) * this.reticleScale;
+      const tone = target?.valid ? INK : this.pencil;
+      g.lineStyle(1.6 * this.reticleScale, tone, 0.9);
       g.strokeCircle(a.x, a.y, r);
       g.lineBetween(a.x - r * 1.6, a.y, a.x - r * 0.6, a.y);
       g.lineBetween(a.x + r * 0.6, a.y, a.x + r * 1.6, a.y);
@@ -837,14 +867,14 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       const reached = i <= active;
       const base = { x: m(cp.position.x), y: m(cp.position.y + 0.35) };
       const top = { x: base.x, y: base.y - m(1.1) };
-      const tone = reached ? INK : PENCIL;
+      const tone = reached ? INK : this.pencil;
       g.lineStyle(2.2 * this.lineScale(), tone, reached ? 1 : 0.7);
       g.lineBetween(base.x, base.y, top.x, top.y);
       const p0 = { x: top.x, y: top.y };
       const p1 = { x: top.x + m(0.5), y: top.y + m(0.16) };
       const p2 = { x: top.x, y: top.y + m(0.34) };
       if (reached) g.fillStyle(INK, 0.9).fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
-      else strokeInk(g, [p0, p1, p2, p0], 1.8 * this.lineScale(), PENCIL, 0.8, i);
+      else strokeInk(g, [p0, p1, p2, p0], 1.8 * this.lineScale(), this.pencil, 0.8, i);
     });
   }
 
@@ -860,15 +890,15 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
     const ghost = this.ghostG;
     ghost.clear();
     if (prev) {
-      g.fillStyle(PENCIL, 0.35);
+      g.fillStyle(this.pencil, 0.35);
       for (let i = 0; i < prev.path.length; i += 4) {
         const p = prev.path[i] as Vec2;
         g.fillCircle(m(p.x), m(p.y), 1.4 * this.lineScale());
       }
-      g.lineStyle(1.4 * this.lineScale(), PENCIL, 0.7);
+      g.lineStyle(1.4 * this.lineScale(), this.pencil, 0.7);
       for (const p of prev.impacts) {
         g.strokeCircle(m(p.x), m(p.y), m(0.14));
-        g.fillStyle(PENCIL, 0.8).fillCircle(m(p.x), m(p.y), m(0.035));
+        g.fillStyle(this.pencil, 0.8).fillCircle(m(p.x), m(p.y), m(0.035));
       }
       const at = this.reducedMotion ? null : this.feedback.ghostAt(current.attemptTick);
       if (at) {
@@ -916,7 +946,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
     if (current.player.mode === 'tethered' && current.rope) {
       const anchor = lerpV(previous.rope?.point ?? current.rope.point, current.rope.point, t);
       hand = this.handPoint(c, anchor);
-      dashedInk(g, anchor, hand, m(0.2), m(0.13), 2, PENCIL);
+      dashedInk(g, anchor, hand, m(0.2), m(0.13), 2, this.pencil);
     }
     drawHero(g, {
       c,
@@ -926,7 +956,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
       hand,
       time: current.tick / 60,
       line: this.lineScale(),
-      ink: PENCIL,
+      ink: this.pencil,
     });
   }
 
@@ -968,7 +998,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
           state.ticksLeft >= warn ? 0 : segments - Math.ceil((segments * state.ticksLeft) / warn);
       } else {
         erased = segments - Math.floor((segments * (state.span - state.ticksLeft)) / state.span);
-        g.lineStyle(1.4, PENCIL, 0.8);
+        g.lineStyle(1.4, this.pencil, 0.8);
         for (let k = 0; k < 16; k += 2) {
           g.beginPath();
           g.arc(p.x, p.y, r * 1.25, (k / 16) * Math.PI * 2, ((k + 1) / 16) * Math.PI * 2);
@@ -1005,7 +1035,7 @@ bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.vis
         state.spent ? g : fx,
         crack,
         state.spent ? 1.2 : 2.2,
-        state.spent ? PENCIL : INK,
+        state.spent ? this.pencil : INK,
         state.spent ? 0.35 : 0.95,
         seed + 211,
       );

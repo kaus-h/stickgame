@@ -332,6 +332,7 @@ async function start(): Promise<void> {
     debugExtra: () => musicEngine.debugLine(),
     ropeReach: tuning.sim.rope.maxLength,
     bodiesVisible: () => save.current.settings.bodies,
+    accessibility: () => save.current.settings,
   });
 
   // Game flow (GMR-47): title, level select, pause, results, settings.

@@ -54,6 +54,8 @@
   "settings.assist.snap": "snap",
   "settings.ghost": "PB ghost (G)",
   "settings.bodies": "Death bodies (B)",
+  "settings.highContrast": "High contrast",
+  "settings.largeReticle": "Larger aim reticle",
   "hud.life": "life",
   "hud.checkpoint": "flag",
   "hud.finish": "finish",
