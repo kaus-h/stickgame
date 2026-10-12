@@ -26,12 +26,12 @@ _Last updated: 2026-10-12. Opus is now hands-on for design-heavy work (owner dir
 - **GMR-50 phase 1, keyboard remapping (BrowserGPT bundle).** When it lands, Opus wires `ControlsPanel` into `GameFlowUi` and `setBindings` into main.ts. Then phase 2 (Opus): high-contrast mode and a larger reticle. Flash reduction is already satisfied: there are no flashes in the game.
 - **GMR-72 (2-1):** human playtest and the Section 2 art/audio pass are still open.
 
-## Next (Production Vertical Slice gate, GMR-94)
+## Next (owner, 2026-10-12: beauty first, optimization deferred)
 
-1. Finish GMR-50; merge GMR-112. Then GMR-70 (Section 1 art production polish).
-2. **GMR-35 share loop** and **GMR-36 web demo.** Both need the owner: hosting, a domain, and the game name (GMR-51 shortlist doc: Marginskip, Stitchflight, Ghost Radius).
-3. **GMR-52 external playtests** with the playtest recorder.
-4. **Section 2:** 2-2 needs moving-while-attached anchors (GMR-60 phase 2), crushers (GMR-61) and the ceiling-pocket exit (GMR-63) first.
+1. **The Living Notebook visual pass** (Opus, hands-on): `docs/art/living-notebook.md`. Line boil, drawn hazards, ink juice, depth, transitions, title.
+2. **Section 2 levels**, designed by Opus: 2-2 needs moving-while-attached anchors (GMR-60 phase 2), crushers (GMR-61) and the ceiling-pocket exit (GMR-63).
+3. **GMR-52 playtests** with the recorder. GMR-35 share loop.
+4. **Deferred:** GMR-36 load budget and code-split. GMR-51 trademark and domain checks (owner).
 
 ## Decisions this milestone (all in canon or Linear)
 
