@@ -1,6 +1,6 @@
 # Context pack: Precision Tether Platformer (StickGame)
 
-`Context pack: 2026-10-10 @ 51b9cc5`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-12 @ bb7c6f7`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -83,7 +83,9 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
 | `src/app/web/`            | `main.ts` composition root, `ui/` (title, level select, pause, results)                                                                                                               |
 | `src/content/`            | level parsing and validation, runtime tuning                                                                                                                                          |
 | `src/platform/`           | platform services, save system (`save/`)                                                                                                                                              |
-| `src/tools/`              | route solver, device lab, art preview (dev only)                                                                                                                                      |
+| `src/tools/`              | route solver (`npm run levels:solve`, `levels:plot`), device lab, art preview (dev only)                                                                                              |
+| `src/audio/`              | SFX synth and director; `music/` (score, transport, director, engine)                                                                                                                 |
+| `src/telemetry/`          | event schema with design questions, director, playtest recorder                                                                                                                       |
 | `content/levels/*.json`   | level data (v2 schema `content/level.schema.json`); `content/solutions/` solver fixtures; `content/chapters/chapter-1.json`; `content/tuning/runtime.json`; `content/strings/en.json` |
 | `docs/`                   | design and system docs; `docs/levels/` per-level design docs; `docs/agents/` this workflow                                                                                            |
 | `tests/unit`, `tests/e2e` | Vitest and Playwright                                                                                                                                                                 |
@@ -103,15 +105,22 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
 - **Kit and inspiration:**
   - The level art kit is `assets/sheets/0016-level-kit-thin.png`, rendered by GMR-107.
   - Next inspirations: Jump King and Celeste (Linear doc 07B).
-- **Hero:** approved sheet 0007 (no scarf), and the heads from 0008 are approved for use.
+- **Hero:** approved sheet 0007 (no scarf). The 0008 heads are live as sprites (`assets/art/hero-0008/`).
+- **Visual language (LOCKED):** red = lethal only; yellow highlighter = the targeted or attached anchor; out-of-reach rings fade to pencil; exits are wordless (door, gate dots, angle cone, speed streaks).
 - **References:** the owner-curated reference chat in BrowserGPT ("Apply StickGame Art Style") may be used for art generation. Never name the artist, never add references, and keep the originality rules in 07A Part 2B.
 
 ## Current state
 
-- **Built:** levels 1-1, 1-2 and 1-3 (Section 1), all solver-verified.
+- **Built:** levels 1-1, 1-2, 1-3 (Section 1) and 2-1 (Section 2 opener), all solver-verified (`content/solutions/`).
 - **Systems:**
-  - racing timing with PB ghost and Backspace respawn
-  - death bodies with B/C controls and an eraser sweep
-  - kit-based pen-sketch renderer
-- **Exits:** no speed limit (owner).
+  - racing timing with a PB ghost
+  - death bodies
+  - the kit renderer
+  - the wordless visual language (doc 09 H1/H3/H4/H5, LOCKED)
+  - hero heads and squash/lean
+  - timed and one-use anchors
+  - adaptive music (raw WebAudio)
+  - the anchor-attention camera with a fairness proof test
+  - opt-in playtest telemetry (`?playtest=1`)
+- **Exits:** no speed limit (owner). Signage is wordless: door, gate, cone, streaks.
 - **Live plan:** `docs/agents/HANDOFF.md`.
