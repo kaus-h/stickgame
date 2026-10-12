@@ -6,34 +6,86 @@
   "additionalProperties": false,
   "required": ["version", "id", "name", "spawn", "bounds", "killY", "solids"],
   "properties": {
-    "$schema": { "type": "string" },
-    "version": { "enum": [1, 2] },
-    "id": { "$ref": "#/definitions/id" },
-    "name": { "$ref": "#/definitions/text" },
-    "spawn": { "$ref": "#/definitions/point" },
+    "$schema": {
+      "type": "string"
+    },
+    "version": {
+      "enum": [1, 2]
+    },
+    "id": {
+      "$ref": "#/definitions/id"
+    },
+    "name": {
+      "$ref": "#/definitions/text"
+    },
+    "spawn": {
+      "$ref": "#/definitions/point"
+    },
     "bounds": {
       "type": "object",
       "additionalProperties": false,
       "required": ["minX", "minY", "maxX", "maxY"],
       "properties": {
-        "minX": { "type": "number" },
-        "minY": { "type": "number" },
-        "maxX": { "type": "number" },
-        "maxY": { "type": "number" }
+        "minX": {
+          "type": "number"
+        },
+        "minY": {
+          "type": "number"
+        },
+        "maxX": {
+          "type": "number"
+        },
+        "maxY": {
+          "type": "number"
+        }
       }
     },
-    "killY": { "type": "number" },
-    "theme": { "enum": ["paper", "scenery"] },
-    "solids": { "type": "array", "items": { "$ref": "#/definitions/solid" } },
-    "anchors": { "type": "array", "items": { "$ref": "#/definitions/anchor" } },
-    "enemies": { "type": "array", "items": { "$ref": "#/definitions/patroller" } },
-    "exit": { "oneOf": [{ "$ref": "#/definitions/region" }, { "$ref": "#/definitions/exit" }] },
-    "section": { "$ref": "#/definitions/id" },
+    "killY": {
+      "type": "number"
+    },
+    "theme": {
+      "enum": ["paper", "scenery"]
+    },
+    "solids": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/solid"
+      }
+    },
+    "anchors": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/anchor"
+      }
+    },
+    "enemies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/patroller"
+      }
+    },
+    "exit": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/region"
+        },
+        {
+          "$ref": "#/definitions/exit"
+        }
+      ]
+    },
+    "section": {
+      "$ref": "#/definitions/id"
+    },
     "telemetry": {
       "type": "object",
       "additionalProperties": false,
       "required": ["levelId"],
-      "properties": { "levelId": { "$ref": "#/definitions/id" } }
+      "properties": {
+        "levelId": {
+          "$ref": "#/definitions/id"
+        }
+      }
     },
     "chambers": {
       "type": "array",
@@ -42,10 +94,18 @@
         "additionalProperties": false,
         "required": ["id", "region", "problem", "challengeFamily"],
         "properties": {
-          "id": { "$ref": "#/definitions/id" },
-          "region": { "$ref": "#/definitions/region" },
-          "problem": { "$ref": "#/definitions/text" },
-          "challengeFamily": { "$ref": "#/definitions/text" }
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "region": {
+            "$ref": "#/definitions/region"
+          },
+          "problem": {
+            "$ref": "#/definitions/text"
+          },
+          "challengeFamily": {
+            "$ref": "#/definitions/text"
+          }
         }
       }
     },
@@ -56,8 +116,12 @@
         "additionalProperties": false,
         "required": ["id", "position"],
         "properties": {
-          "id": { "$ref": "#/definitions/id" },
-          "position": { "$ref": "#/definitions/point" }
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "position": {
+            "$ref": "#/definitions/point"
+          }
         }
       }
     },
@@ -68,8 +132,12 @@
         "additionalProperties": false,
         "required": ["id", "region"],
         "properties": {
-          "id": { "$ref": "#/definitions/id" },
-          "region": { "$ref": "#/definitions/region" }
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "region": {
+            "$ref": "#/definitions/region"
+          }
         }
       }
     },
@@ -80,19 +148,33 @@
         "additionalProperties": false,
         "required": ["id", "region", "focus"],
         "properties": {
-          "id": { "$ref": "#/definitions/id" },
-          "region": { "$ref": "#/definitions/region" },
-          "focus": { "$ref": "#/definitions/point" }
+          "id": {
+            "$ref": "#/definitions/id"
+          },
+          "region": {
+            "$ref": "#/definitions/region"
+          },
+          "focus": {
+            "$ref": "#/definitions/point"
+          }
         }
       }
     }
   },
   "allOf": [
     {
-      "if": { "properties": { "version": { "const": 1 } } },
+      "if": {
+        "properties": {
+          "version": {
+            "const": 1
+          }
+        }
+      },
       "then": {
         "properties": {
-          "exit": { "$ref": "#/definitions/region" },
+          "exit": {
+            "$ref": "#/definitions/region"
+          },
           "enemies": false,
           "theme": false
         }
@@ -105,19 +187,38 @@
       "additionalProperties": false,
       "required": ["id", "kind", "position", "size", "stomp"],
       "properties": {
-        "id": { "$ref": "#/definitions/id" },
-        "kind": { "const": "patroller" },
-        "position": { "$ref": "#/definitions/point" },
-        "size": { "$ref": "#/definitions/point" },
-        "path": { "$ref": "#/definitions/path" },
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "kind": {
+          "const": "patroller"
+        },
+        "position": {
+          "$ref": "#/definitions/point"
+        },
+        "size": {
+          "$ref": "#/definitions/point"
+        },
+        "path": {
+          "$ref": "#/definitions/path"
+        },
         "stomp": {
           "type": "object",
           "additionalProperties": false,
           "required": ["minDownSpeed", "reboundSpeed", "topInset"],
           "properties": {
-            "minDownSpeed": { "type": "number", "exclusiveMinimum": 0 },
-            "reboundSpeed": { "type": "number", "exclusiveMinimum": 0 },
-            "topInset": { "type": "number", "minimum": 0 }
+            "minDownSpeed": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "reboundSpeed": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "topInset": {
+              "type": "number",
+              "minimum": 0
+            }
           }
         }
       }
@@ -127,9 +228,18 @@
       "additionalProperties": false,
       "required": ["to", "period"],
       "properties": {
-        "to": { "$ref": "#/definitions/point" },
-        "period": { "type": "number", "exclusiveMinimum": 0 },
-        "phase": { "type": "number", "minimum": 0, "exclusiveMaximum": 1 }
+        "to": {
+          "$ref": "#/definitions/point"
+        },
+        "period": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "phase": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 1
+        }
       }
     },
     "exit": {
@@ -138,32 +248,76 @@
       "required": ["id", "family", "min", "max", "entry"],
       "allOf": [
         {
-          "if": { "properties": { "family": { "const": "slot" } } },
+          "if": {
+            "properties": {
+              "family": {
+                "const": "slot"
+              }
+            }
+          },
           "then": {
-            "properties": { "entry": { "properties": { "side": { "enum": ["left", "right"] } } } }
+            "properties": {
+              "entry": {
+                "properties": {
+                  "side": {
+                    "enum": ["left", "right"]
+                  }
+                }
+              }
+            }
           }
         },
         {
-          "if": { "properties": { "family": { "const": "shaft" } } },
+          "if": {
+            "properties": {
+              "family": {
+                "const": "shaft"
+              }
+            }
+          },
           "then": {
-            "properties": { "entry": { "properties": { "side": { "enum": ["top", "bottom"] } } } }
+            "properties": {
+              "entry": {
+                "properties": {
+                  "side": {
+                    "enum": ["top", "bottom"]
+                  }
+                }
+              }
+            }
           }
         }
       ],
       "properties": {
-        "id": { "$ref": "#/definitions/id" },
-        "family": { "enum": ["wide", "slot", "shaft"] },
-        "min": { "$ref": "#/definitions/point" },
-        "max": { "$ref": "#/definitions/point" },
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "family": {
+          "enum": ["wide", "slot", "shaft"]
+        },
+        "min": {
+          "$ref": "#/definitions/point"
+        },
+        "max": {
+          "$ref": "#/definitions/point"
+        },
         "entry": {
           "type": "object",
           "additionalProperties": false,
           "required": ["side", "angle", "alignment"],
           "properties": {
-            "side": { "enum": ["left", "right", "top", "bottom"] },
-            "angle": { "$ref": "#/definitions/angleWindow" },
-            "speed": { "$ref": "#/definitions/speedWindow" },
-            "alignment": { "$ref": "#/definitions/alignmentWindow" }
+            "side": {
+              "enum": ["left", "right", "top", "bottom"]
+            },
+            "angle": {
+              "$ref": "#/definitions/angleWindow"
+            },
+            "speed": {
+              "$ref": "#/definitions/speedWindow"
+            },
+            "alignment": {
+              "$ref": "#/definitions/alignmentWindow"
+            }
           }
         }
       }
@@ -173,8 +327,16 @@
       "additionalProperties": false,
       "required": ["min", "max"],
       "properties": {
-        "min": { "type": "number", "minimum": 0, "exclusiveMaximum": 90 },
-        "max": { "type": "number", "minimum": 0, "maximum": 90 }
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "exclusiveMaximum": 90
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        }
       }
     },
     "speedWindow": {
@@ -182,8 +344,14 @@
       "additionalProperties": false,
       "required": ["min", "max"],
       "properties": {
-        "min": { "type": "number", "minimum": 0 },
-        "max": { "type": "number", "exclusiveMinimum": 0 }
+        "min": {
+          "type": "number",
+          "minimum": 0
+        },
+        "max": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
       }
     },
     "alignmentWindow": {
@@ -191,20 +359,48 @@
       "additionalProperties": false,
       "required": ["min", "max"],
       "properties": {
-        "min": { "type": "number", "minimum": 0, "maximum": 1 },
-        "max": { "type": "number", "minimum": 0, "maximum": 1 }
+        "min": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "max": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
       }
     },
-    "text": { "type": "string", "minLength": 1 },
-    "id": { "type": "string", "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$" },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-zA-Z0-9][a-zA-Z0-9._-]*$"
+    },
     "point": {
       "oneOf": [
-        { "type": "array", "minItems": 2, "maxItems": 2, "items": { "type": "number" } },
+        {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 2,
+          "items": {
+            "type": "number"
+          }
+        },
         {
           "type": "object",
           "additionalProperties": false,
           "required": ["x", "y"],
-          "properties": { "x": { "type": "number" }, "y": { "type": "number" } }
+          "properties": {
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            }
+          }
         }
       ]
     },
@@ -213,34 +409,67 @@
       "additionalProperties": false,
       "required": ["min", "max"],
       "properties": {
-        "min": { "$ref": "#/definitions/point" },
-        "max": { "$ref": "#/definitions/point" }
+        "min": {
+          "$ref": "#/definitions/point"
+        },
+        "max": {
+          "$ref": "#/definitions/point"
+        }
       }
     },
     "solid": {
       "type": "object",
       "additionalProperties": false,
       "required": ["id"],
-      "oneOf": [{ "required": ["rect"] }, { "required": ["points"] }],
+      "oneOf": [
+        {
+          "required": ["rect"]
+        },
+        {
+          "required": ["points"]
+        }
+      ],
       "properties": {
-        "id": { "$ref": "#/definitions/id" },
-        "kind": { "enum": ["solid", "hazard"] },
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "kind": {
+          "enum": ["solid", "hazard"]
+        },
         "rect": {
           "type": "object",
           "additionalProperties": false,
           "required": ["x", "y", "w", "h"],
           "properties": {
-            "x": { "type": "number" },
-            "y": { "type": "number" },
-            "w": { "type": "number", "exclusiveMinimum": 0 },
-            "h": { "type": "number", "exclusiveMinimum": 0 }
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "h": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
           }
         },
-        "points": { "type": "array", "minItems": 3, "items": { "$ref": "#/definitions/point" } },
+        "points": {
+          "type": "array",
+          "minItems": 3,
+          "items": {
+            "$ref": "#/definitions/point"
+          }
+        },
         "visualPoints": {
           "type": "array",
           "minItems": 3,
-          "items": { "$ref": "#/definitions/point" }
+          "items": {
+            "$ref": "#/definitions/point"
+          }
         }
       }
     },
@@ -249,11 +478,45 @@
       "additionalProperties": false,
       "required": ["id", "position"],
       "properties": {
-        "id": { "$ref": "#/definitions/id" },
-        "position": { "$ref": "#/definitions/point" },
-        "requiredFrom": { "$ref": "#/definitions/point" },
-        "radius": { "type": "number", "exclusiveMinimum": 0 },
-        "path": { "$ref": "#/definitions/path" }
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "position": {
+          "$ref": "#/definitions/point"
+        },
+        "requiredFrom": {
+          "$ref": "#/definitions/point"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "path": {
+          "$ref": "#/definitions/path"
+        },
+        "timed": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["on", "off"],
+          "properties": {
+            "on": {
+              "type": "number",
+              "minimum": 1
+            },
+            "off": {
+              "type": "number",
+              "minimum": 0.25
+            },
+            "phase": {
+              "type": "number",
+              "minimum": 0,
+              "exclusiveMaximum": 1
+            }
+          }
+        },
+        "oneUse": {
+          "type": "boolean"
+        }
       }
     }
   }

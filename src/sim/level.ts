@@ -23,6 +23,17 @@ export interface AnchorDef {
   readonly path?: AnchorPathDef;
   /** Tagged required shot's take-off point, used by authoring reach/visibility checks. */
   readonly requiredFrom?: Vec2;
+  /** Timed anchor (GMR-60): usable for `on` s, then not for `off` s, repeating. */
+  readonly timed?: AnchorTimerDef;
+  /** One-use anchor (GMR-60): spent once released, until the next attempt or respawn. */
+  readonly oneUse?: boolean;
+}
+
+/** On/off schedule of a timed anchor, seconds; `phase` (0..1) shifts the cycle at tick 0. */
+export interface AnchorTimerDef {
+  readonly on: number;
+  readonly off: number;
+  readonly phase?: number;
 }
 
 /** Smooth ping-pong path. Limits on peak speed and acceleration: docs/moving-anchors.md. */

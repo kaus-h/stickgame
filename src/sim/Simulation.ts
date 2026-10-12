@@ -1,6 +1,7 @@
 import { SIM_DT, vec2, type AssistMode, type Intent, type Vec2 } from '../core';
 import type { PhysicsAdapter, PhysicsStats, BodyMotionSegment, ContactEvent } from '../physics';
 import { anchorPathState } from './anchorPath';
+import { anchorTimerState, type AnchorTimerState } from './anchorTimer';
 import { evaluateExitEntry, type ExitAttempt } from './exits';
 import { patrollerState, sweepPatroller, type EnemySnapshot, type EnemyContact } from './enemies';
 import { levelSegments, type LevelDef, type PatrollerDef } from './level';
@@ -21,6 +22,13 @@ export interface PlayerSnapshot {
   readonly mode: PlayerMode;
   /** -1 left, 1 right: last horizontal input or movement direction. */
   readonly facing: -1 | 1;
+}
+
+/** Per-anchor state for render and tools (GMR-60). */
+export interface AnchorStateSnapshot extends AnchorTimerState {
+  readonly oneUse: boolean;
+  /** A one-use anchor already released this attempt: gone until the next reset or respawn. */
+  readonly spent: boolean;
 }
 
 export interface RopeSnapshot {
@@ -55,6 +63,8 @@ export interface SimSnapshot {
   readonly anchors: readonly Vec2[];
   /** Path velocity of each anchor at this tick, m/s (zero for fixed anchors). */
   readonly anchorVelocities: readonly Vec2[];
+  /** Timer and one-use state of each anchor (GMR-60); render telegraphs and greys them out. */
+  readonly anchorStates: readonly AnchorStateSnapshot[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
   /** Contacts that began during the last step (debug and feedback; never gameplay input). */
@@ -188,7 +198,14 @@ export type SimEvent =
       readonly length: number;
     }
   | { readonly type: 'ropeLock'; readonly tick: number; readonly length: number }
-  | { readonly type: 'ropeRelease'; readonly tick: number; readonly velocity: Vec2 }
+  | {
+      readonly type: 'ropeRelease';
+      readonly tick: number;
+      readonly velocity: Vec2;
+      /** 'timed': the anchor's on span ended while attached (GMR-60). Absent: the player let go. */
+      readonly cause?: 'timed';
+    }
+  | { readonly type: 'anchorSpent'; readonly tick: number; readonly anchor: number }
   | {
       readonly type: 'ropeInvalid';
       readonly tick: number;
@@ -221,6 +238,8 @@ export class Simulation {
 
   private body!: number;
   private anchorIds: number[] = [];
+  /** One-use anchors already released this attempt (GMR-60). */
+  private spent: boolean[] = [];
   /** Level solid id for each physics segment (levelSegments keeps solid order). */
   private segmentSolid: string[] = [];
   private lastDeath: DeathRecord | null = null;
@@ -321,6 +340,7 @@ export class Simulation {
     this.anchorIds = level.anchors.map((a) =>
       physics.createKinematicAnchor(anchorPathState(a, 0).position),
     );
+    this.spent = level.anchors.map(() => false);
   }
 
   step(intents: readonly Intent[]): void {
@@ -348,6 +368,8 @@ export class Simulation {
         : enemy,
     );
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
+    // After the tick advances, so a snapshot never shows an off anchor still holding the rope.
+    this.expireTimedRope();
   }
 
   /** Back to the authored initial state inside the same physics world. */
@@ -458,6 +480,7 @@ export class Simulation {
     this.wasGrounded = false;
     this.rope = null; // resetBodies already removed the physics rope
     this.ropeActions = [];
+    this.spent = this.level.anchors.map(() => false);
     this.events.push({ type: 'reset', tick: this.tickCount });
   }
 
@@ -481,6 +504,11 @@ export class Simulation {
       anchorVelocities: this.level.anchors.map(
         (a) => anchorPathState(a, this.attemptTicks * SIM_DT).velocity,
       ),
+      anchorStates: this.level.anchors.map((a, i) => ({
+        ...anchorTimerState(a, this.attemptTicks),
+        oneUse: a.oneUse === true,
+        spent: this.spent[i] === true,
+      })),
       aim: this.aim,
       lastDeath: this.lastDeath,
       runTick: this.runTicks,
@@ -527,6 +555,7 @@ export class Simulation {
       anchors.map((position, i) => ({
         position,
         radius: (this.level.anchors[i] as LevelDef['anchors'][number]).radius,
+        usable: this.usable(i),
       })),
       this.tuning.rope,
       (from, to) => this.physics.raycast(from, to),
@@ -721,12 +750,38 @@ export class Simulation {
     if (distance >= this.tuning.rope.minLength) this.lock(distance);
   }
 
-  private detach(): void {
+  private detach(cause?: 'timed'): void {
     if (!this.rope) return;
+    const anchor = this.rope.anchor;
     this.physics.detachRope(this.rope.id);
     this.rope = null;
     const v = this.physics.bodyState(this.body).velocity;
-    this.events.push({ type: 'ropeRelease', tick: this.tickCount, velocity: v });
+    this.events.push({
+      type: 'ropeRelease',
+      tick: this.tickCount,
+      velocity: v,
+      ...(cause ? { cause } : {}),
+    });
+    // A one-use anchor is spent by letting go of it, however the rope ended (GMR-60).
+    if (this.level.anchors[anchor]?.oneUse && !this.spent[anchor]) {
+      this.spent[anchor] = true;
+      this.events.push({ type: 'anchorSpent', tick: this.tickCount, anchor });
+    }
+  }
+
+  /** Whether anchor i can be targeted and held this tick (GMR-60). */
+  private usable(i: number): boolean {
+    const def = this.level.anchors[i];
+    if (!def) return false;
+    return !this.spent[i] && anchorTimerState(def, this.attemptTicks).active;
+  }
+
+  /**
+   * A timed anchor whose on span ends lets go of the rope this tick. The swing velocity is kept, as
+   * for any release (doc 04): the rope ends, the momentum doesn't.
+   */
+  private expireTimedRope(): void {
+    if (this.rope && !this.usable(this.rope.anchor)) this.detach('timed');
   }
 
   /** Mechanical energy per unit mass; +y is down, so height is -y. */
