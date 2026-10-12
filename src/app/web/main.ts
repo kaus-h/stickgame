@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
 import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
-import { AudioEngine, parseSfxBank, SfxDirector } from '../../audio';
+import { AudioEngine, MusicDirector, MusicEngine, parseSfxBank, SfxDirector } from '../../audio';
 import { getLevelTheme, parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
 import {
@@ -10,6 +10,7 @@ import {
   encodeReplay,
   metersToPixels,
   parseAssistMode,
+  SIM_DT,
   vec2,
   type Intent,
   type ReplayInput,
@@ -152,8 +153,12 @@ async function start(): Promise<void> {
   audio.setVolume('sfx', saved.settings.sfxVolume);
   audio.setVolume('music', saved.settings.musicVolume);
   audio.setMuted(saved.settings.muted);
+  // Music (GMR-42): one transport for the app's lifetime, started on the first unlock.
+  const musicEngine = new MusicEngine(() => audio.musicOutput());
+  const music = new MusicDirector(musicEngine, level);
   const unlockAudio = (): void => {
     audio.unlock();
+    musicEngine.start();
   };
   for (const type of ['pointerdown', 'keydown', 'touchstart'] as const) {
     window.addEventListener(type, unlockAudio, { capture: true, passive: true });
@@ -233,12 +238,15 @@ async function start(): Promise<void> {
         }
       }
       sfx.onFrame(state);
+      music.onFrame(state, SIM_DT);
+      musicEngine.start();
     },
     assist: { mode: assistMode, ...tuning.assist },
     timing,
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);
+    music.onEvents(events);
     for (const e of events) {
       if (releaseTrace && e.type === 'ropeRelease')
         releaseTrace.evidence = { ...e, before: releaseTrace.before.get(e.tick) };
@@ -343,6 +351,7 @@ async function start(): Promise<void> {
       levelName = levelId;
       runtime.replaceLevel(next);
       level = next;
+      music.setLevel(next);
       loadPb(next);
       gameScene.replaceLevel(next);
     },
@@ -433,6 +442,7 @@ async function start(): Promise<void> {
         runtime.pause('sweep', false);
         runtime.replaceLevel(next);
         level = next;
+        music.setLevel(next);
         loadPb(next);
         scene.replaceLevel(next);
         levelRevision++;
