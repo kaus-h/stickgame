@@ -45,6 +45,12 @@ import { parseChapter, playOrder } from './ui/flow';
 // Composition root for the browser build.
 async function start(): Promise<void> {
   const params = new URLSearchParams(window.location.search);
+  // GMR-115: a dev-only composition, removed together with its import in production builds.
+  if (import.meta.env.DEV && params.has('film')) {
+    const { mountFilm } = await import('../../tools/film/main');
+    await mountFilm();
+    return;
+  }
   // Native Capacitor shell or plain web, decided once at startup (ADR-002, GMR-33).
   const platform = await createPlatformServices();
   // Local-first save (GMR-48): progress, bests and settings. Loading never blocks on failure.
