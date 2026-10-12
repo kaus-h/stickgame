@@ -2,6 +2,8 @@ import type { Vec2 } from '../core';
 
 /** Anchors out of reach fade to pencil (GMR-56 H3); in reach they are full ink. */
 export const OUT_OF_REACH_ALPHA = 0.4;
+/** High contrast (GMR-50): out-of-reach anchors stay dimmer than live ones, but readable. */
+export const OUT_OF_REACH_ALPHA_HC = 0.6;
 
 /**
  * Whether any point of the anchor's impact disc is within max rope length of the player. This is

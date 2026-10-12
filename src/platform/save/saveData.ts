@@ -84,6 +84,10 @@ export interface Settings {
   readonly ghost: boolean;
   /** Show the death bodies (GMR-104); B toggles them. */
   readonly bodies: boolean;
+  /** High contrast (GMR-50): darker pencil marks, brighter out-of-reach anchors, no scenery. */
+  readonly highContrast: boolean;
+  /** Larger aim reticle (GMR-50). */
+  readonly largeReticle: boolean;
   /** Player keyboard overrides; an empty map means desktop defaults. */
   readonly keyBindings: Readonly<Partial<Record<BindableAction, readonly string[]>>>;
 }
@@ -106,6 +110,8 @@ export const DEFAULT_SETTINGS: Settings = {
   assist: 'standard',
   ghost: true,
   bodies: true,
+  highContrast: false,
+  largeReticle: false,
   keyBindings: {},
 };
 
@@ -224,6 +230,8 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     assist: s.assist === 'wide-select' || s.assist === 'snap' ? s.assist : 'standard',
     ghost: s.ghost !== false,
     bodies: s.bodies !== false,
+    highContrast: s.highContrast === true,
+    largeReticle: s.largeReticle === true,
     keyBindings,
   };
   const pbs: Record<string, PersonalBest> = {};

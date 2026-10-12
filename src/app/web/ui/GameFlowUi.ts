@@ -347,6 +347,12 @@ export class GameFlowUi {
       this.checkbox(this.s('settings.bodies'), s.bodies, (v) => {
         this.actions.settings({ bodies: v });
       }),
+      this.checkbox(this.s('settings.highContrast'), s.highContrast, (v) => {
+        this.actions.settings({ highContrast: v });
+      }),
+      this.checkbox(this.s('settings.largeReticle'), s.largeReticle, (v) => {
+        this.actions.settings({ largeReticle: v });
+      }),
       select(
         this.s('settings.assist'),
         'settings.assist',

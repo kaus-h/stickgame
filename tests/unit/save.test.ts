@@ -227,6 +227,23 @@ describe('keyboard bindings save migration (GMR-50)', () => {
     });
   });
 
+  it('accessibility toggles default off, survive a round trip and reject non-booleans', () => {
+    expect(emptySave().settings).toMatchObject({ highContrast: false, largeReticle: false });
+    const on = {
+      ...emptySave(),
+      settings: { ...emptySave().settings, highContrast: true, largeReticle: true },
+    };
+    expect(decodeSave(encodeSave(on))?.settings).toMatchObject({
+      highContrast: true,
+      largeReticle: true,
+    });
+    const junk = { ...emptySave(), settings: { highContrast: 'yes', largeReticle: 1 } };
+    expect(decodeSave(JSON.stringify(junk))?.settings).toMatchObject({
+      highContrast: false,
+      largeReticle: false,
+    });
+  });
+
   it('validates overrides in a current-version save', () => {
     const raw = {
       version: 3,
