@@ -109,6 +109,8 @@ export interface FramedAnchor {
 export const ATTENTION_FLOOR = 1.5;
 /** Clear space above a framed anchor, m. */
 export const ATTENTION_MARGIN = 0.5;
+/** Seconds of fall speed kept as extra room below the player while lifting (camera lag). */
+export const ATTENTION_FALL_LAG = 0.3;
 /** Frame anchors this much before they come into rope reach, m. */
 export const ATTENTION_EARLY = 3;
 
@@ -121,17 +123,21 @@ export const ATTENTION_EARLY = 3;
 export function attentionTarget(
   target: Vec2,
   player: Vec2,
+  velocity: Vec2,
   anchors: readonly FramedAnchor[],
   viewW: number,
   viewH: number,
   reach: number,
 ): Vec2 {
   let need = Infinity;
-  let floor = player.y + ATTENTION_FLOOR; // lowest point that must stay on screen
+  // Lowest point that must stay on screen. While falling, the eased camera trails the target, so
+  // keep extra room below the player in proportion to the fall speed (about the camera's lag).
+  let floor = player.y + ATTENTION_FLOOR + Math.max(0, velocity.y) * ATTENTION_FALL_LAG;
   for (const a of anchors) {
+    // Distance to the nearest point of the anchor's whole path box (a mover can come close).
     const dx = player.x < a.minX ? a.minX - player.x : player.x > a.maxX ? player.x - a.maxX : 0;
     if (dx > viewW / 2) continue; // not on screen horizontally anyway
-    const dy = player.y - a.top;
+    const dy = player.y < a.top ? a.top - player.y : player.y > a.bottom ? player.y - a.bottom : 0;
     // Start framing a little before the anchor is in reach, so the camera has settled by the shot.
     if (Math.hypot(dx, dy) > reach + ATTENTION_EARLY) continue;
     need = Math.min(need, a.top - ATTENTION_MARGIN);

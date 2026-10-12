@@ -21,8 +21,10 @@ import { World } from '../../src/tools/route-solver/world';
  * for the 0.5 s before the press (or since the attempt began, if that is shorter).
  */
 const LEAD_TICKS = 30;
-/** Solver routes: the whole disc must be on screen (the solver presses from odd positions). */
-const MARGIN = 0;
+/** Solver routes: the whole disc plus this margin must be on screen (the solver presses from odd positions). */
+const MARGIN = 0.25;
+/** The player (body radius 0.35 m) stays this far inside every edge of the actual camera. */
+const PLAYER_MARGIN = 0.5;
 /** Tagged required shots, from their authored take-off: disc plus this clear margin. */
 const REQUIRED_MARGIN = 0.5;
 const tuning = parseRuntimeTuning(runtimeJson);
@@ -81,6 +83,7 @@ function check(levelId: string, replay: string): Miss[] {
       const target = attentionTarget(
         cameraTarget(s.player.position, s.player.velocity, DEFAULT_CAMERA),
         s.player.position,
+        s.player.velocity,
         framed,
         viewW,
         viewH,
@@ -92,6 +95,12 @@ function check(levelId: string, replay: string): Miss[] {
         viewH,
         level.bounds,
       );
+      // The actual (eased, bounds-clamped) camera must keep the player well inside the frame.
+      if (
+        Math.abs(s.player.position.x - center.x) > safeW / 2 - 0.35 - PLAYER_MARGIN ||
+        Math.abs(s.player.position.y - center.y) > viewH / 2 - 0.35 - PLAYER_MARGIN
+      )
+        misses.push({ viewport: vp.name, tick: world.tick, anchor: 'PLAYER', lead: -1 });
       s.anchors.forEach((a, i) => {
         const r = level.anchors[i]?.radius ?? 0.4;
         const inside =
@@ -137,6 +146,7 @@ describe('camera fairness for tagged required shots (GMR-44)', () => {
             attentionTarget(
               cameraTarget(p, { x: 0, y: 0 }, DEFAULT_CAMERA),
               p,
+              { x: 0, y: 0 },
               framed,
               viewW,
               viewH,
@@ -146,9 +156,13 @@ describe('camera fairness for tagged required shots (GMR-44)', () => {
             viewH,
             level.bounds,
           );
-          const ok =
-            Math.abs(a.position.x - c.x) <= safeW / 2 - a.radius - REQUIRED_MARGIN &&
-            Math.abs(a.position.y - c.y) <= viewH / 2 - a.radius - REQUIRED_MARGIN;
+          // A moving anchor's whole path must be in view, not just where it starts.
+          const ends = [a.position, a.path?.to ?? a.position];
+          const ok = ends.every(
+            (e) =>
+              Math.abs(e.x - c.x) <= safeW / 2 - a.radius - REQUIRED_MARGIN &&
+              Math.abs(e.y - c.y) <= viewH / 2 - a.radius - REQUIRED_MARGIN,
+          );
           if (!ok) misses.push(`${vp.name} ${a.id}`);
         }
       }

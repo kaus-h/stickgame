@@ -75,20 +75,32 @@ describe('anchor attention (GMR-44)', () => {
   it('lifts the view to show a reachable anchor above the frame', () => {
     const player = { x: 0, y: 8 };
     const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA); // y = 7
-    const t = attentionTarget(base, player, [anchor(5, 0)], view.w, view.h, 11);
+    const t = attentionTarget(base, player, { x: 0, y: 0 }, [anchor(5, 0)], view.w, view.h, 11);
     expect(t.y - view.h / 2).toBeLessThanOrEqual(0 - 0.4 - ATTENTION_MARGIN + 1e-9);
     expect(t.y + view.h / 2).toBeGreaterThanOrEqual(player.y + ATTENTION_FLOOR - 1e-9);
   });
   it('ignores anchors out of reach and leaves an already-visible frame alone', () => {
     const player = { x: 0, y: 8 };
     const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA);
-    expect(attentionTarget(base, player, [anchor(0, -20)], view.w, view.h, 11)).toEqual(base);
-    expect(attentionTarget(base, player, [anchor(3, 4)], view.w, view.h, 11)).toEqual(base);
+    expect(
+      attentionTarget(base, player, { x: 0, y: 0 }, [anchor(0, -20)], view.w, view.h, 11),
+    ).toEqual(base);
+    expect(
+      attentionTarget(base, player, { x: 0, y: 0 }, [anchor(3, 4)], view.w, view.h, 11),
+    ).toEqual(base);
   });
   it('never lifts so far that the player or a lower anchor in reach leaves the bottom edge', () => {
     const player = { x: 0, y: 8 };
     const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA);
-    const t = attentionTarget(base, player, [anchor(4, -4), anchor(6, 9)], view.w, view.h, 11);
+    const t = attentionTarget(
+      base,
+      player,
+      { x: 0, y: 0 },
+      [anchor(4, -4), anchor(6, 9)],
+      view.w,
+      view.h,
+      11,
+    );
     expect(t.y + view.h / 2).toBeGreaterThanOrEqual(9 + 0.4 + ATTENTION_MARGIN - 1e-9);
   });
   it('frames the whole path of a moving anchor', () => {

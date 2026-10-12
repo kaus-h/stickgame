@@ -400,6 +400,7 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
         this.reducedMotion ? CALM_CAMERA : DEFAULT_CAMERA,
       ),
       position,
+      current.player.velocity,
       this.framed,
       this.scale.width / screen,
       this.scale.height / screen,
