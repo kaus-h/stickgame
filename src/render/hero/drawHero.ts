@@ -44,8 +44,12 @@ function headLocal(c: Pt, facing: -1 | 1): { x: number; y: number; r: number } {
 }
 
 /**
- * The same transform drawHero applies to the body (art scale, squash about the feet, lean about the
- * feet), applied to the head, so a sprite head sits exactly where the ink head would.
+ * Where the head sprite goes. Its centre gets exactly the body transform (art scale, squash and lean
+ * about the feet), so it sits where the ink head would and stays on the neck. Its size and rotation
+ * are deliberately damped (Opus art ruling, GMR-69): the drawn head scales uniformly (by the area
+ * change, √(sx·sy)) because a non-uniformly squashed sprite head smears its hatching. It also turns
+ * only 60% of the body lean, so the face stays readable on a steep swing, a standard
+ * "head stays level" animation choice.
  */
 export function heroHeadTransform(p: HeroPose): HeadTransform {
   const a = p.anim ?? REST_ANIM;
@@ -60,7 +64,7 @@ export function heroHeadTransform(p: HeroPose): HeadTransform {
     y: feet.y + lx * sin + ly * cos,
     // The sprite's circle fills about 93% of its square; its lumpy outline is ~4% outside r.
     size: (2 * h.r * HERO_ART_SCALE * Math.sqrt(a.sx * a.sy) * 1.04) / 0.93,
-    rotation: a.lean * 0.6,
+    rotation: a.lean * HEAD_LEAN_FOLLOW,
   };
 }
 
@@ -76,6 +80,9 @@ export function heroHeadTransform(p: HeroPose): HeadTransform {
  * smaller than the drawing, so near-misses forgive rather than punish (style bible §5).
  */
 export const HERO_ART_SCALE = 1.3;
+
+/** Share of the body lean the drawn head follows (see heroHeadTransform). */
+export const HEAD_LEAN_FOLLOW = 0.6;
 
 export function drawHero(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   const feet = { x: p.c.x, y: p.c.y + m(0.35) };
