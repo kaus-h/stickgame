@@ -40,7 +40,7 @@ async function waitForKit(page: Page): Promise<void> {
     () => {
       try {
         const game = (window as unknown as { __stickgame: TerrainHook }).__stickgame;
-        return game.kitPresentation().ready && game.resources().cameras === 2;
+        return game.kitPresentation().ready && game.resources().cameras === 4;
       } catch {
         return false;
       }

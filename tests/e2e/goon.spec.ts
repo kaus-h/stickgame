@@ -82,7 +82,7 @@ test('a moving goon stomp continues into the next rope opportunity and resets cl
   await page.waitForFunction(() => '__stickgame' in window);
   await page.waitForFunction(() => {
     const hook = (window as unknown as Hook).__stickgame;
-    return hook.resources().cameras === 2 && hook.enemyPresentation().ready;
+    return hook.resources().cameras === 4 && hook.enemyPresentation().ready;
   });
   const initialResources = await page.evaluate(() =>
     (window as unknown as Hook).__stickgame.resources(),
@@ -233,7 +233,7 @@ test('unsafe goon contact records its cause and shows feedback during the immedi
   await page.waitForFunction(() => '__stickgame' in window);
   // Input binds when the scene starts, after the dev hook appears: wait for it, then focus.
   await page.waitForFunction(
-    () => (window as unknown as { __stickgame: Probe }).__stickgame.resources().cameras === 2,
+    () => (window as unknown as { __stickgame: Probe }).__stickgame.resources().cameras === 4,
   );
   await page.locator('canvas').click({ position: { x: 5, y: 5 } });
   await page.mouse.up();

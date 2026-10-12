@@ -1,5 +1,5 @@
 import type * as Phaser from 'phaser';
-import { ensurePaperTexture, PAPER_KEY } from '../page/NotebookPage';
+import { ensurePaperTexture, PAPER_KEY, TILE } from '../page/NotebookPage';
 import { hash, strokeInk } from '../ink';
 
 const INK = 0x16161a;
@@ -18,16 +18,19 @@ export function drawInProgress(seconds: number): number {
  * inked. Only on a level's first appearance; a death never triggers it, so retry stays instant.
  */
 export class DrawIn {
-  private readonly cover: Phaser.GameObjects.TileSprite;
+  /** Paper tiles on the world grid (texture coordinates equal world pixels, like the page). */
+  private readonly tiles: Phaser.GameObjects.Image[] = [];
   private readonly pen: Phaser.GameObjects.Graphics;
   private elapsed = 0;
   private done = false;
 
-  constructor(scene: Phaser.Scene, skip: boolean) {
+  constructor(
+    private readonly scene: Phaser.Scene,
+    skip: boolean,
+  ) {
     // Headless test scenes have no texture manager.
     if ((scene.textures as Phaser.Scene['textures'] | undefined) !== undefined)
       ensurePaperTexture(scene);
-    this.cover = scene.add.tileSprite(0, 0, 1, 1, PAPER_KEY).setOrigin(0, 0).setDepth(60);
     this.pen = scene.add.graphics().setDepth(61);
     if (skip) this.finish();
   }
@@ -47,12 +50,23 @@ export class DrawIn {
     }
     const pad = 4;
     const front = view.x + view.width * p;
-    const x = Math.floor(front);
     const y = Math.floor(view.y - pad);
-    const w = Math.ceil(view.x + view.width + pad - x);
     const h = Math.ceil(view.height + pad * 2);
-    // Texture coordinates equal world pixels, so the cover's ruling matches the page exactly.
-    this.cover.setPosition(x, y).setSize(w, h).setTilePosition(x, y);
+    // Whole paper tiles right of the front, the straddling column cropped at the front. Plain
+    // images of the shared page texture: no per-object textures, so nothing to leak on reload.
+    const gx0 = Math.floor(front / TILE) * TILE;
+    const gy0 = Math.floor(y / TILE) * TILE;
+    let n = 0;
+    for (let gy = gy0; gy < y + h; gy += TILE)
+      for (let gx = gx0; gx < view.x + view.width + pad; gx += TILE) {
+        const tile =
+          this.tiles[n] ??
+          (this.tiles[n] = this.scene.add.image(0, 0, PAPER_KEY).setOrigin(0, 0).setDepth(60));
+        n++;
+        const cut = Math.max(0, Math.floor(front) - gx);
+        tile.setPosition(gx, gy).setCrop(cut, 0, TILE - cut, TILE).setVisible(true);
+      }
+    for (let i = n; i < this.tiles.length; i++) this.tiles[i]?.setVisible(false);
     // The pen front: a ragged band of quick diagonal strokes, darkest at the leading edge.
     const g = this.pen;
     g.clear();
@@ -78,7 +92,8 @@ export class DrawIn {
 
   private finish(): void {
     this.done = true;
-    this.cover.setVisible(false);
+    for (const tile of this.tiles) tile.destroy();
+    this.tiles.length = 0;
     this.pen.clear().setVisible(false);
   }
 }

@@ -10,6 +10,27 @@ export const SHADOW_OFFSET = { x: 0.14, y: 0.2 };
  * and right, filled with a faint wash and quick pencil hatching. Painted before the block so
  * only the rim shows. Presentation only; collision is untouched.
  */
+/**
+ * Shadows for a set of blocks, then erased wherever a block stands: the ground mass is open
+ * hatching on paper, so a shadow left under it would grey the interior instead of reading as a rim.
+ */
+export function paintPencilShadows(c: CanvasRenderingContext2D, solids: readonly SolidDef[]): void {
+  for (const solid of solids) paintPencilShadow(c, solid);
+  c.save();
+  c.globalCompositeOperation = 'destination-out';
+  c.fillStyle = '#000';
+  for (const solid of solids) {
+    c.beginPath();
+    solid.points.forEach((p, i) => {
+      if (i === 0) c.moveTo(m(p.x), m(p.y));
+      else c.lineTo(m(p.x), m(p.y));
+    });
+    c.closePath();
+    c.fill();
+  }
+  c.restore();
+}
+
 export function paintPencilShadow(c: CanvasRenderingContext2D, solid: SolidDef): void {
   const dx = m(SHADOW_OFFSET.x);
   const dy = m(SHADOW_OFFSET.y);

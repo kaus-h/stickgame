@@ -182,7 +182,8 @@ export class GameScene extends Phaser.Scene {
     backgrounds: ReturnType<Kit17Background['presentation']>;
   } {
     return {
-      ready: !!this.kit,
+      // Fully presented: the kit is built and the level has finished inking itself onto the page.
+      ready: !!(this.kit as LevelKit | undefined) && (this.drawIn?.finished ?? true),
       theme: getLevelTheme(this.opts.level),
       ...this.kit.stats(),
       backgrounds: this.kit17Background?.presentation() ?? {

@@ -61,7 +61,7 @@ async function open(page: Page, level: string): Promise<void> {
   await page.waitForFunction(() => '__stickgame' in window);
   // The hook is published before Phaser finishes creating the scene and binding DOM input.
   await page.waitForFunction(
-    () => (window as unknown as Hook).__stickgame.resources().cameras === 2,
+    () => (window as unknown as Hook).__stickgame.resources().cameras === 4,
   );
 }
 

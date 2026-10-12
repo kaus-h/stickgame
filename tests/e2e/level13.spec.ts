@@ -69,7 +69,7 @@ test('1-3 main replay clears the shaft with both checkpoints and every goon stom
   await page.goto('/?level=1-3&renderer=canvas');
   await page.waitForFunction(() => '__stickgame' in window);
   await page.waitForFunction(
-    () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().cameras === 2,
+    () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().cameras === 4,
   );
 
   const totalTicks = await page.evaluate(

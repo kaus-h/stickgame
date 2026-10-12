@@ -68,7 +68,7 @@ async function waitForKit(page: Page): Promise<void> {
     () => {
       try {
         const game = (window as unknown as { __stickgame: LevelHook }).__stickgame;
-        return game.kitPresentation().ready && game.resources().cameras === 2;
+        return game.kitPresentation().ready && game.resources().cameras === 4;
       } catch {
         return false;
       }
@@ -272,11 +272,12 @@ test('1-2: grounded mass meets the red lethal pool and spikes retain paper gaps'
     minY: 7.53,
     maxY: 7.97,
   });
+  // The live surface ripples about 3.5 cm around the pool top, so sample the body just below it.
   const poolPatch = await sampleWorldRect(page, {
     minX: 1,
     maxX: 3,
-    minY: 11.4,
-    maxY: 11.65,
+    minY: 11.45,
+    maxY: 11.7,
   });
   expect(share(spikePatch, 'red'), 'spikes should be visibly red').toBeGreaterThan(0.005);
   expect(share(spikePatch, 'paper'), 'spikes should have paper-negative gaps').toBeGreaterThan(
@@ -434,13 +435,13 @@ test('theme-only level edits survive HMR without changing simulation or growing 
 
     expect(initial).toMatchObject({ id: fixtureId, revision: 0, error: null });
     expect(initialKit).toMatchObject({ ready: true, theme: 'paper' });
-    expect(initialResources.cameras).toBe(2);
+    expect(initialResources.cameras).toBe(4);
 
     for (let revision = 1; revision <= 10; revision++) {
       const theme = revision % 2 === 1 ? 'scenery' : 'paper';
       await updateFixture(file, `${JSON.stringify({ ...fixture, theme }, null, 2)}\n`);
       await expect.poll(() => readLevel(page)).toMatchObject({ revision, error: null });
-      await expect.poll(() => readKit(page)).toMatchObject({ theme });
+      await expect.poll(() => readKit(page)).toMatchObject({ theme, ready: true });
       await page.evaluate(async () => {
         await new Promise<void>((resolve) => {
           requestAnimationFrame(() => {
