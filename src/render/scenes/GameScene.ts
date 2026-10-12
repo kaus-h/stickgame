@@ -63,6 +63,8 @@ export interface GameSceneOptions {
   readonly bodiesVisible?: () => boolean;
   /** Max rope length (runtime tuning, m): anchors beyond it are drawn faded (GMR-56). */
   readonly ropeReach?: number;
+  /** Extra debug-overlay line from outside the scene (music state, GMR-42). */
+  readonly debugExtra?: () => string;
 }
 
 /** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
@@ -269,7 +271,12 @@ export class GameScene extends Phaser.Scene {
       this.overlay = new DebugOverlay(this, this.opts.level, () => {
         const b = this.bodies.stats();
         const k = this.kit.stats();
-        return `${exitSpec(this.opts.level.exit)}
+        return `${exitSpec(this.opts.level.exit)}${
+          this.opts.debugExtra
+            ? `
+${this.opts.debugExtra()}`
+            : ''
+        }
 art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas ${((k.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);

@@ -53,6 +53,11 @@ export class AudioEngine {
     if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
   }
 
+  /** The context and music bus for the music engine (GMR-42); null until audio is unlocked. */
+  musicOutput(): { ctx: AudioContext; bus: GainNode } | null {
+    return this.ctx && this.music ? { ctx: this.ctx, bus: this.music } : null;
+  }
+
   /** Suspend while the app is hidden; resume on return (paired with the runtime's pause). */
   setVisible(visible: boolean): void {
     if (!this.ctx) return;
@@ -84,6 +89,7 @@ export class AudioEngine {
 
   setMuted(muted: boolean): void {
     this.muted = muted;
+    this.applyVolume();
   }
 
   /** Output latency estimate in seconds (base + output), for the debug overlay and device lab. */
@@ -105,6 +111,6 @@ export class AudioEngine {
   private applyVolume(): void {
     if (this.master) this.master.gain.value = this.volume.master;
     if (this.sfx) this.sfx.gain.value = this.volume.sfx;
-    if (this.music) this.music.gain.value = this.volume.music;
+    if (this.music) this.music.gain.value = this.muted ? 0 : this.volume.music;
   }
 }
