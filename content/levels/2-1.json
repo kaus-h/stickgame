@@ -717,15 +717,11 @@
       "side": "left",
       "angle": {
         "min": 0,
-        "max": 10
-      },
-      "speed": {
-        "min": 3,
-        "max": 8
+        "max": 90
       },
       "alignment": {
-        "min": 0.3,
-        "max": 0.7
+        "min": 0,
+        "max": 1
       }
     }
   }

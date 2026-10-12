@@ -58,3 +58,16 @@ The miss lab is intentionally a feedback fixture, not a production route.
 ## Signage (GMR-56)
 
 Exits carry no in-world text. Every family uses the same wordless grammar (doc 09 H5, locked): the door at a fixed size (upright on the floor under a shaft), a mouth gate of two ink dots joined by a line over the allowed alignment band, an inward entry arrow, a dashed pencil cone of plus or minus `angle.max` on the approach side, and speed streaks behind the arrow (3 = come in from a fast swing, 1 = faster than a run, none = run speed or no speed rule). The numbers appear only in the debug overlay. The miss text after a failed attempt stays.
+
+## Owner ruling: reached exits always accept (2026-10-12)
+
+An exit you physically reach takes you. The 1-3 shaft rejected drops slower than 20 m/s, so the
+player fell past it, died and restarted from the checkpoint at the very end of the level. That must
+never happen. Every chapter level's exit now has no speed rule, accepts any inward angle
+(`angle` 0–90) and uses the whole opening (`alignment` 0–1). The physical rules stay: the circle
+must fit the opening and must come in through the open side. `tests/unit/exit-forgiveness.test.ts`
+guards every chapter level, and it covers the 1-3 case directly.
+
+The angle, speed and alignment windows still exist for labs such as `lab-exit-miss`. A production
+level may only bring them back with an explicit owner decision. With no rule, the signage shows no
+cone and no streaks.
