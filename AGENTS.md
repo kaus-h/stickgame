@@ -4,7 +4,7 @@ Instructions for every coding agent on this repository (Codex reads this file na
 
 ## The game
 
-**StickSwing** (working title Precision Tether Platformer; repo name StickGame; name chosen by the owner 2026-10-12, GMR-51) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. The rope length is the player-to-impact distance when it locks: on the connection tick if airborne, or on the take-off tick if it connected while grounded (it pays out while running). Run and jump momentum carries into the swing. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is Chapter 1: 3 sections × 3 levels + a finale boss level (10 levels).
+**StickSwing** (working title Precision Tether Platformer; repo name StickGame; name chosen by the owner 2026-10-12, GMR-51) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. The rope length is the player-to-impact distance when it locks: on the connection tick if airborne, or on the take-off tick if it connected while grounded (it pays out while running). Run and jump momentum carries into the swing. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is 5 chapters of 3 sections × 3 levels plus a finale boss each, about 50 levels (owner, 2026-10-12; doc 14). The goal grows toward Celeste scale later.
 
 ## Source of truth
 
