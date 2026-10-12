@@ -28,6 +28,7 @@ describe('save schema (GMR-48)', () => {
     expect(out?.version).toBe(SAVE_VERSION);
     expect(out?.levels['1-1']).toMatchObject({ cleared: true, bestTicks: 1200, totalDeaths: 0 });
     expect(out?.settings.assist).toBe('standard');
+    expect(out?.settings.keyBindings).toEqual({});
   });
 
   it('runs a multi-step upgrade chain in order and validates every step', () => {
@@ -67,6 +68,7 @@ describe('save schema (GMR-48)', () => {
       masterVolume: 1,
       reducedMotion: 'system',
       assist: 'standard',
+      keyBindings: {},
     });
     expect(out?.pbs).toEqual({});
   });
@@ -105,7 +107,7 @@ describe('SaveStore', () => {
     const a = new SaveStore(storage);
     await a.load();
     a.recordRun('lab-01', { cleared: true, ticks: 800, deaths: 1 });
-    a.recordRun('lab-01', { cleared: true, ticks: 700, deaths: 1 }); // first write is now the backup
+    a.recordRun('lab-01', { cleared: true, ticks: 700, deaths: 1 }); // first write is backup
     await a.flush();
     await storage.save('save', '{"version":1,"levels":'); // torn write
     const b = new SaveStore(storage);
@@ -176,7 +178,7 @@ describe('personal bests (GMR-103)', () => {
       ghosts: { '1-1': '{"v":1}' },
     };
     const out = decodeSave(JSON.stringify(v1));
-    expect(out?.version).toBe(2);
+    expect(out?.version).toBe(3);
     expect(out?.pbs).toEqual({});
     expect(out && 'ghosts' in out).toBe(false);
     expect(out?.levels['1-1']).toMatchObject({
@@ -185,7 +187,7 @@ describe('personal bests (GMR-103)', () => {
       playTicks: 0,
       firstClearTicks: null, // cleared before it was tracked: unknown, not invented
     });
-    expect(out?.settings).toMatchObject({ muted: true, ghost: true });
+    expect(out?.settings).toMatchObject({ muted: true, ghost: true, keyBindings: {} });
   });
 
   it('repairs or drops a malformed PB instead of failing', () => {
@@ -204,5 +206,45 @@ describe('personal bests (GMR-103)', () => {
     );
     expect(Object.keys(out?.pbs ?? {})).toEqual(['ok']);
     expect(out?.pbs.ok?.splits).toEqual([200, null, null]);
+  });
+});
+
+describe('keyboard bindings save migration (GMR-50)', () => {
+  it('migrates a v2 save into v3 and retains the existing settings', () => {
+    const old = {
+      version: 2,
+      levels: {},
+      settings: { masterVolume: 0.2, reducedMotion: 'on', muted: true },
+      pbs: {},
+    };
+    const out = decodeSave(JSON.stringify(old));
+    expect(out?.version).toBe(3);
+    expect(out?.settings).toMatchObject({
+      masterVolume: 0.2,
+      reducedMotion: 'on',
+      muted: true,
+      keyBindings: {},
+    });
+  });
+
+  it('validates overrides in a current-version save', () => {
+    const raw = {
+      version: 3,
+      settings: {
+        keyBindings: {
+          left: ['KeyJ', 5, null, 'KeyK'],
+          rope: ['KeyL'],
+          imaginary: ['KeyX'],
+          jump: 'Space',
+          restart: ['Escape', 'KeyR'],
+        },
+      },
+    };
+    const out = decodeSave(JSON.stringify(raw));
+    expect(out?.settings.keyBindings).toEqual({
+      left: ['KeyJ', 'KeyK'],
+      rope: ['KeyL'],
+      restart: ['KeyR'],
+    });
   });
 });
