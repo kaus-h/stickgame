@@ -54,3 +54,7 @@ Labs: `lab-exit-wide` and `lab-exit-slot` accept running right; `lab-exit-shaft`
 off the ledge into its top opening (20–28 m/s total-speed window). `lab-exit-miss` demonstrates
 a speed rejection, readable crossing marker, then instant death/retry after running off its floor.
 The miss lab is intentionally a feedback fixture, not a production route.
+
+## Signage (GMR-56)
+
+Exits carry no in-world text. Every family uses the same wordless grammar (doc 09 H5, locked): the door at a fixed size (upright on the floor under a shaft), a mouth gate of two ink dots joined by a line over the allowed alignment band, an inward entry arrow, a dashed pencil cone of plus or minus `angle.max` on the approach side, and speed streaks behind the arrow (3 = come in from a fast swing, 1 = faster than a run, none = run speed or no speed rule). The numbers appear only in the debug overlay. The miss text after a failed attempt stays.
