@@ -635,9 +635,13 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
         anchorInReach(current.player.position, a, radius, reach)
           ? 1
           : OUT_OF_REACH_ALPHA;
-      const shown = easeAlpha(this.anchorAlpha[i] ?? target, target, dt);
+      const state = current.anchorStates[i];
+      // Timed off or one-use spent (GMR-60): the ring fades out; its marks below say why.
+      const gone = state?.spent ? 0 : state && !state.active ? 0.18 : 1;
+      const shown = easeAlpha(this.anchorAlpha[i] ?? target * gone, target * gone, dt);
       this.anchorAlpha[i] = shown;
       this.kit.setAnchorAlpha(i, shown);
+      if (state) this.drawAnchorState(g, p, m(radius), state, i);
       this.drawAnchor(g, p, i);
       const v = current.anchorVelocities[i];
       if (v) this.drawAnchorHeading(g, p, v, i);
@@ -864,6 +868,65 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
         m(1.3),
         m(0.2),
         m(0.08),
+      );
+    }
+  }
+
+  /**
+   * Timed and one-use marks (GMR-60, doc 09 H3). A timed anchor wears 8 short ink arcs just outside
+   * its ring. Over the last half of its on span (at least 0.5 s) they erase one by one, so the
+   * player sees the rope's time running out. While it is off the ring is faded inside a dashed
+   * pencil circle and the arcs draw back in as it returns. A one-use anchor carries a pen crack; once
+   * released it is erased, leaving only a faint pencil ghost of the crack.
+   */
+  private drawAnchorState(
+    g: Phaser.GameObjects.Graphics,
+    p: Pt,
+    r: number,
+    state: SimSnapshot['anchorStates'][number],
+    seed: number,
+  ): void {
+    if (state.span !== null && state.ticksLeft !== null) {
+      const arcs = 8;
+      let lit: number;
+      if (state.active) {
+        const warn = Math.max(30, Math.round(state.span / 2));
+        lit = state.ticksLeft >= warn ? arcs : Math.ceil((arcs * state.ticksLeft) / warn);
+      } else {
+        lit = Math.floor((arcs * (state.span - state.ticksLeft)) / state.span);
+        g.lineStyle(1.4, PENCIL, 0.8);
+        for (let k = 0; k < 16; k += 2) {
+          const a0 = (k / 16) * Math.PI * 2;
+          const a1 = ((k + 1) / 16) * Math.PI * 2;
+          g.beginPath();
+          g.arc(p.x, p.y, r * 1.05, a0, a1);
+          g.strokePath();
+        }
+      }
+      const R = r * 1.32;
+      g.lineStyle(2.4, state.active ? INK : PENCIL, state.active ? 0.9 : 0.6);
+      for (let k = 0; k < lit; k++) {
+        // Clockwise from 12 o'clock; the last arc left is the one at 12.
+        const mid = -Math.PI / 2 + ((arcs - 1 - k + 0.5) / arcs) * Math.PI * 2;
+        g.beginPath();
+        g.arc(p.x, p.y, R, mid - 0.24, mid + 0.24);
+        g.strokePath();
+      }
+    }
+    if (state.oneUse) {
+      const crack = [
+        { x: p.x - r * 0.55, y: p.y - r * 0.75 },
+        { x: p.x - r * 0.12, y: p.y - r * 0.2 },
+        { x: p.x - r * 0.34, y: p.y + r * 0.05 },
+        { x: p.x + r * 0.2, y: p.y + r * 0.72 },
+      ];
+      strokeInk(
+        g,
+        crack,
+        state.spent ? 1.2 : 2.2,
+        state.spent ? PENCIL : INK,
+        state.spent ? 0.35 : 0.95,
+        seed + 211,
       );
     }
   }

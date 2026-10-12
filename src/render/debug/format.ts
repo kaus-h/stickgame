@@ -35,7 +35,9 @@ export function formatEvent(e: SimEvent): string {
     case 'ropeLock':
       return `${t} rope lock L${f2(e.length)}`;
     case 'ropeRelease':
-      return `${t} rope release v ${v2(e.velocity)} (${speed(e.velocity).toFixed(1)} m/s)`;
+      return `${t} rope release${e.cause === 'timed' ? ' (timed anchor off)' : ''} v ${v2(e.velocity)} (${speed(e.velocity).toFixed(1)} m/s)`;
+    case 'anchorSpent':
+      return `${t} anchor ${String(e.anchor)} spent (one-use)`;
     case 'ropeInvalid':
       return `${t} rope invalid ${e.reason} at ${v2(e.at)}`;
   }

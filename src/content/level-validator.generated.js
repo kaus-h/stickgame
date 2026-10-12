@@ -237,6 +237,17 @@ const schema6 = {
         requiredFrom: { $ref: '#/definitions/point' },
         radius: { type: 'number', exclusiveMinimum: 0 },
         path: { $ref: '#/definitions/path' },
+        timed: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['on', 'off'],
+          properties: {
+            on: { type: 'number', minimum: 1 },
+            off: { type: 'number', minimum: 0.25 },
+            phase: { type: 'number', minimum: 0, exclusiveMaximum: 1 },
+          },
+        },
+        oneUse: { type: 'boolean' },
       },
     },
   },
@@ -1157,6 +1168,17 @@ const schema12 = {
     requiredFrom: { $ref: '#/definitions/point' },
     radius: { type: 'number', exclusiveMinimum: 0 },
     path: { $ref: '#/definitions/path' },
+    timed: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['on', 'off'],
+      properties: {
+        on: { type: 'number', minimum: 1 },
+        off: { type: 'number', minimum: 0.25 },
+        phase: { type: 'number', minimum: 0, exclusiveMaximum: 1 },
+      },
+    },
+    oneUse: { type: 'boolean' },
   },
 };
 const schema13 = {
@@ -1380,7 +1402,9 @@ function validate37(
         key0 === 'position' ||
         key0 === 'requiredFrom' ||
         key0 === 'radius' ||
-        key0 === 'path'
+        key0 === 'path' ||
+        key0 === 'timed' ||
+        key0 === 'oneUse'
       )) {
         const err2 = {
           instancePath,
@@ -1483,8 +1507,208 @@ function validate37(
         errors = vErrors.length;
       }
     }
+    if (data.timed !== undefined) {
+      let data5 = data.timed;
+      if (data5 && typeof data5 == 'object' && !Array.isArray(data5)) {
+        if (data5.on === undefined) {
+          const err5 = {
+            instancePath: instancePath + '/timed',
+            schemaPath: '#/properties/timed/required',
+            keyword: 'required',
+            params: { missingProperty: 'on' },
+            message: "must have required property '" + 'on' + "'",
+          };
+          if (vErrors === null) {
+            vErrors = [err5];
+          } else {
+            vErrors.push(err5);
+          }
+          errors++;
+        }
+        if (data5.off === undefined) {
+          const err6 = {
+            instancePath: instancePath + '/timed',
+            schemaPath: '#/properties/timed/required',
+            keyword: 'required',
+            params: { missingProperty: 'off' },
+            message: "must have required property '" + 'off' + "'",
+          };
+          if (vErrors === null) {
+            vErrors = [err6];
+          } else {
+            vErrors.push(err6);
+          }
+          errors++;
+        }
+        for (const key1 in data5) {
+          if (!(key1 === 'on' || key1 === 'off' || key1 === 'phase')) {
+            const err7 = {
+              instancePath: instancePath + '/timed',
+              schemaPath: '#/properties/timed/additionalProperties',
+              keyword: 'additionalProperties',
+              params: { additionalProperty: key1 },
+              message: 'must NOT have additional properties',
+            };
+            if (vErrors === null) {
+              vErrors = [err7];
+            } else {
+              vErrors.push(err7);
+            }
+            errors++;
+          }
+        }
+        if (data5.on !== undefined) {
+          let data6 = data5.on;
+          if (typeof data6 == 'number' && isFinite(data6)) {
+            if (data6 < 1 || isNaN(data6)) {
+              const err8 = {
+                instancePath: instancePath + '/timed/on',
+                schemaPath: '#/properties/timed/properties/on/minimum',
+                keyword: 'minimum',
+                params: { comparison: '>=', limit: 1 },
+                message: 'must be >= 1',
+              };
+              if (vErrors === null) {
+                vErrors = [err8];
+              } else {
+                vErrors.push(err8);
+              }
+              errors++;
+            }
+          } else {
+            const err9 = {
+              instancePath: instancePath + '/timed/on',
+              schemaPath: '#/properties/timed/properties/on/type',
+              keyword: 'type',
+              params: { type: 'number' },
+              message: 'must be number',
+            };
+            if (vErrors === null) {
+              vErrors = [err9];
+            } else {
+              vErrors.push(err9);
+            }
+            errors++;
+          }
+        }
+        if (data5.off !== undefined) {
+          let data7 = data5.off;
+          if (typeof data7 == 'number' && isFinite(data7)) {
+            if (data7 < 0.25 || isNaN(data7)) {
+              const err10 = {
+                instancePath: instancePath + '/timed/off',
+                schemaPath: '#/properties/timed/properties/off/minimum',
+                keyword: 'minimum',
+                params: { comparison: '>=', limit: 0.25 },
+                message: 'must be >= 0.25',
+              };
+              if (vErrors === null) {
+                vErrors = [err10];
+              } else {
+                vErrors.push(err10);
+              }
+              errors++;
+            }
+          } else {
+            const err11 = {
+              instancePath: instancePath + '/timed/off',
+              schemaPath: '#/properties/timed/properties/off/type',
+              keyword: 'type',
+              params: { type: 'number' },
+              message: 'must be number',
+            };
+            if (vErrors === null) {
+              vErrors = [err11];
+            } else {
+              vErrors.push(err11);
+            }
+            errors++;
+          }
+        }
+        if (data5.phase !== undefined) {
+          let data8 = data5.phase;
+          if (typeof data8 == 'number' && isFinite(data8)) {
+            if (data8 < 0 || isNaN(data8)) {
+              const err12 = {
+                instancePath: instancePath + '/timed/phase',
+                schemaPath: '#/properties/timed/properties/phase/minimum',
+                keyword: 'minimum',
+                params: { comparison: '>=', limit: 0 },
+                message: 'must be >= 0',
+              };
+              if (vErrors === null) {
+                vErrors = [err12];
+              } else {
+                vErrors.push(err12);
+              }
+              errors++;
+            }
+            if (data8 >= 1 || isNaN(data8)) {
+              const err13 = {
+                instancePath: instancePath + '/timed/phase',
+                schemaPath: '#/properties/timed/properties/phase/exclusiveMaximum',
+                keyword: 'exclusiveMaximum',
+                params: { comparison: '<', limit: 1 },
+                message: 'must be < 1',
+              };
+              if (vErrors === null) {
+                vErrors = [err13];
+              } else {
+                vErrors.push(err13);
+              }
+              errors++;
+            }
+          } else {
+            const err14 = {
+              instancePath: instancePath + '/timed/phase',
+              schemaPath: '#/properties/timed/properties/phase/type',
+              keyword: 'type',
+              params: { type: 'number' },
+              message: 'must be number',
+            };
+            if (vErrors === null) {
+              vErrors = [err14];
+            } else {
+              vErrors.push(err14);
+            }
+            errors++;
+          }
+        }
+      } else {
+        const err15 = {
+          instancePath: instancePath + '/timed',
+          schemaPath: '#/properties/timed/type',
+          keyword: 'type',
+          params: { type: 'object' },
+          message: 'must be object',
+        };
+        if (vErrors === null) {
+          vErrors = [err15];
+        } else {
+          vErrors.push(err15);
+        }
+        errors++;
+      }
+    }
+    if (data.oneUse !== undefined) {
+      if (typeof data.oneUse !== 'boolean') {
+        const err16 = {
+          instancePath: instancePath + '/oneUse',
+          schemaPath: '#/properties/oneUse/type',
+          keyword: 'type',
+          params: { type: 'boolean' },
+          message: 'must be boolean',
+        };
+        if (vErrors === null) {
+          vErrors = [err16];
+        } else {
+          vErrors.push(err16);
+        }
+        errors++;
+      }
+    }
   } else {
-    const err5 = {
+    const err17 = {
       instancePath,
       schemaPath: '#/type',
       keyword: 'type',
@@ -1492,9 +1716,9 @@ function validate37(
       message: 'must be object',
     };
     if (vErrors === null) {
-      vErrors = [err5];
+      vErrors = [err17];
     } else {
-      vErrors.push(err5);
+      vErrors.push(err17);
     }
     errors++;
   }

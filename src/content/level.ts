@@ -1,5 +1,5 @@
 import { vec2, type Vec2 } from '../core';
-import type { AnchorDef, LevelDef, PatrollerDef, SolidDef } from '../sim';
+import type { AnchorDef, AnchorTimerDef, LevelDef, PatrollerDef, SolidDef } from '../sim';
 import schemaValidator from './level-validator.generated.js';
 
 /** Level JSON schema version understood by this build (doc 32). */
@@ -151,6 +151,7 @@ function anchor(v: unknown, path: string): AnchorDef {
     ...(v.requiredFrom === undefined
       ? {}
       : { requiredFrom: point(v.requiredFrom, `${path}.requiredFrom`) }),
+    ...anchorExtras(v, path),
   };
   if (v.path === undefined) return base;
   if (!isRecord(v.path)) fail(`${path}.path`, 'must be an object');
@@ -175,6 +176,31 @@ function anchor(v: unknown, path: string): AnchorDef {
     );
   }
   return { ...base, path: { to, period, ...(phase === undefined ? {} : { phase }) } };
+}
+
+/** Timed and one-use anchors (GMR-60). Timed: on ≥ 1 s (room for the 0.5 s telegraph), off ≥ 0.25 s. */
+function anchorExtras(
+  v: Record<string, unknown>,
+  path: string,
+): { timed?: AnchorTimerDef; oneUse?: true } {
+  const out: { timed?: AnchorTimerDef; oneUse?: true } = {};
+  if (v.oneUse !== undefined) {
+    if (typeof v.oneUse !== 'boolean') fail(`${path}.oneUse`, 'must be a boolean');
+    if (v.oneUse) out.oneUse = true;
+  }
+  if (v.timed !== undefined) {
+    if (!isRecord(v.timed)) fail(`${path}.timed`, 'must be an object');
+    const on = num(v.timed.on, `${path}.timed.on`);
+    const off = num(v.timed.off, `${path}.timed.off`);
+    if (on < 1) fail(`${path}.timed.on`, 'must be at least 1 s (the telegraph takes 0.5 s)');
+    if (off < 0.25) fail(`${path}.timed.off`, 'must be at least 0.25 s');
+    const phase =
+      v.timed.phase === undefined ? undefined : num(v.timed.phase, `${path}.timed.phase`);
+    if (phase !== undefined && (phase < 0 || phase >= 1))
+      fail(`${path}.timed.phase`, 'must be in [0, 1)');
+    out.timed = { on, off, ...(phase === undefined ? {} : { phase }) };
+  }
+  return out;
 }
 
 /** Validate untrusted level JSON. Errors name the offending path. */
