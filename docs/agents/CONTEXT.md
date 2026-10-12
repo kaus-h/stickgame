@@ -32,7 +32,7 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
 - Run and jump momentum carries into the swing, and releasing keeps the swing's velocity.
 - The rope is drawn as a dashed line.
 - Death leads to an instant retry, with no delay or UI in between.
-- v1.0 is Chapter 1: 3 sections × 3 levels + a finale boss level.
+- v1.0 is 5 chapters (about 50 levels: 3 sections × 3 levels plus a finale each; doc 14 §1a). Production order: golden 1-1 (GMR-114), then the level factory (GMR-115–117), then levels in batches.
 
 ## Stack and commands
 
