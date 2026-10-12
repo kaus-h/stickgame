@@ -32,7 +32,8 @@
     "levels:compile-schema": "node scripts/compile-level-schema.mjs",
     "levels:solve": "node scripts/solve-levels.mjs",
     "levels:plot": "node scripts/plot-solution.mjs",
-    "inbox": "node scripts/agents/patch-inbox.mjs"
+    "inbox": "node scripts/agents/patch-inbox.mjs",
+    "film": "node scripts/film.mjs"
   },
   "dependencies": {
     "@capacitor/android": "8.5.3",
@@ -49,17 +50,18 @@
     "@eslint/js": "10.0.1",
     "@playwright/test": "1.63.0",
     "@types/node": "22.20.5",
+    "ajv": "8.17.1",
     "dependency-cruiser": "18.5.0",
     "eslint": "10.12.0",
+    "gifenc": "1.0.3",
     "globals": "17.13.0",
-    "pngjs": "7.0.0",
     "planck": "1.4.2",
+    "pngjs": "7.0.0",
     "prettier": "3.9.9",
     "terser": "5.44.1",
     "typescript": "6.0.3",
     "typescript-eslint": "8.71.1",
     "vite": "8.3.3",
-    "vitest": "5.0.3",
-    "ajv": "8.17.1"
+    "vitest": "5.0.3"
   }
 }

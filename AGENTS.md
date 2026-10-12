@@ -64,6 +64,7 @@ npm run test         # unit tests (Vitest)
 npm run test:e2e     # Playwright smoke (run `npx playwright install` once)
 npm run build
 npm run check        # everything above except e2e
+npm run film -- 1-1  # film a level's solver route: artifacts/film/1-1.gif + 1-1-sheet.png
 ```
 
 ## Workflow (doc 31)

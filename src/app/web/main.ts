@@ -470,6 +470,7 @@ async function start(): Promise<void> {
   // Dev-only hook for e2e tests: read state and map world points to the screen. Not in builds.
   if (import.meta.env.DEV) {
     const devScene = scene;
+    let filmTime: number | undefined;
     Object.assign(window, {
       __stickgame: {
         snapshot: () => runtime.sim.snapshot(),
@@ -567,6 +568,17 @@ async function start(): Promise<void> {
           devScene.addBody({ tick, at: vec2(x, y), velocity: vec2(vx, vy) });
         },
         /** Average ms per synchronous game step (update + render) over `frames` frames. */
+        // GMR-115 film: stop the display loop and advance whole fixed ticks, so captured frames
+        // land on a tick cadence instead of wall-clock. Only the last tick is rendered.
+        filmStep: (ticks: number) => {
+          game.loop.sleep();
+          filmTime ??= performance.now();
+          for (let i = 0; i < ticks; i++) {
+            filmTime += SIM_DT * 1000;
+            if (i === ticks - 1) game.step(filmTime, SIM_DT * 1000);
+            else game.headlessStep(filmTime, SIM_DT * 1000);
+          }
+        },
         benchFrames: (frames: number) => {
           game.loop.sleep();
           const t0 = performance.now();
