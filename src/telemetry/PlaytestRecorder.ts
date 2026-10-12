@@ -6,7 +6,10 @@ const MAX_EVENTS = 50_000;
 /** Bounded, in-memory, opt-in playtest recorder; it never sends data anywhere. */
 export class PlaytestRecorder {
   readonly sessionId: string;
-  private readonly ring: (TelemetryEvent | undefined)[] = new Array(MAX_EVENTS);
+  private readonly ring: (TelemetryEvent | undefined)[] = Array.from(
+    { length: MAX_EVENTS },
+    () => undefined,
+  );
   private head = 0;
   private count = 0;
 

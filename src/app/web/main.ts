@@ -32,6 +32,7 @@ import { GameScene, loadHeroHeads, loadLevelKit } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
+import { installPlaytest } from './playtest';
 import chapterJson from '../../../content/chapters/chapter-1.json';
 import stringsEn from '../../../content/strings/en.json';
 import { enemyTelemetry } from '../../telemetry/enemyTelemetry';
@@ -236,6 +237,13 @@ async function start(): Promise<void> {
     },
     assist: { mode: assistMode, ...tuning.assist },
     timing,
+  });
+  // Playtest telemetry (GMR-49): opt-in with ?playtest=1 only; Shift+E downloads the session JSON.
+  installPlaytest({
+    levelRef: () => level,
+    onEvents: (listener) => runtime.onEvents(listener),
+    snapshot: () => runtime.sim.snapshot(),
+    window,
   });
   runtime.onEvents((events) => {
     sfx.onEvents(events);

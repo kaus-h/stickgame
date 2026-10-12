@@ -66,7 +66,9 @@ export function installPlaytest(opts: {
     browser.document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
-    browser.setTimeout(() => URL.revokeObjectURL(url), 0);
+    browser.setTimeout(() => {
+      URL.revokeObjectURL(url);
+    }, 0);
   };
   const keydown = (event: KeyboardEvent): void => {
     if (
