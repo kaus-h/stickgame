@@ -135,8 +135,13 @@ export class MusicEngine implements MusicSink {
     set('base', 0.5 * this.targets.base, now, RAMP_TC);
     set('pulse', 0.35 * this.targets.pulse, now, RAMP_TC);
     const tension = 0.22 * this.targets.tension;
-    if (this.targets.dipping || !this.transport) set('tension', tension, now, 0.15 / 3);
-    else set('tension', tension, this.transport.nextBarTime().time, (SECONDS_PER_BEAT * 4) / 3);
+    const g = this.gains.get('tension')?.gain;
+    if (!g) return;
+    // Every tension instruction supersedes any ramp still pending (for example a bar-line chamber
+    // ramp scheduled just before a death), so a dip can never be overridden mid-way.
+    holdAt(g, now);
+    if (this.targets.dipping || !this.transport) g.setTargetAtTime(tension, now, 0.15 / 3);
+    else g.setTargetAtTime(tension, this.transport.nextBarTime().time, (SECONDS_PER_BEAT * 4) / 3);
   }
 
   private play(ctx: AudioContext, n: NoteEvent, beatTime: number): void {
@@ -233,6 +238,17 @@ export class MusicEngine implements MusicSink {
         break;
       }
     }
+  }
+}
+
+/** Cancel automation after `t` and hold the current value there (with a fallback for old browsers). */
+function holdAt(p: AudioParam, t: number): void {
+  if (typeof p.cancelAndHoldAtTime === 'function') {
+    p.cancelAndHoldAtTime(t);
+  } else {
+    const v = p.value;
+    p.cancelScheduledValues(t);
+    p.setValueAtTime(v, t);
   }
 }
 

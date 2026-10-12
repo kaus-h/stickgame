@@ -13,6 +13,8 @@ function fakeContext() {
   const ended: (() => void)[] = [];
   const param = () => ({
     value: 1,
+    cancelAndHoldAtTime: vi.fn(),
+    cancelScheduledValues: vi.fn(),
     setTargetAtTime: vi.fn(),
     setValueAtTime: vi.fn(),
     linearRampToValueAtTime: vi.fn(),
@@ -119,6 +121,44 @@ describe('music engine (GMR-42)', () => {
     const after = t.pump(1.3); // stalled ~1.2 s, half a bar
     for (const b of after) expect(b.time).toBeGreaterThanOrEqual(1.3 - 0.02);
     expect(after[0]?.time ?? 0).toBeCloseTo((after[0]?.beat ?? 0) * SECONDS_PER_BEAT, 9);
+  });
+
+  it('a death dip cancels a pending bar-line tension ramp, so the dip holds', () => {
+    vi.useFakeTimers();
+    const f = fakeContext();
+    const bus = f.raw.createGain() as unknown as GainNode;
+    const engine = new MusicEngine(() => ({ ctx: f.ctx, bus }));
+    engine.start();
+    const tension = (
+      engine as unknown as {
+        gains: Map<
+          string,
+          {
+            gain: {
+              setTargetAtTime: ReturnType<typeof vi.fn>;
+              cancelAndHoldAtTime: ReturnType<typeof vi.fn>;
+            };
+          }
+        >;
+      }
+    ).gains.get('tension')?.gain;
+    if (!tension) throw new Error('no tension layer');
+    f.raw.currentTime = 1.0;
+    vi.advanceTimersByTime(25); // the scheduler has caught up to now
+    // Entering a harder chamber: the rise is scheduled for the next bar line (in the future).
+    engine.setTargets({ base: 1, pulse: 0.2, tension: 0.8, dipping: false, bank: 'section-1' });
+    const rise = tension.setTargetAtTime.mock.calls.at(-1) as [number, number, number];
+    expect(rise[1]).toBeGreaterThan(1.0);
+    // A death just before that bar line: the pending ramp is cancelled at once, then the dip.
+    f.raw.currentTime = 1.1;
+    engine.setTargets({ base: 1, pulse: 0.2, tension: 0.2, dipping: true, bank: 'section-1' });
+    expect(tension.cancelAndHoldAtTime).toHaveBeenLastCalledWith(1.1);
+    const dip = tension.setTargetAtTime.mock.calls.at(-1) as [number, number, number];
+    expect(dip[0]).toBeCloseTo(0.22 * 0.2);
+    expect(dip[1]).toBe(1.1);
+    expect(dip[1]).toBeLessThan(rise[1]);
+    engine.dispose();
+    vi.useRealTimers();
   });
 
   it('mute silences the music bus, and unmute restores the music volume', () => {
