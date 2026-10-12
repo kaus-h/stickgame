@@ -131,7 +131,7 @@ export class GameFlowUi {
     const resume = continueLevel(this.chapter, data.levels);
     const started = Object.keys(data.levels).length > 0;
     this.render('title', [
-      h('h1', {}, ['Precision Tether']),
+      h('h1', {}, ['StickSwing']),
       h('p', { class: 'tag' }, [this.s('title.tagline')]),
       row(
         button(

@@ -1,4 +1,4 @@
-# StickGame — Precision Tether Platformer
+# StickSwing (repo: StickGame; working title: Precision Tether Platformer)
 
 A cross-platform momentum-action precision platformer where every rope shot defines your swing geometry. Move, jump, shoot the rope: the distance to the impact point at the moment it connects becomes your swing radius.
 
