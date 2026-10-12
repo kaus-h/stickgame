@@ -1,6 +1,6 @@
-# Context pack: Precision Tether Platformer (StickGame)
+# Context pack: StickSwing (repo StickGame; working title Precision Tether Platformer)
 
-`Context pack: 2026-10-12 @ bb7c6f7`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-12 @ 9f884d6`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -111,16 +111,24 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
 
 ## Current state
 
-- **Built:** levels 1-1, 1-2, 1-3 (Section 1) and 2-1 (Section 2 opener), all solver-verified (`content/solutions/`).
+- **Built:** levels 1-1, 1-2, 1-3 (Section 1) and 2-1 (Section 2 opener), all solver-verified (`content/solutions/`). The game is named **StickSwing**.
 - **Systems:**
   - racing timing with a PB ghost
   - death bodies
-  - the kit renderer
+  - the kit renderer (0017)
   - the wordless visual language (doc 09 H1/H3/H4/H5, LOCKED)
   - hero heads and squash/lean
   - timed and one-use anchors
   - adaptive music (raw WebAudio)
   - the anchor-attention camera with a fairness proof test
   - opt-in playtest telemetry (`?playtest=1`)
-- **Exits:** no speed limit (owner). Signage is wordless: door, gate, cone, streaks.
-- **Live plan:** `docs/agents/HANDOFF.md`.
+  - remapping, high contrast and a larger reticle (`docs/accessibility.md`)
+- **Owner rulings (2026-10-12):**
+  - A reached exit always accepts; chapter exits have no speed, angle or alignment rejects.
+  - Goon stomps count when the contact normal is within 60° of up.
+  - Goons look hand drawn and are not goofy.
+  - Floating terrain is allowed if it makes visual sense.
+  - Beauty first; optimization deferred.
+  - The hero and spikes never line-boil.
+  - The game ships on every reachable platform (doc 14 §5, GMR-113).
+- **Live plan:** `docs/agents/HANDOFF.md`. The visual pass is `docs/art/living-notebook.md`.
