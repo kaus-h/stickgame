@@ -9,6 +9,7 @@ export type { TargetAnchor, TargetAssist, TargetResolution } from './targeting';
 export type {
   AnchorDef,
   AnchorPathDef,
+  AnchorTimerDef,
   LevelDef,
   SolidDef,
   ExitDef,
@@ -20,6 +21,8 @@ export { evaluateExitEntry } from './exits';
 export type { ExitAttempt } from './exits';
 export { anchorPathState } from './anchorPath';
 export type { AnchorPathState } from './anchorPath';
+export { anchorTimerState } from './anchorTimer';
+export type { AnchorTimerState } from './anchorTimer';
 export { hashSnapshot, levelFingerprint } from './hash';
 export { Simulation } from './Simulation';
 export type {
@@ -31,6 +34,7 @@ export type {
   PlayerSnapshot,
   RopeInvalidReason,
   RopeSnapshot,
+  AnchorStateSnapshot,
   SimEvent,
   SimSnapshot,
   SimStats,

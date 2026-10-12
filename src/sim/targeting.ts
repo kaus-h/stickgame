@@ -8,6 +8,8 @@ export type RopeInvalidReason = 'no-anchor' | 'too-far' | 'too-close' | 'blocked
 export interface TargetAnchor {
   readonly position: Vec2;
   readonly radius: number;
+  /** False for a timed anchor in its off span or a spent one-use anchor (GMR-60): never selected. */
+  readonly usable?: boolean;
 }
 
 /**
@@ -131,6 +133,7 @@ function closest(
   let bestGap = Infinity;
   let bestCentre = Infinity;
   anchors.forEach((a, i) => {
+    if (a.usable === false) return;
     const d = distance(aim, a.position);
     const gap = Math.max(0, d - a.radius);
     if (gap > radius) return;

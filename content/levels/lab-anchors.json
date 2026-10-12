@@ -1,0 +1,129 @@
+{
+  "$schema": "../level.schema.json",
+  "version": 2,
+  "id": "lab-anchors",
+  "name": "Advanced Anchor Lab",
+  "spawn": [3, 7.65],
+  "bounds": {
+    "minX": -1,
+    "minY": -6,
+    "maxX": 71,
+    "maxY": 13
+  },
+  "killY": 14,
+  "solids": [
+    {
+      "id": "wall-left",
+      "rect": {
+        "x": -1,
+        "y": -6,
+        "w": 1,
+        "h": 19
+      }
+    },
+    {
+      "id": "red-ink",
+      "kind": "hazard",
+      "rect": {
+        "x": 0,
+        "y": 11.4,
+        "w": 70,
+        "h": 1.6
+      }
+    },
+    {
+      "id": "start",
+      "rect": {
+        "x": 0,
+        "y": 8,
+        "w": 10,
+        "h": 3.4000000000000004
+      }
+    },
+    {
+      "id": "mid-1",
+      "rect": {
+        "x": 22,
+        "y": 8,
+        "w": 8,
+        "h": 3.4000000000000004
+      }
+    },
+    {
+      "id": "mid-2",
+      "rect": {
+        "x": 42,
+        "y": 8,
+        "w": 8,
+        "h": 3.4000000000000004
+      }
+    },
+    {
+      "id": "end",
+      "rect": {
+        "x": 62,
+        "y": 8,
+        "w": 8,
+        "h": 3.4000000000000004
+      }
+    },
+    {
+      "id": "wall-right",
+      "rect": {
+        "x": 70,
+        "y": -6,
+        "w": 1,
+        "h": 19
+      }
+    }
+  ],
+  "anchors": [
+    {
+      "id": "timed-slow",
+      "position": [16, 2.5],
+      "timed": {
+        "on": 2.5,
+        "off": 1.5
+      }
+    },
+    {
+      "id": "one-use",
+      "position": [36, 2.5],
+      "oneUse": true
+    },
+    {
+      "id": "timed-a",
+      "position": [54, 2.5],
+      "timed": {
+        "on": 1.5,
+        "off": 1.5
+      }
+    },
+    {
+      "id": "timed-b",
+      "position": [58, 2],
+      "timed": {
+        "on": 1.5,
+        "off": 1.5,
+        "phase": 0.5
+      }
+    }
+  ],
+  "exit": {
+    "id": "lab-anchors-exit",
+    "family": "wide",
+    "min": [66, 3],
+    "max": [70, 8],
+    "entry": {
+      "side": "left",
+      "angle": {
+        "min": 0,
+        "max": 60
+      },
+      "alignment": {
+        "min": 0.1,
+        "max": 0.9
+      }
+    }
+  }
+}

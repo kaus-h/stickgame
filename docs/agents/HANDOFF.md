@@ -2,47 +2,49 @@
 
 The orchestrator (Opus) rewrites this at the end of every milestone, before starting a fresh session ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-11, after merging the Codex queue (GMR-106, 110, 107 polish, 109) and approving the terrain kit v2 art._
+_Last updated: 2026-10-12. Opus is now hands-on for design-heavy work (owner direction, 2026-10-11). Merged since the last handoff: visual language, level 2-1, hero animation, timed and one-use anchors, music, camera and telemetry._
 
 ## State
 
-- **Main (90590f9):** game flow, saves, checkpoints, racing timing (GMR-103), death bodies (GMR-104), levels 1-1, 1-2 and 1-3, and the kit-based pen-sketch renderer (GMR-107, plus pool-seam polish). Exits have no speed limit (GMR-108). Goon e2e is deterministic (GMR-106). The eraser camera follows the sweep (GMR-110). The inbox works in isolated worktrees and formats and regenerates files (GMR-109).
-- **Owner playtests** at `localhost:5173` from `D:\StickGame`. Keep that checkout on main and its dev server running.
-- **Art direction (Decision Register 12):**
-  - The 0014/0015 layered pen-sketch look, with thin lines.
-  - Per-level themes may vary.
-  - Inspirations: Jump King and Celeste.
+- **Main (bb7c6f7):** Section 1 (1-1, 1-2, 1-3) plus **level 2-1 "Moving Pivots"** (Section 2 has started), all solver-verified.
+- **Merged on 2026-10-11/12:**
+  - **GMR-56:** wordless visual language. Red = lethal only; highlighter = yours now; reach fade; exit gate, cone and streaks. H1, H3, H4 and H5 are owner-approved and LOCKED.
+  - **GMR-69 phase 1:** drawn hero heads; squash, stretch and lean.
+  - **GMR-60 phase 1:** timed and one-use anchors (`lab-anchors`).
+  - **GMR-42 phase 2:** code-generated music on raw WebAudio (`docs/music.md`).
+  - **GMR-44:** anchor-attention camera and a fairness proof.
+  - **GMR-49 phase 1:** playtest telemetry (`?playtest=1`, Shift+E exports JSON).
+  - **Tooling:** `npm run levels:plot` (level plus solver route as SVG).
+- **Owner playtests** at `localhost:5173` from `D:\StickGame` (keep it on main; `npm run dev` and `npm run inbox -- --watch` run in terminal tabs).
 
 ## Open PRs
 
-- None at handoff.
+- **#61 GMR-112 terrain kit v2 (Codex):** fixes are in (e3d254b) and the art is Opus-approved. Waiting on BrowserGPT's code verdict, then `safe-merge.sh 61`.
 
 ## In flight
 
-- **Codex (ChatGPT desktop):** working on GMR-111 (terrain autotile edges) in `.claude/worktrees/gmr111`. Next: **GMR-112, terrain kit v2 (kit 0017)**, which is blocked by GMR-111. The source sheets are in `D:\tmp\kit-v2\` (sheet A terrain, sheet B pools and backgrounds), both approved by Opus. Scheduled runs can't drive the ChatGPT app with computer use, so the owner or an interactive session must pass GMR-112 to Codex.
-- **07B** is in Linear. Kit v2 scope ruling: T01–T23, T25–T28, T34–T42. One-way T29–T31 is out (no one-way physics in canon). Spikes and fangs T24, T32, T33 go to GMR-56.
+- **GMR-50 phase 1, keyboard remapping (BrowserGPT bundle).** When it lands, Opus wires `ControlsPanel` into `GameFlowUi` and `setBindings` into main.ts. Then phase 2 (Opus): high-contrast mode and a larger reticle. Flash reduction is already satisfied: there are no flashes in the game.
+- **GMR-72 (2-1):** human playtest and the Section 2 art/audio pass are still open.
 
-## Next
+## Next (Production Vertical Slice gate, GMR-94)
 
-1. Review and merge GMR-111, then GMR-112 (CI green, BrowserGPT verdict, `D:\tmp\safe-merge.sh <n>`).
-2. GMR-56 visual language: anchor symbol, hazard grammar (including 07B spikes) and exit grammar. Wire the 0008 heads into the renderer (GMR-69 animation).
-3. Section 2 levels (GMR-72..74) need moving-pivot design. Opus designs the chambers; Codex or a subagent runs the build/solve loop.
-4. GMR-42 music direction (delegate research to BrowserGPT). GMR-31 core gate.
+1. Finish GMR-50; merge GMR-112. Then GMR-70 (Section 1 art production polish).
+2. **GMR-35 share loop** and **GMR-36 web demo.** Both need the owner: hosting, a domain, and the game name (GMR-51 shortlist doc: Marginskip, Stitchflight, Ghost Radius).
+3. **GMR-52 external playtests** with the playtest recorder.
+4. **Section 2:** 2-2 needs moving-while-attached anchors (GMR-60 phase 2), crushers (GMR-61) and the ceiling-pocket exit (GMR-63) first.
 
-## Decisions this milestone (all in canon)
+## Decisions this milestone (all in canon or Linear)
 
-- Racing timing (Trackmania model). Respawn puts you at rest.
-- A stale PB ghost is replaced by the next clear.
-- Death bodies: render-only ragdolls, with an eraser sweep after completion.
-- No exit speed limit.
-- The art look as above. The owner's reference chat is allowed for art (07A amended).
-- Device testing (GMR-33) is deferred until Chapter 1 is finished.
+- The visual language is locked (doc 09 H1/H3/H4/H5).
+- Music: code-generated, raw WebAudio, "torn-page pulse" (09 I2, CURRENT DEFAULT until the owner listens).
+- Timed anchors moved from 2-1 to 2-2 (doc 14).
+- 2-1 deviations are justified in `docs/levels/2-1-moving-pivots.md`.
+- The camera keeps the 7 m required-shot rule (09 E2); anchor attention is a safety net.
 
 ## Watch out
 
-- **BrowserGPT and Muse** now run in the owner's real Chrome via Claude in Chrome. Downloads auto-save to `~/Downloads` and the inbox sweeps there. Always check the GPT-6 High effort slider; new chats can default to Medium.
-- **Merging:** only via `D:\tmp\safe-merge.sh`. It requires the main `Check` job to exist and be green.
-- **Computer use:** keep it to one-line messages to Codex, with no screenshots. Never try to control the Claude app window.
-- **Inbox watcher:** must be running (`npm run inbox -- --watch`), exactly one instance. On 2026-10-11 two were running; restart it after inbox code changes.
-- **Local `npm run check`** fails on an unformatted untracked `.claude/launch.json`. Run Prettier on it, since it isn't in the repo.
-- **Muse** is primitive: give it only small, exact tasks of three files or fewer.
+- **Muse is at https://muse.ai** (not meta.ai). In Chrome tabs: take a screenshot before clicking, use no newlines in prompts, never close tabs mid-batch, and avoid `find` (see memory).
+- **Inbox PRs open as drafts:** run `gh pr ready <n>` before `safe-merge.sh`.
+- **Linear auto-closes issues named in PR titles:** never put another issue's key in a PR title.
+- **Background ChatGPT tabs can freeze** and lose replies on reload. Use a fresh tab per request.
+- **Codex messages:** check that the message actually appears in the Codex thread. One silently went elsewhere.

@@ -2,7 +2,16 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m, vec2, type Vec2 } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
-import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
+import {
+  attentionTarget,
+  cameraScale,
+  cameraTarget,
+  CALM_CAMERA,
+  DEFAULT_CAMERA,
+  framedAnchors,
+  stepCamera,
+  type FramedAnchor,
+} from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { FailureFeedback } from '../feedback/FailureFeedback';
 import { HeroAnimator } from '../hero/animator';
@@ -65,6 +74,8 @@ export interface GameSceneOptions {
   readonly bodiesVisible?: () => boolean;
   /** Max rope length (runtime tuning, m): anchors beyond it are drawn faded (GMR-56). */
   readonly ropeReach?: number;
+  /** Extra debug-overlay line from outside the scene (music state, GMR-42). */
+  readonly debugExtra?: () => string;
 }
 
 /** The PB ghost (GMR-103): the normal hero in pencil grey, about 35% opaque. */
@@ -76,6 +87,9 @@ const PB_GHOST_ALPHA = 0.35;
  */
 export class GameScene extends Phaser.Scene {
   private dynamic!: Phaser.GameObjects.Graphics;
+  /** Anchor path extents for the camera's anchor attention (GMR-44), per level. */
+  private framed: FramedAnchor[] = [];
+  private anchorFx!: Phaser.GameObjects.Graphics;
   /** Hero squash, stretch, lean and head choice (GMR-69); presentation only. */
   private readonly animator = new HeroAnimator();
   private head!: HeroHead;
@@ -218,6 +232,8 @@ export class GameScene extends Phaser.Scene {
     this.ghostG = this.add.graphics().setAlpha(0.22);
     this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
     this.dynamic = this.add.graphics();
+    // Above the anchor rings (depth 1): erases timed rings segment by segment (GMR-60, H3).
+    this.anchorFx = this.add.graphics().setDepth(1.5);
     this.head = new HeroHead(this, 2);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
@@ -287,7 +303,13 @@ export class GameScene extends Phaser.Scene {
         const b = this.bodies.stats();
         const k = this.kit.stats();
         const bg = this.kit17Background?.presentation();
-        return `${exitSpec(this.opts.level.exit)}\nart ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB\nbodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
+        const extra = this.opts.debugExtra
+          ? `
+${this.opts.debugExtra()}`
+          : '';
+        return `${exitSpec(this.opts.level.exit)}${extra}
+art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB
+bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -400,7 +422,21 @@ export class GameScene extends Phaser.Scene {
     const p = previous.player.position;
     const c = current.player.position;
     const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
-    const target = cameraTarget(position, current.player.velocity, DEFAULT_CAMERA);
+    // Anchor attention (GMR-44): lift to show reachable anchors above a height-bound view.
+    const screen = cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA);
+    const target = attentionTarget(
+      cameraTarget(
+        position,
+        current.player.velocity,
+        this.reducedMotion ? CALM_CAMERA : DEFAULT_CAMERA,
+      ),
+      position,
+      current.player.velocity,
+      this.framed,
+      this.scale.width / screen,
+      this.scale.height / screen,
+      this.opts.ropeReach ?? 11,
+    );
     const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
     this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);
     this.cameras.main.centerOn(m(this.camCenter.x), m(this.camCenter.y));
@@ -424,6 +460,7 @@ export class GameScene extends Phaser.Scene {
     const g = this.add.graphics();
     if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level);
     this.kit = new LevelKit(this, this.opts.level);
+    this.framed = framedAnchors(this.opts.level.anchors);
 
     // Moving-anchor tracks: faint pencil dots telegraph the motion.
     for (const a of anchors) {
@@ -624,6 +661,7 @@ export class GameScene extends Phaser.Scene {
     const { previous, current, alpha } = frame;
     const g = this.dynamic;
     g.clear();
+    this.anchorFx.clear();
     const t = this.blend(previous, current, alpha);
 
     for (const enemy of current.enemies) {
@@ -669,9 +707,13 @@ export class GameScene extends Phaser.Scene {
         anchorInReach(current.player.position, a, radius, reach)
           ? 1
           : OUT_OF_REACH_ALPHA;
-      const shown = easeAlpha(this.anchorAlpha[i] ?? target, target, dt);
+      const state = current.anchorStates[i];
+      // Timed off or one-use spent (GMR-60): the ring fades out; its marks below say why.
+      const gone = state?.spent ? 0 : state && !state.active ? 0.18 : 1;
+      const shown = easeAlpha(this.anchorAlpha[i] ?? target * gone, target * gone, dt);
       this.anchorAlpha[i] = shown;
       this.kit.setAnchorAlpha(i, shown);
+      if (state) this.drawAnchorState(g, p, m(radius), state, i);
       this.drawAnchor(g, p, i);
       const v = current.anchorVelocities[i];
       if (v) this.drawAnchorHeading(g, p, v, i);
@@ -898,6 +940,74 @@ export class GameScene extends Phaser.Scene {
         m(1.3),
         m(0.2),
         m(0.08),
+      );
+    }
+  }
+
+  /**
+   * Timed and one-use marks (GMR-60, doc 09 H3). A timed ring is drawn as 8 segments that erase in
+   * turn: over the last half of its on span (at least 0.5 s) paper-coloured arcs rub out the ring
+   * one eighth at a time, clockwise from 12 o'clock. While it is off, the faded ring sits inside a
+   * dashed pencil circle and its segments draw back in as it returns. A one-use anchor carries a pen
+   * crack; once released it is erased, leaving a faint pencil ghost of the crack.
+   */
+  private drawAnchorState(
+    g: Phaser.GameObjects.Graphics,
+    p: Pt,
+    r: number,
+    state: SimSnapshot['anchorStates'][number],
+    seed: number,
+  ): void {
+    const fx = this.anchorFx;
+    if (state.span !== null && state.ticksLeft !== null) {
+      const segments = 8;
+      let erased: number;
+      if (state.active) {
+        const warn = Math.max(30, Math.round(state.span / 2));
+        erased =
+          state.ticksLeft >= warn ? 0 : segments - Math.ceil((segments * state.ticksLeft) / warn);
+      } else {
+        erased = segments - Math.floor((segments * (state.span - state.ticksLeft)) / state.span);
+        g.lineStyle(1.4, PENCIL, 0.8);
+        for (let k = 0; k < 16; k += 2) {
+          g.beginPath();
+          g.arc(p.x, p.y, r * 1.25, (k / 16) * Math.PI * 2, ((k + 1) / 16) * Math.PI * 2);
+          g.strokePath();
+        }
+      }
+      fx.lineStyle(r * 0.5, PAPER, 1);
+      for (let k = 0; k < erased; k++) {
+        const a0 = -Math.PI / 2 + (k / segments) * Math.PI * 2;
+        fx.beginPath();
+        fx.arc(p.x, p.y, r * 0.86, a0 - 0.02, a0 + (Math.PI * 2) / segments + 0.02);
+        fx.strokePath();
+      }
+      // Hairline gaps between the 8 segments: the ring reads as a clock even when full.
+      fx.lineStyle(Math.max(1.5, r * 0.07), PAPER, 1);
+      for (let k = 0; k < segments; k++) {
+        const a = -Math.PI / 2 + (k / segments) * Math.PI * 2;
+        fx.lineBetween(
+          p.x + Math.cos(a) * r * 0.6,
+          p.y + Math.sin(a) * r * 0.6,
+          p.x + Math.cos(a) * r * 1.12,
+          p.y + Math.sin(a) * r * 1.12,
+        );
+      }
+    }
+    if (state.oneUse) {
+      const crack = [
+        { x: p.x - r * 0.55, y: p.y - r * 0.75 },
+        { x: p.x - r * 0.12, y: p.y - r * 0.2 },
+        { x: p.x - r * 0.34, y: p.y + r * 0.05 },
+        { x: p.x + r * 0.2, y: p.y + r * 0.72 },
+      ];
+      strokeInk(
+        state.spent ? g : fx,
+        crack,
+        state.spent ? 1.2 : 2.2,
+        state.spent ? PENCIL : INK,
+        state.spent ? 0.35 : 0.95,
+        seed + 211,
       );
     }
   }
