@@ -28,7 +28,7 @@ import {
 import { levelFingerprint, type LevelDef, type SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
-import { GameScene, loadLevelKit } from '../../render';
+import { GameScene, loadHeroHeads, loadLevelKit } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
@@ -296,7 +296,7 @@ async function start(): Promise<void> {
       }
     }
   });
-  await loadLevelKit();
+  await Promise.all([loadLevelKit(), loadHeroHeads()]);
   scene = new GameScene({
     level,
     source: runtime,
@@ -311,6 +311,7 @@ async function start(): Promise<void> {
     overview: params.has('overview'),
     strings: stringsEn,
     gravity: tuning.sim.gravity,
+    ropeReach: tuning.sim.rope.maxLength,
     bodiesVisible: () => save.current.settings.bodies,
   });
 

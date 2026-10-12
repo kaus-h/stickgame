@@ -17,3 +17,5 @@ export {
 export type { ChamberReport, SolutionFile, SolverOptions, Verification } from './solve';
 export type { TimingWindow } from './windows';
 export { deepClone, World } from './world';
+export { traceSolution } from './trace';
+export type { TracePoint } from './trace';
