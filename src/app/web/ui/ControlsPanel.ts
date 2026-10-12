@@ -7,6 +7,7 @@ import {
   type KeyBindingOverrides,
 } from '../../../input/bindings';
 import { t, type Strings } from './flow';
+import { captureNextKey } from './keyCapture';
 
 const CSS = `
 .controls-panel { margin: 10px 0 18px; text-align: left; font-family: "Caveat", cursive; }
@@ -31,6 +32,7 @@ export class ControlsPanel {
   readonly element: HTMLDivElement;
   private overrides: KeyBindingOverrides;
   private capturing: BindableAction | null = null;
+  private releaseCapture: (() => void) | null = null;
 
   constructor(
     host: HTMLElement,
@@ -150,28 +152,28 @@ export class ControlsPanel {
     this.capturing = action;
     this.render();
     this.element.querySelector<HTMLButtonElement>(`button[data-action="${action}"]`)?.focus();
-    window.addEventListener('keydown', this.onCaptureKey, true);
+    this.releaseCapture = captureNextKey(window, this.onCaptureKey);
   }
 
+  /** Stop listening for a new key. A finished capture keeps swallowing its paired keyup. */
   private cancelCapture(): void {
-    window.removeEventListener('keydown', this.onCaptureKey, true);
+    this.releaseCapture?.();
+    this.releaseCapture = null;
     this.capturing = null;
   }
 
-  private readonly onCaptureKey = (event: KeyboardEvent): void => {
-    if (!this.capturing || event.repeat) return;
-    if (event.code === 'Tab') return; // Keep normal focus navigation available.
-    event.preventDefault();
-    event.stopImmediatePropagation(); // Do not send capture keys into the gameplay mapper.
+  private readonly onCaptureKey = (code: string): void => {
     const action = this.capturing;
-    this.cancelCapture();
-    if (event.code !== 'Escape' && event.code !== 'Unidentified') {
-      const assigned = assignKey(resolveBindings(this.overrides), action, event.code);
+    if (!action) return;
+    this.capturing = null; // the helper releases itself once the key comes back up
+    this.releaseCapture = null;
+    if (code !== 'Escape' && code !== 'Unidentified') {
+      const assigned = assignKey(resolveBindings(this.overrides), action, code);
       const next: Partial<Record<BindableAction, readonly string[]>> = {};
       for (const name of BINDABLE_ACTIONS) {
         const actual = assigned[name];
         const original = DEFAULT_DESKTOP_BINDINGS[name];
-        if (actual.length !== original.length || actual.some((code, i) => code !== original[i])) {
+        if (actual.length !== original.length || actual.some((key, i) => key !== original[i])) {
           next[name] = actual;
         }
       }
