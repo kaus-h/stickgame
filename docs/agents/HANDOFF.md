@@ -25,7 +25,10 @@ _Last updated: 2026-10-12 (evening), at the 300k-context handoff. **Owner direct
   - branch `kaustavkalra123/gmr-114-exit-page-turn`, brief `D:/tmp/codex/briefs/gmr-114-page-turn.md`;
   - result `D:/tmp/codex/page-turn.result`, worktree `D:/tmp/codex/kaustavkalra123-gmr-114-exit-page-turn`.
   - Before merging, judge its `artifacts/film/page-turn-sheet.png`: does it read as a real page turning, drawn rather than glossy?
-- **#82** (CI: Chromium on PRs) and **#83** (handoff = paste-ready prompt) belong to the other session's workflow work. Review and merge them if they're still open.
+  - It was launched without `CODEX_SANDBOX=bypass`. If it failed on the sandbox, rerun the same command with that variable set.
+- **Merged from the other session:**
+  - #82: PRs run Chromium e2e only, and main runs all three engines;
+  - #83: handoffs end with a paste-ready prompt, and there are no scheduled sessions.
 
 ## Next (GMR-114 golden 1-1, then the Level Factory)
 
