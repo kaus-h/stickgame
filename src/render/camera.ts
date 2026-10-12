@@ -40,6 +40,16 @@ export const DEFAULT_CAMERA: CameraParams = {
   smoothing: 6,
 };
 
+/**
+ * Reduced motion (GMR-44): no velocity lookahead, so the camera only moves when the player does,
+ * never swinging ahead of them. Framing, zoom and anchor attention are unchanged.
+ */
+export const CALM_CAMERA: CameraParams = {
+  ...DEFAULT_CAMERA,
+  lookaheadTime: 0,
+  verticalLookaheadTime: 0,
+};
+
 /** Pixels per world meter for a viewport (fixed per viewport size; never animated). */
 export function cameraScale(viewportW: number, viewportH: number, p: CameraParams): number {
   return Math.min(viewportH / p.viewHeight, viewportW / p.minViewWidth);
@@ -83,4 +93,79 @@ export function clampToBounds(
     x: axis(center.x, viewW / 2, b.minX, b.maxX),
     y: axis(center.y, viewH / 2, b.minY, b.maxY),
   };
+}
+
+/** An anchor as the camera frames it: the whole span it can occupy (movers sweep a path). */
+export interface FramedAnchor {
+  readonly minX: number;
+  readonly maxX: number;
+  /** Highest point of its disc anywhere on its path (y down, so the smallest y). */
+  readonly top: number;
+  /** Lowest point of its disc anywhere on its path. */
+  readonly bottom: number;
+}
+
+/** Keep the player at least this far above the bottom edge when the camera lifts for an anchor. */
+export const ATTENTION_FLOOR = 1.5;
+/** Clear space above a framed anchor, m. */
+export const ATTENTION_MARGIN = 0.5;
+/** Seconds of fall speed kept as extra room below the player while lifting (camera lag). */
+export const ATTENTION_FALL_LAG = 0.3;
+/** Frame anchors this much before they come into rope reach, m. */
+export const ATTENTION_EARLY = 3;
+
+/**
+ * Anchor attention (GMR-44). Wide screens are height-bound (12 m tall), so an anchor 7–8 m above
+ * the player can sit just off the top of the frame. When an anchor within rope reach is above the
+ * frame, lift the target until its whole path is visible, but never so far that the player ends up
+ * within ATTENTION_FLOOR of the bottom edge. Render-only: it moves the camera, never targeting.
+ */
+export function attentionTarget(
+  target: Vec2,
+  player: Vec2,
+  velocity: Vec2,
+  anchors: readonly FramedAnchor[],
+  viewW: number,
+  viewH: number,
+  reach: number,
+): Vec2 {
+  let need = Infinity;
+  // Lowest point that must stay on screen. While falling, the eased camera trails the target, so
+  // keep extra room below the player in proportion to the fall speed (about the camera's lag).
+  let floor = player.y + ATTENTION_FLOOR + Math.max(0, velocity.y) * ATTENTION_FALL_LAG;
+  for (const a of anchors) {
+    // Distance to the nearest point of the anchor's whole path box (a mover can come close).
+    const dx = player.x < a.minX ? a.minX - player.x : player.x > a.maxX ? player.x - a.maxX : 0;
+    if (dx > viewW / 2) continue; // not on screen horizontally anyway
+    const dy = player.y < a.top ? a.top - player.y : player.y > a.bottom ? player.y - a.bottom : 0;
+    // Start framing a little before the anchor is in reach, so the camera has settled by the shot.
+    if (Math.hypot(dx, dy) > reach + ATTENTION_EARLY) continue;
+    need = Math.min(need, a.top - ATTENTION_MARGIN);
+    floor = Math.max(floor, a.bottom + ATTENTION_MARGIN);
+  }
+  if (!Number.isFinite(need)) return target;
+  const top = target.y - viewH / 2;
+  if (need >= top) return target;
+  // Never lift so far that the player or a lower anchor in reach drops off the bottom edge.
+  const lowest = floor - viewH / 2;
+  return { x: target.x, y: Math.max(need + viewH / 2, lowest) };
+}
+
+/** The camera's view of a level's anchors (path extents), computed once per level. */
+export function framedAnchors(
+  anchors: readonly {
+    readonly position: Vec2;
+    readonly radius: number;
+    readonly path?: { readonly to: Vec2 };
+  }[],
+): FramedAnchor[] {
+  return anchors.map((a) => {
+    const to = a.path?.to ?? a.position;
+    return {
+      minX: Math.min(a.position.x, to.x) - a.radius,
+      maxX: Math.max(a.position.x, to.x) + a.radius,
+      top: Math.min(a.position.y, to.y) - a.radius,
+      bottom: Math.max(a.position.y, to.y) + a.radius,
+    };
+  });
 }
