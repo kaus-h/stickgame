@@ -1,0 +1,945 @@
+{
+  "source": ["kit-0017-sheet-a.png", "kit-0017-sheet-b.png"],
+  "pxPerMeter1x": 64,
+  "objects": [
+    {
+      "name": "t01-solid-infill",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 32, "y": 43, "width": 174, "height": 175 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.208, 1.215],
+      "size1x": [77, 78],
+      "metadata": {
+        "role": "block",
+        "material": "stone-ink",
+        "semanticRole": "infill",
+        "renderRole": "interior-texture",
+        "interiorCropRatio": 0.3
+      }
+    },
+    {
+      "name": "t02-top-edge-a",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 259, "y": 42, "width": 187, "height": 172 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.299, 1.194],
+      "size1x": [83, 76],
+      "metadata": {
+        "role": "ledge",
+        "material": "stone-ink",
+        "semanticRole": "top-edge",
+        "renderRole": "ledge",
+        "orientation": "top",
+        "shapeRole": "standard",
+        "contactDatum1x": {
+          "type": "top-surface",
+          "points": [
+            [1, 4],
+            [82, 4]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t03-top-edge-b",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 499, "y": 44, "width": 185, "height": 172 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.285, 1.194],
+      "size1x": [82, 76],
+      "metadata": {
+        "role": "ledge",
+        "material": "stone-ink",
+        "semanticRole": "top-edge",
+        "renderRole": "ledge",
+        "orientation": "top",
+        "shapeRole": "standard",
+        "contactDatum1x": {
+          "type": "top-surface",
+          "points": [
+            [1, 4],
+            [81, 4]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t04-bottom-edge",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 739, "y": 46, "width": 184, "height": 164 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.278, 1.139],
+      "size1x": [82, 73],
+      "metadata": {
+        "role": "rock-lip",
+        "material": "stone-ink",
+        "semanticRole": "bottom-edge",
+        "renderRole": "underside",
+        "orientation": "bottom",
+        "contactDatum1x": {
+          "type": "bottom-edge",
+          "points": [
+            [1, 72],
+            [81, 72]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t05-left-edge",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 987, "y": 45, "width": 107, "height": 172 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [0.743, 1.194],
+      "size1x": [48, 76],
+      "metadata": {
+        "role": "wall",
+        "material": "stone-ink",
+        "renderRole": "wall-strip",
+        "orientation": "left",
+        "contactDatum1x": {
+          "type": "vertical-edge",
+          "points": [
+            [1, 0],
+            [1, 75]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t06-right-edge",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1279, "y": 40, "width": 110, "height": 177 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [0.764, 1.229],
+      "size1x": [49, 79],
+      "metadata": {
+        "role": "wall",
+        "material": "stone-ink",
+        "renderRole": "wall-strip",
+        "orientation": "right",
+        "contactDatum1x": {
+          "type": "vertical-edge",
+          "points": [
+            [48, 0],
+            [48, 78]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t07-interior-seam",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1449, "y": 42, "width": 184, "height": 184 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.278, 1.278],
+      "size1x": [82, 82],
+      "metadata": {
+        "role": "block",
+        "material": "stone-ink",
+        "semanticRole": "interior-seam",
+        "renderRole": "interior-texture",
+        "interiorCropRatio": 0.3
+      }
+    },
+    {
+      "name": "t08-outer-tl",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 32, "y": 272, "width": 178, "height": 178 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.236, 1.236],
+      "size1x": [79, 79],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "top-left",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [1, 4],
+              [46, 4]
+            ],
+            [
+              [1, 4],
+              [1, 46]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t09-outer-tr",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 264, "y": 269, "width": 183, "height": 176 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.271, 1.222],
+      "size1x": [81, 78],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "top-right",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [80, 4],
+              [34, 4]
+            ],
+            [
+              [80, 4],
+              [80, 45]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t10-outer-bl",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 497, "y": 271, "width": 177, "height": 166 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.229, 1.153],
+      "size1x": [79, 74],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-left",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [1, 73],
+              [46, 73]
+            ],
+            [
+              [1, 73],
+              [1, 31]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t11-outer-br",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 741, "y": 272, "width": 174, "height": 168 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.208, 1.167],
+      "size1x": [77, 75],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "convex-corner",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-right",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [76, 74],
+              [32, 74]
+            ],
+            [
+              [76, 74],
+              [76, 32]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t12-inner-tl",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 979, "y": 273, "width": 175, "height": 170 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.215, 1.181],
+      "size1x": [78, 76],
+      "metadata": {
+        "role": "overhang-corner",
+        "material": "stone-ink",
+        "renderRole": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "top-left",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [1, 4],
+              [45, 4]
+            ],
+            [
+              [1, 4],
+              [1, 44]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t13-inner-tr",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1219, "y": 274, "width": 171, "height": 165 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.188, 1.146],
+      "size1x": [76, 73],
+      "metadata": {
+        "role": "overhang-corner",
+        "material": "stone-ink",
+        "renderRole": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "top-right",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [75, 4],
+              [32, 4]
+            ],
+            [
+              [75, 4],
+              [75, 42]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t14-inner-bl",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1448, "y": 274, "width": 178, "height": 177 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.236, 1.229],
+      "size1x": [79, 79],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "bottom-left",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [1, 78],
+              [46, 78]
+            ],
+            [
+              [1, 78],
+              [1, 33]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t15-inner-br",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 34, "y": 489, "width": 180, "height": 183 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.25, 1.271],
+      "size1x": [80, 81],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "renderRole": "concave-corner",
+        "cornerTopology": "concave",
+        "cornerOrientation": "bottom-right",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [79, 80],
+              [34, 80]
+            ],
+            [
+              [79, 80],
+              [79, 34]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t16-vertical-wall-strip",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 283, "y": 485, "width": 145, "height": 188 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.007, 1.306],
+      "size1x": [64, 84],
+      "metadata": {
+        "role": "wall",
+        "material": "stone-ink",
+        "semanticRole": "wall-strip",
+        "renderRole": "wall-strip",
+        "orientation": "vertical",
+        "contactDatum1x": {
+          "type": "wall-strip",
+          "points": [
+            [5, 0],
+            [5, 83]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t17-wall-top-cap",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 489, "y": 538, "width": 184, "height": 74 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.278, 0.514],
+      "size1x": [82, 33],
+      "metadata": {
+        "role": "ledge",
+        "material": "stone-ink",
+        "semanticRole": "wall-top-cap",
+        "renderRole": "ledge",
+        "orientation": "top",
+        "shapeRole": "short-island",
+        "contactDatum1x": {
+          "type": "top-surface",
+          "points": [
+            [1, 2],
+            [81, 2]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t18-wall-bottom-cap",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 736, "y": 534, "width": 170, "height": 112 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.181, 0.778],
+      "size1x": [76, 50],
+      "metadata": {
+        "role": "block",
+        "material": "stone-ink",
+        "semanticRole": "wall-bottom-cap",
+        "renderRole": "underside",
+        "orientation": "bottom",
+        "contactDatum1x": {
+          "type": "bottom-edge",
+          "points": [
+            [1, 49],
+            [75, 49]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t19-left-wall-attachment",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 971, "y": 486, "width": 134, "height": 187 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [0.931, 1.299],
+      "size1x": [60, 83],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "wall-bracket",
+        "renderRole": "wall-bracket",
+        "orientation": "left",
+        "contactDatum1x": {
+          "type": "wall-bracket",
+          "segments": [
+            [
+              [1, 5],
+              [59, 5]
+            ],
+            [
+              [1, 5],
+              [1, 82]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t20-right-wall-attachment",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1235, "y": 486, "width": 136, "height": 187 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [0.944, 1.299],
+      "size1x": [60, 83],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "wall-bracket",
+        "renderRole": "wall-bracket",
+        "orientation": "right",
+        "contactDatum1x": {
+          "type": "wall-bracket",
+          "segments": [
+            [
+              [1, 5],
+              [59, 5]
+            ],
+            [
+              [59, 5],
+              [59, 82]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t21-ceiling-span",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1409, "y": 533, "width": 233, "height": 71 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.618, 0.493],
+      "size1x": [104, 32],
+      "metadata": {
+        "role": "ledge",
+        "material": "stone-ink",
+        "semanticRole": "ceiling-span",
+        "renderRole": "underside",
+        "orientation": "bottom",
+        "shapeRole": "layered",
+        "contactDatum1x": {
+          "type": "underside",
+          "points": [
+            [1, 31],
+            [103, 31]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t22-ceiling-left-join",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 32, "y": 715, "width": 184, "height": 179 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.278, 1.243],
+      "size1x": [82, 80],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "ceiling-join",
+        "renderRole": "ceiling-join",
+        "orientation": "left",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-left",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [1, 79],
+              [48, 79]
+            ],
+            [
+              [1, 79],
+              [1, 34]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t23-ceiling-right-join",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 264, "y": 717, "width": 181, "height": 177 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.257, 1.229],
+      "size1x": [80, 79],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "ceiling-join",
+        "renderRole": "ceiling-join",
+        "orientation": "right",
+        "cornerTopology": "convex",
+        "cornerOrientation": "bottom-right",
+        "contactDatum1x": {
+          "type": "corner-contour",
+          "segments": [
+            [
+              [79, 78],
+              [34, 78]
+            ],
+            [
+              [79, 78],
+              [79, 33]
+            ]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t25-left-ledge-end",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 496, "y": 723, "width": 178, "height": 163 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.236, 1.132],
+      "size1x": [79, 72],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "ledge-end",
+        "renderRole": "ledge-end",
+        "orientation": "left",
+        "contactDatum1x": {
+          "type": "ledge-end",
+          "points": [
+            [1, 4],
+            [78, 4]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t26-right-ledge-end",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 749, "y": 723, "width": 175, "height": 163 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.215, 1.132],
+      "size1x": [78, 72],
+      "metadata": {
+        "role": "corner",
+        "material": "stone-ink",
+        "semanticRole": "ledge-end",
+        "renderRole": "ledge-end",
+        "orientation": "right",
+        "contactDatum1x": {
+          "type": "ledge-end",
+          "points": [
+            [1, 4],
+            [77, 4]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t27-thin-solid-bridge",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 985, "y": 771, "width": 359, "height": 73 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [2.493, 0.507],
+      "size1x": [160, 32],
+      "metadata": {
+        "role": "ledge",
+        "material": "stone-ink",
+        "semanticRole": "bridge",
+        "renderRole": "ledge",
+        "orientation": "top",
+        "shapeRole": "bridge",
+        "contactDatum1x": {
+          "type": "top-surface",
+          "points": [
+            [1, 2],
+            [159, 2]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t28-isolated-platform",
+      "source": "kit-0017-sheet-a.png",
+      "sourceBox": { "x": 1423, "y": 761, "width": 183, "height": 108 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.271, 0.75],
+      "size1x": [81, 48],
+      "metadata": {
+        "role": "overhang",
+        "material": "stone-ink",
+        "semanticRole": "short-island",
+        "renderRole": "ledge",
+        "orientation": "top",
+        "shapeRole": "short-island",
+        "contactDatum1x": {
+          "type": "top-surface",
+          "points": [
+            [1, 3],
+            [80, 3]
+          ]
+        },
+        "contactGuides1x": {
+          "coordinateSpace": "asset-pixels",
+          "origin": "top-left",
+          "approximate": true
+        }
+      }
+    },
+    {
+      "name": "t34-pool-surface-span",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 34, "y": 145, "width": 283, "height": 160 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.965, 1.111],
+      "size1x": [126, 71],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 20],
+            [126, 20]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "top"
+      }
+    },
+    {
+      "name": "t35-pool-left-wall-join",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 357, "y": 108, "width": 220, "height": 196 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.528, 1.361],
+      "size1x": [98, 87],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 24],
+            [98, 24]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "left"
+      }
+    },
+    {
+      "name": "t36-pool-right-wall-join",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 634, "y": 108, "width": 221, "height": 196 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.535, 1.361],
+      "size1x": [98, 87],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 24],
+            [98, 24]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "right"
+      }
+    },
+    {
+      "name": "t37-pool-inner-left-corner",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 895, "y": 108, "width": 201, "height": 196 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.396, 1.361],
+      "size1x": [89, 87],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 24],
+            [89, 24]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "left"
+      }
+    },
+    {
+      "name": "t38-pool-inner-right-corner",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 1156, "y": 108, "width": 194, "height": 196 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.347, 1.361],
+      "size1x": [86, 87],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 24],
+            [86, 24]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "right"
+      }
+    },
+    {
+      "name": "t39-pool-depth-fill",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 1398, "y": 140, "width": 237, "height": 160 },
+      "sourcePxPerMeter": 144,
+      "sizeMeters": [1.646, 1.111],
+      "size1x": [105, 71],
+      "metadata": {
+        "role": "water-edge",
+        "material": "waterline-and-stone-ink",
+        "hazardDatum1x": {
+          "type": "waterline",
+          "points": [
+            [0, 20],
+            [105, 20]
+          ]
+        },
+        "renderRole": "water-edge",
+        "orientation": "bottom"
+      }
+    },
+    {
+      "name": "t40-background-distant-mesa",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 25, "y": 396, "width": 1624, "height": 132 },
+      "sourcePxPerMeter": 101.5,
+      "sizeMeters": [16, 1.3],
+      "size1x": [1024, 83],
+      "metadata": { "role": "distant", "material": "stone-ink" }
+    },
+    {
+      "name": "t41-background-arches",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 25, "y": 574, "width": 1624, "height": 131 },
+      "sourcePxPerMeter": 101.5,
+      "sizeMeters": [16, 1.291],
+      "size1x": [1024, 83],
+      "metadata": { "role": "midground", "material": "stone-ink" }
+    },
+    {
+      "name": "t42-background-rock-spires",
+      "source": "kit-0017-sheet-b.png",
+      "sourceBox": { "x": 25, "y": 750, "width": 1624, "height": 139 },
+      "sourcePxPerMeter": 101.5,
+      "sizeMeters": [16, 1.369],
+      "size1x": [1024, 88],
+      "metadata": { "role": "foreground", "material": "stone-ink" }
+    }
+  ],
+  "scaleVariants": ["1x"]
+}

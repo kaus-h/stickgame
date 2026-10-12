@@ -1,0 +1,632 @@
+[
+  {
+    "id": "1-1",
+    "mode": "play",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 21,
+        "surfacePixels": 13914112,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "2857100c"
+      },
+      "resources": {
+        "textures": 35,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-1",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-1",
+    "mode": "play",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 21,
+        "surfacePixels": 13914112,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
+          "t16-vertical-wall-strip",
+          "t21-ceiling-span",
+          "t27-thin-solid-bridge",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -47.30434782608695
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -94.6086956521739
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -165.56521739130434
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "2857100c"
+      },
+      "resources": {
+        "textures": 41,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-1",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-1",
+    "mode": "overview",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 24,
+        "surfacePixels": 14472768,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "2857100c"
+      },
+      "resources": {
+        "textures": 38,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-1",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-1",
+    "mode": "overview",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 24,
+        "surfacePixels": 14472768,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
+          "t16-vertical-wall-strip",
+          "t21-ceiling-span",
+          "t27-thin-solid-bridge",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -0.8951048951048951
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -1.7902097902097902
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -3.132867132867133
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "2857100c"
+      },
+      "resources": {
+        "textures": 44,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-1",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-2",
+    "mode": "play",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 25,
+        "surfacePixels": 18153472,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "52e221e9"
+      },
+      "resources": {
+        "textures": 39,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-2",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-2",
+    "mode": "play",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 25,
+        "surfacePixels": 18153472,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t04-bottom-edge",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
+          "t16-vertical-wall-strip",
+          "t21-ceiling-span",
+          "t28-isolated-platform",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -47.30434782608695
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -94.6086956521739
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -165.56521739130434
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "52e221e9"
+      },
+      "resources": {
+        "textures": 47,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-2",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    },
+    "review": "Opus revision: main 4cca463; red mass and continuous spike-floor crest"
+  },
+  {
+    "id": "1-2",
+    "mode": "overview",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 32,
+        "surfacePixels": 18949712,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "52e221e9"
+      },
+      "resources": {
+        "textures": 46,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-2",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-2",
+    "mode": "overview",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 32,
+        "surfacePixels": 18949712,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t04-bottom-edge",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
+          "t16-vertical-wall-strip",
+          "t17-wall-top-cap",
+          "t21-ceiling-span",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -0.6808510638297872
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -1.3617021276595744
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -2.3829787234042556
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "52e221e9"
+      },
+      "resources": {
+        "textures": 52,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-2",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-3",
+    "mode": "play",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 24,
+        "surfacePixels": 20234240,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "a19dc448"
+      },
+      "resources": {
+        "textures": 38,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-3",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-3",
+    "mode": "play",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 24,
+        "surfacePixels": 20234240,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t03-top-edge-b",
+          "t04-bottom-edge",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
+          "t16-vertical-wall-strip",
+          "t17-wall-top-cap",
+          "t25-left-ledge-end",
+          "t27-thin-solid-bridge",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -47.30434782608695
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -94.6086956521739
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -165.56521739130434
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "a19dc448"
+      },
+      "resources": {
+        "textures": 46,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-3",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    },
+    "review": "Opus revision: main 4cca463; red mass and continuous spike-floor crest"
+  },
+  {
+    "id": "1-3",
+    "mode": "overview",
+    "version": "before",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 29,
+        "surfacePixels": 20823512,
+        "kitId": "0016",
+        "usedParts": [],
+        "backgrounds": {
+          "active": false,
+          "layers": [],
+          "textures": 0,
+          "surfacePixels": 0
+        },
+        "fingerprint": "a19dc448"
+      },
+      "resources": {
+        "textures": 43,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-3",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  },
+  {
+    "id": "1-3",
+    "mode": "overview",
+    "version": "after",
+    "state": {
+      "kit": {
+        "ready": true,
+        "theme": "paper",
+        "tiles": 29,
+        "surfacePixels": 20823512,
+        "kitId": "0017",
+        "usedParts": [
+          "t01-solid-infill",
+          "t02-top-edge-a",
+          "t03-top-edge-b",
+          "t05-left-edge",
+          "t06-right-edge",
+          "t08-outer-tl",
+          "t09-outer-tr",
+          "t16-vertical-wall-strip",
+          "t17-wall-top-cap",
+          "t27-thin-solid-bridge",
+          "t34-pool-surface-span",
+          "t35-pool-left-wall-join",
+          "t36-pool-right-wall-join",
+          "t37-pool-inner-left-corner",
+          "t38-pool-inner-right-corner",
+          "t39-pool-depth-fill"
+        ],
+        "backgrounds": {
+          "active": true,
+          "layers": [
+            {
+              "id": "T40",
+              "rate": 0.08,
+              "offsetX": -0.707182320441989
+            },
+            {
+              "id": "T41",
+              "rate": 0.16,
+              "offsetX": -1.414364640883978
+            },
+            {
+              "id": "T42",
+              "rate": 0.28,
+              "offsetX": -2.4751381215469617
+            }
+          ],
+          "textures": 3,
+          "surfacePixels": 636800
+        },
+        "fingerprint": "a19dc448"
+      },
+      "resources": {
+        "textures": 49,
+        "cameras": 2
+      },
+      "level": {
+        "id": "1-3",
+        "revision": 0,
+        "spawn": {
+          "x": 3,
+          "y": 7.65
+        },
+        "error": null
+      }
+    }
+  }
+]
