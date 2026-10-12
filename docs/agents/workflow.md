@@ -92,9 +92,13 @@ Matching files are moved into the inbox under that name. Other files are never t
 
 Browser agents start from [`CONTEXT.md`](CONTEXT.md), the context pack. It lives in the BrowserGPT project "StickGame" (instructions field plus an uploaded file), and in Muse the same way if Muse supports projects. Otherwise it is pasted as the first message of each chat. Never prompt a bare chat for project work. Regenerate the pack at each milestone and re-upload it when its date line changes. The reusable version of this whole setup for other projects is [orchestrator-system-prompt.md](orchestrator-system-prompt.md).
 
+## Creative work (owner, 2026-10-12)
+
+Beauty and game feel come first, and optimization (load budgets, code-splitting, GMR-36) is deferred. Opus builds visual, feel and level work hands-on and iterates visually: screenshot, judge, change, repeat. Other agents get the mechanical work. Review round-trips must not throttle creative iteration.
+
 ## Milestones and fresh sessions
 
-Long sessions get compacted, which is expensive. At the end of each milestone, Opus:
+Long sessions get compacted, which is expensive. At the end of each milestone, **or when the context window reaches about 400k of 1M tokens** (owner, 2026-10-12), whichever comes first, Opus:
 
 1. Updates [`HANDOFF.md`](HANDOFF.md) (state, open PRs, next issues, decisions) and regenerates [`CONTEXT.md`](CONTEXT.md).
 2. Records durable rules in memory and canon decisions in the canon docs.
