@@ -67,7 +67,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        browser: [chromium, firefox, webkit]
+        # Owner, 2026-10-12: PRs run Chromium only, and pushes to main run all three engines.
+        browser: ${{ fromJSON(github.event_name == 'pull_request' && '["chromium"]' || '["chromium","firefox","webkit"]') }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
