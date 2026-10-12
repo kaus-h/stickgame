@@ -80,11 +80,14 @@ export class ControlsPanel {
       name.textContent = this.s(`controls.action.${action}`);
       const keys = document.createElement('span');
       keys.className = 'controls-keys';
+      // The mouse button always ropes (doc 03), so Rope lists it before any extra keys.
+      const names = [
+        ...(action === 'rope' ? [this.s('controls.mouse')] : []),
+        ...bindings[action].map((code) => this.readableKey(code)),
+      ];
       keys.textContent =
-        bindings[action].length > 0
-          ? bindings[action]
-              .map((code) => this.readableKey(code))
-              .join(this.s('controls.key.separator'))
+        names.length > 0
+          ? names.join(this.s('controls.key.separator'))
           : this.s('controls.unbound');
       const change = document.createElement('button');
       change.type = 'button';

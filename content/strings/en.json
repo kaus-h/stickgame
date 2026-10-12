@@ -70,6 +70,7 @@
   "controls.action.bodies": "Death bodies",
   "controls.action.clearBodies": "Clear bodies",
   "controls.unbound": "not set",
+  "controls.mouse": "Click",
   "controls.change": "Change",
   "controls.changeAction": "Change {action}",
   "controls.help": "Escape pauses; Tab changes focus.",

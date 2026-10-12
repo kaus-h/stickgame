@@ -21,6 +21,7 @@ import {
   bindTouchDom,
   DesktopInputMapper,
   IntentQueue,
+  resolveBindings,
   TOUCH_SCHEMES,
   TouchInputMapper,
   type SafeAreaInsets,
@@ -120,6 +121,7 @@ async function start(): Promise<void> {
   const mapper = new DesktopInputMapper(
     pushIntent,
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
+    resolveBindings(saved.settings.keyBindings), // GMR-50 remap
   );
   // Touch controls (GMR-27): same intents, same simulation. Shown on the first touch or ?touch=1.
   // ?scheme=direct-touch|drag-aim|reticle-offset, ?move=digital|analog, ?touchScale=1.2.
@@ -387,6 +389,7 @@ async function start(): Promise<void> {
       audio.setMuted(st.muted);
       timing.setGhostVisible(st.ghost);
       gameScene.setBodiesVisible(st.bodies);
+      if (patch.keyBindings) mapper.setBindings(resolveBindings(st.keyBindings));
     },
     clearBodies: () => {
       gameScene.clearBodies();
