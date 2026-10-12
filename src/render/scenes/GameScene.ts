@@ -23,7 +23,9 @@ import { TouchControlsView, type TouchControlsViewState } from '../TouchControls
 import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
+import { DrawIn } from '../living/drawIn';
 import { InkJuice } from '../living/inkJuice';
+import { addPageVignette } from '../living/pageVignette';
 import { drawPoolSurfaces, poolShape, type PoolShape } from '../living/inkPool';
 import { LineBoil } from '../living/lineBoil';
 import { causeText } from '../feedback/causeText';
@@ -158,6 +160,8 @@ export class GameScene extends Phaser.Scene {
   /** Living Notebook: hand-drawn line boil over the world camera. */
   private boil: LineBoil | null = null;
   private juice = new InkJuice();
+  private drawIn: DrawIn | null = null;
+  private vignette: Phaser.GameObjects.Image | null = null;
   /** The paper renders through its own camera under the world camera, so paper never boils. */
   private paper: Phaser.GameObjects.GameObject | null = null;
   private paperCamera: Phaser.Cameras.Scene2D.Camera | null = null;
@@ -297,6 +301,8 @@ export class GameScene extends Phaser.Scene {
     // Above the anchor rings (depth 1): erases timed rings segment by segment (GMR-60, H3).
     this.anchorFx = this.add.graphics().setDepth(1.5);
     this.head = new HeroHead(this, 2);
+    // The level inks itself in on first appearance (never after a death: retry stays instant).
+    this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true);
     if (this.head.object) this.crispObjects.add(this.head.object);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
@@ -306,6 +312,7 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.feedback = new FailureFeedback();
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
+    this.vignette = addPageVignette(this, 85);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
     const hand = { fontFamily: '"Caveat", "Patrick Hand", cursive', color: '#16161a' };
@@ -457,6 +464,8 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
     this.followCamera(frame, dt);
     this.kit17Background?.update(this.cameras.main, this.reducedMotion);
     this.syncPaperCamera();
+    this.drawIn?.update(dt, this.cameras.main.worldView);
+    this.vignette?.setDisplaySize(this.scale.width, this.scale.height);
     this.boil?.setEnabled(!this.reducedMotion);
     this.boil?.update(time / 1000);
     // Body physics caps its own catch-up; presentation effects keep their wall-time duration.

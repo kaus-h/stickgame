@@ -11,7 +11,12 @@ vi.mock('phaser', () => ({
     readonly input = { keyboard: new EventEmitter() };
     readonly children = { list: [] };
     readonly cameras = { main: this.fluent(), add: () => this.fluent() };
-    readonly add = { graphics: () => this.fluent(), text: () => this.fluent() };
+    readonly add = {
+      graphics: () => this.fluent(),
+      text: () => this.fluent(),
+      tileSprite: () => this.fluent(),
+      image: () => this.fluent(),
+    };
     readonly scene = {
       restart: () => {
         this.events.emit('shutdown');
