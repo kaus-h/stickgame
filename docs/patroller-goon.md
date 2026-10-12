@@ -70,3 +70,16 @@ GMR-43's `(cause, solid)` formatter contract and adds `enemy-contact`; when reco
 have `FailureFeedback.ts` import/re-export this formatter so repeat-death labels share it.
 The spatial enemy label here appears during the already-active next attempt and cannot delay retry.
 No bundle budget change or divergent-stack merge is included.
+
+## Stomp rule and look v2 (2026-10-12, owner feedback)
+
+- **Stomp:** a downward contact is a stomp when its contact normal is within 60° of straight up
+  (`STOMP_MIN_UP = 0.5` in `src/sim/enemies.ts`). Landing on the top, including over its rounded
+  corner, is safe. Side, underside and rising contacts still kill. The old `topInset` (a lethal
+  band at each end of the top) is removed from the schema and levels.
+- **Effect on 1-3:** the route's input windows widened from 7/4/6/66 ticks to 11/7/8/73 ticks
+  (`tests/unit/level13.test.ts`).
+- **Look:** a dark cross-hatched ink critter with a bristly contour, two narrow paper-slit eyes (no
+  cartoon eyes or teeth), stepping legs and a clean flat back. Red ballpoint thorns appear only on
+  the dangerous flanks, below the top band. Everything stays inside the collision box, and tests
+  check this. Evidence: `docs/art/evidence/goon-v2/`.

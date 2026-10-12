@@ -1,48 +1,52 @@
-import type * as Phaser from 'phaser';
 import { describe, expect, it } from 'vitest';
 import { metersToPixels as m, vec2 } from '../../src/core';
-import { drawPatroller, enemyOutline } from '../../src/render/enemy';
+import { goonSeed, patrollerMarks, SAFE_TOP_BAND } from '../../src/render/enemy';
 import { causeText } from '../../src/render/feedback/causeText';
 
 describe('patroller presentation', () => {
-  it('draws the vulnerable top from the authored full size and inset', () => {
-    expect(enemyOutline(vec2(3, 4), vec2(2, 1), 0.25)).toEqual({
-      min: vec2(2, 3.5),
-      max: vec2(4, 4.5),
-      safeLeft: 2.25,
-      safeRight: 3.75,
-    });
+  const sizes = [vec2(1.2, 1), vec2(1.8, 1), vec2(2, 1), vec2(0.8, 0.8)];
+
+  it('keeps every mark inside the authored collision box, for any walk phase', () => {
+    for (const size of sizes)
+      for (const facing of [-1, 1])
+        for (const stride of [0, 0.1, 0.37, 2.5]) {
+          const k = patrollerMarks(vec2(3, 4), size, facing, goonSeed('g1'), stride);
+          const minX = m(3 - size.x / 2) - 1e-6;
+          const maxX = m(3 + size.x / 2) + 1e-6;
+          const minY = m(4 - size.y / 2) - 1e-6;
+          const maxY = m(4 + size.y / 2) + 1e-6;
+          const pts = [
+            ...k.body,
+            ...k.back,
+            ...k.red.flat(),
+            ...k.legs.flatMap((s) => [s.a, s.b]),
+            ...k.bristles.flatMap((s) => [s.a, s.b]),
+            ...k.eyes.flatMap((s) => [s.a, s.b]),
+          ];
+          for (const p of pts) {
+            expect(p.x).toBeGreaterThanOrEqual(minX);
+            expect(p.x).toBeLessThanOrEqual(maxX);
+            expect(p.y).toBeGreaterThanOrEqual(minY);
+            expect(p.y).toBeLessThanOrEqual(maxY);
+          }
+        }
   });
 
-  it('keeps every red segment inside collision and away from the safe top', () => {
-    let lineColor = 0;
-    const red: number[][] = [];
-    const pen = {
-      fillStyle: () => pen,
-      fillRect: () => pen,
-      lineStyle: (_width: number, color: number) => {
-        lineColor = color;
-        return pen;
-      },
-      lineBetween: (...points: number[]) => {
-        if (lineColor === 0xc5302a) red.push(points);
-        return pen;
-      },
-    };
-    drawPatroller(pen as unknown as Phaser.GameObjects.Graphics, vec2(3, 4), vec2(2, 1), 0.25, 1);
-    expect(red).toHaveLength(5);
-    for (const [x1, y1, x2, y2] of red) {
-      for (const x of [x1, x2]) {
-        expect(x).toBeGreaterThanOrEqual(m(2));
-        expect(x).toBeLessThanOrEqual(m(4));
-      }
-      for (const y of [y1, y2]) {
-        expect(y).toBeGreaterThanOrEqual(m(3.5));
-        expect(y).toBeLessThanOrEqual(m(4.5));
-      }
-      if (y1 === y2 && (y1 ?? Infinity) < m(3.6))
-        expect((x2 ?? Infinity) < m(2.25) || (x1 ?? -Infinity) > m(3.75)).toBe(true);
+  it('red stays off the safe top band: the back is ink only (GMR-56 H1)', () => {
+    for (const size of sizes) {
+      const k = patrollerMarks(vec2(0, 0), size, 1, 7, 0);
+      const band = k.box.y + k.box.h * SAFE_TOP_BAND;
+      expect(k.red.length).toBeGreaterThan(1);
+      for (const p of k.red.flat()) expect(p.y).toBeGreaterThan(band);
     }
+  });
+
+  it('legs step only when the goon moves, and each goon is drawn a little differently', () => {
+    const small = vec2(1.2, 1);
+    const still = patrollerMarks(vec2(0, 0), small, 1, 7, 1);
+    expect(patrollerMarks(vec2(0, 0), small, 1, 7, 1)).toEqual(still);
+    expect(patrollerMarks(vec2(0, 0), small, 1, 7, 1.2).legs).not.toEqual(still.legs);
+    expect(goonSeed('g1')).not.toBe(goonSeed('g2'));
   });
 
   it('adds enemy cause without changing the existing GMR-43 cause-text contract', () => {

@@ -14,7 +14,7 @@
       "position": [7, 7.5],
       "size": [1.2, 1],
       "path": { "to": [9, 7.5], "period": 6 },
-      "stomp": { "minDownSpeed": 1, "reboundSpeed": 15, "topInset": 0.12 }
+      "stomp": { "minDownSpeed": 1, "reboundSpeed": 15 }
     }
   ]
 }

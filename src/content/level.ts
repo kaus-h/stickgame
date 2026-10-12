@@ -266,10 +266,7 @@ function patroller(raw: Record<string, unknown>, path: string): PatrollerDef {
   const stomp = {
     minDownSpeed: num(rawStomp.minDownSpeed, `${path}.stomp.minDownSpeed`),
     reboundSpeed: num(rawStomp.reboundSpeed, `${path}.stomp.reboundSpeed`),
-    topInset: num(rawStomp.topInset, `${path}.stomp.topInset`),
   };
-  if (stomp.topInset * 2 >= size.x)
-    fail(`${path}.stomp.topInset`, 'must leave a nonzero vulnerable top span');
   const base = { id: str(raw.id, `${path}.id`), kind: 'patroller' as const, position, size, stomp };
   if (!isRecord(raw.path)) return base;
   const to = point(raw.path.to, `${path}.path.to`);

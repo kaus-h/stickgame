@@ -120,10 +120,11 @@ describe('level 1-3 route proofs', () => {
         capped,
       })),
     ).toEqual([
-      { tick: 0, earliest: 0, latest: 6, size: 7, capped: false },
-      { tick: 72, earliest: -3, latest: 0, size: 4, capped: false },
-      { tick: 76, earliest: -1, latest: 4, size: 6, capped: false },
-      { tick: 108, earliest: -25, latest: 40, size: 66, capped: true },
+      // Widened by the 60-degree stomp rule (2026-10-12): was 7, 4, 6 and 66 ticks.
+      { tick: 0, earliest: 0, latest: 10, size: 11, capped: false },
+      { tick: 72, earliest: -3, latest: 3, size: 7, capped: false },
+      { tick: 76, earliest: -3, latest: 4, size: 8, capped: false },
+      { tick: 108, earliest: -32, latest: 40, size: 73, capped: true },
     ]);
     expect([...windows, ...steeringWindows].every(({ size }) => size >= 4)).toBe(true);
   });

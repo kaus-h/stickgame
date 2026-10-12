@@ -10,7 +10,7 @@ const goon: PatrollerDef = {
   kind: 'patroller',
   position: { x: 0, y: 0 },
   size: { x: 2, y: 1 },
-  stomp: { minDownSpeed: 2, reboundSpeed: 15, topInset: 0.15 },
+  stomp: { minDownSpeed: 2, reboundSpeed: 15 },
 };
 const level: LevelDef = {
   id: 'test',
@@ -120,7 +120,6 @@ describe('patroller simulation', () => {
             ...goon,
             position: { x: 0.88, y: 0.4 },
             size: { x: 0.02, y: 0.02 },
-            stomp: { ...goon.stomp, topInset: 0.001 },
           },
         ],
       },
@@ -207,10 +206,10 @@ describe('patroller simulation', () => {
     expect(sim.drainEvents().map((e) => e.type)).toEqual(['death', 'lifeEnd', 'reset']);
     sim.dispose();
   });
-  it('does not use a later floor impulse to turn side/corner arrival into a stomp', () => {
+  it('does not use a later floor impulse to turn a shoulder arrival into a stomp', () => {
     const { sim, physics } = make({
       ...level,
-      spawn: { x: 1.2, y: -1 },
+      spawn: { x: 1.32, y: -1 },
       solids: [
         {
           id: 'floor',

@@ -205,7 +205,7 @@
         "stomp": {
           "type": "object",
           "additionalProperties": false,
-          "required": ["minDownSpeed", "reboundSpeed", "topInset"],
+          "required": ["minDownSpeed", "reboundSpeed"],
           "properties": {
             "minDownSpeed": {
               "type": "number",
@@ -214,10 +214,6 @@
             "reboundSpeed": {
               "type": "number",
               "exclusiveMinimum": 0
-            },
-            "topInset": {
-              "type": "number",
-              "minimum": 0
             }
           }
         }
