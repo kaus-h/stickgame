@@ -31,6 +31,7 @@
     "prebuild": "npm run levels:validate",
     "levels:compile-schema": "node scripts/compile-level-schema.mjs",
     "levels:solve": "node scripts/solve-levels.mjs",
+    "levels:plot": "node scripts/plot-solution.mjs",
     "inbox": "node scripts/agents/patch-inbox.mjs"
   },
   "dependencies": {
