@@ -1,35 +1,35 @@
 import type * as Phaser from 'phaser';
-import frontUrl from '../../../assets/art/hero-0008/head-front.png';
-import profileUrl from '../../../assets/art/hero-0008/head-profile.png';
-import threeQuarterUrl from '../../../assets/art/hero-0008/head-three-quarter.png';
-import deadUrl from '../../../assets/art/hero-0008/head-dead.png';
+import frontUrl from '../../../assets/art/hero-0008/head-front.webp?no-inline';
+import profileUrl from '../../../assets/art/hero-0008/head-profile.webp?no-inline';
+import threeQuarterUrl from '../../../assets/art/hero-0008/head-three-quarter.webp?no-inline';
 import type { HeadFrame } from './animator';
 import type { HeadTransform } from './drawHero';
 
 /**
  * The approved drawn heads (assets/concepts/0008-hero-parts-sheet.png, owner 2026-10-08; GMR-69).
- * Loaded once at boot like the level kit; a scene without them falls back to the ink head.
+ * Loaded once at boot like the level kit; a scene without them falls back to the ink head. The dead
+ * head ships with the death-body follow-up; until then it stays out of the bundle.
  */
-const urls: Record<HeadFrame, string> = {
+type LiveFrame = Exclude<HeadFrame, 'dead'>;
+const urls: Record<LiveFrame, string> = {
   front: frontUrl,
   profile: profileUrl,
   'three-quarter': threeQuarterUrl,
-  dead: deadUrl,
 };
 
-let images: Record<HeadFrame, HTMLImageElement> | null = null;
+let images: Record<LiveFrame, HTMLImageElement> | null = null;
 let pending: Promise<void> | null = null;
 
 export function loadHeroHeads(): Promise<void> {
   pending ??= Promise.all(
-    (Object.keys(urls) as HeadFrame[]).map(async (frame) => {
+    (Object.keys(urls) as LiveFrame[]).map(async (frame) => {
       const image = new Image();
       image.src = urls[frame];
       await image.decode();
       return [frame, image] as const;
     }),
   ).then((entries) => {
-    images = Object.fromEntries(entries) as Record<HeadFrame, HTMLImageElement>;
+    images = Object.fromEntries(entries) as Record<LiveFrame, HTMLImageElement>;
   });
   return pending;
 }
@@ -45,7 +45,7 @@ export class HeroHead {
       this.image = null;
       return;
     }
-    for (const frame of Object.keys(images) as HeadFrame[])
+    for (const frame of Object.keys(images) as LiveFrame[])
       if (!scene.textures.exists(key(frame))) scene.textures.addImage(key(frame), images[frame]);
     this.image = scene.add.image(0, 0, key('front')).setDepth(depth).setAlpha(alpha);
   }
@@ -56,7 +56,7 @@ export class HeroHead {
   }
 
   place(t: HeadTransform, frame: HeadFrame, facing: -1 | 1, visible = true): void {
-    if (!this.image) return;
+    if (!this.image || frame === 'dead') return;
     this.image
       .setTexture(key(frame))
       .setPosition(t.x, t.y)
