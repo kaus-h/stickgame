@@ -39,7 +39,7 @@ test('a real JSON edit hot reloads geometry and resets without a document reload
   const initial = await probe();
   const resources = () =>
     page.evaluate(() => (window as unknown as { __stickgame: LevelProbe }).__stickgame.resources());
-  await expect.poll(async () => (await resources()).cameras).toBe(2);
+  await expect.poll(async () => (await resources()).cameras).toBe(4);
   const initialResources = await resources();
   const other = await page.context().newPage();
   await other.goto('/?level=lab-exit-wide&renderer=canvas');

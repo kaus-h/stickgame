@@ -17,8 +17,8 @@ export const PAGE = {
 
 /** College ruling every 0.5 world meters: world-anchored, so it doubles as a height ruler. */
 export const RULE_SPACING_M = 0.5;
-const TILE = 256;
-const PAPER_KEY = 'notebook-paper';
+export const TILE = 256;
+export const PAPER_KEY = 'notebook-paper';
 
 const css = (c: number, a = 1): string =>
   `rgba(${String((c >> 16) & 255)},${String((c >> 8) & 255)},${String(c & 255)},${String(a)})`;
@@ -27,7 +27,7 @@ const css = (c: number, a = 1): string =>
  * One 256×256 paper tile with fibre specks, faint blotches and the ruled lines baked in. The tile
  * height is a whole number of rule spacings, so a world-anchored TileSprite gives continuous ruling.
  */
-function ensurePaperTexture(scene: Phaser.Scene): void {
+export function ensurePaperTexture(scene: Phaser.Scene): void {
   if (scene.textures.exists(PAPER_KEY)) return;
   const tex = scene.textures.createCanvas(PAPER_KEY, TILE, TILE);
   if (!tex) return;

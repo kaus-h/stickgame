@@ -1,5 +1,6 @@
 import type { SaveData, Settings } from '../../../platform';
 import { ControlsPanel } from './ControlsPanel';
+import { startTitleDoodle } from './titleDoodle';
 import { DELTA_COLOURS, formatDelta } from '../../../render/race';
 import {
   continueLevel,
@@ -62,6 +63,8 @@ const CSS = `
   box-shadow: 4px 5px 0 rgba(22, 22, 26, 0.18); text-align: center; }
 .flow h1 { font-size: 64px; margin: 4px 0 0; line-height: 1; }
 .flow h2 { font-size: 40px; margin: 4px 0 10px; line-height: 1.05; }
+.flow h1.title { font-size: 86px; transform: rotate(-2deg); margin-top: 0; }
+.flow canvas.doodle { display: block; width: min(420px, 78vw); height: 210px; margin: -4px auto 0; }
 .flow .tag { font-size: 24px; color: #5a5a5a; margin: 0 0 14px; }
 .flow .row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 10px; }
 .flow button { font: inherit; font-size: 30px; color: #16161a; background: none; border: 2px solid #16161a;
@@ -97,6 +100,8 @@ export class GameFlowUi {
   private readonly root: HTMLDivElement;
   private currentLevel: string | null = null;
   private settingsReturn: Screen = 'title';
+  /** Stops the title page's swinging doodle when the title is left. */
+  private stopDoodle: (() => void) | null = null;
   /** Key remapping (GMR-50); lives only while the settings screen is shown. */
   private controls: ControlsPanel | null = null;
 
@@ -130,8 +135,10 @@ export class GameFlowUi {
     const data = this.save();
     const resume = continueLevel(this.chapter, data.levels);
     const started = Object.keys(data.levels).length > 0;
+    const doodle = h('canvas', { class: 'doodle', 'aria-hidden': 'true' }, []) as HTMLCanvasElement;
     this.render('title', [
-      h('h1', {}, ['StickSwing']),
+      h('h1', { class: 'title' }, ['StickSwing']),
+      doodle,
       h('p', { class: 'tag' }, [this.s('title.tagline')]),
       row(
         button(
@@ -149,6 +156,11 @@ export class GameFlowUi {
         }),
       ),
     ]);
+    const pref = this.save().settings.reducedMotion;
+    const calm =
+      pref === 'on' ||
+      (pref === 'system' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.stopDoodle = startTitleDoodle(doodle, calm);
   }
 
   showLevels(): void {
@@ -392,6 +404,8 @@ export class GameFlowUi {
   resume(): void {
     this.screen = 'playing';
     this.dropControls();
+    this.stopDoodle?.();
+    this.stopDoodle = null;
     this.root.hidden = true;
     this.root.replaceChildren();
     this.actions.setMenuPaused(false);
@@ -491,6 +505,8 @@ export class GameFlowUi {
 
   private render(screen: Screen, children: (Node | null)[]): void {
     this.dropControls();
+    this.stopDoodle?.();
+    this.stopDoodle = null;
     this.screen = screen;
     const card = h('div', { class: 'flow-card' }, children);
     this.root.replaceChildren(card);

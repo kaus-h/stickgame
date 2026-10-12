@@ -28,7 +28,7 @@ async function boot(page: Page, level: string, extra = ''): Promise<void> {
   await page.waitForFunction(() => {
     try {
       const h = (window as unknown as { __stickgame: KitHook }).__stickgame;
-      return h.kitPresentation().ready && h.resources().cameras === 2;
+      return h.kitPresentation().ready && h.resources().cameras === 4;
     } catch {
       return false;
     }

@@ -23,10 +23,15 @@ import { TouchControlsView, type TouchControlsViewState } from '../TouchControls
 import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
+import { DrawIn } from '../living/drawIn';
+import { InkJuice } from '../living/inkJuice';
+import { addPageVignette } from '../living/pageVignette';
+import { drawPoolSurfaces, poolShape, type PoolShape } from '../living/inkPool';
+import { LineBoil } from '../living/lineBoil';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
 import { BodiesLayer, type BodiesStats } from '../bodies/BodiesLayer';
-import { LevelKit } from '../kit/LevelKit';
+import { kitHazardKind, LevelKit } from '../kit/LevelKit';
 import { Kit17Background } from '../kit/Kit17Background';
 import { resolveKitVersion } from '../kit/Kit17Terrain';
 import { getLevelTheme } from '../../content';
@@ -43,6 +48,18 @@ const RED_PEN = 0xc5302a;
 const HIGHLIGHTER = 0xffe14a;
 
 const lerp = (a: number, b: number, t: number): number => a + (b - a) * t;
+/** Move a camera to a render-order slot (camera lists are drawn front to back). */
+function placeCamera(
+  list: Phaser.Cameras.Scene2D.Camera[] | undefined,
+  camera: Phaser.Cameras.Scene2D.Camera,
+  index: number,
+): void {
+  if (!Array.isArray(list)) return;
+  const at = list.indexOf(camera);
+  if (at >= 0) list.splice(at, 1);
+  list.splice(index, 0, camera);
+}
+
 const lerpV = (a: Vec2, b: Vec2, t: number): Pt => ({
   x: m(lerp(a.x, b.x, t)),
   y: m(lerp(a.y, b.y, t)),
@@ -140,6 +157,21 @@ export class GameScene extends Phaser.Scene {
   private readonly anchorAlpha: number[] = [];
   /** Completion presentation owns the camera until this scene is replaced. */
   private eraserCamera = false;
+  /** Living Notebook: hand-drawn line boil over the world camera. */
+  private boil: LineBoil | null = null;
+  private juice = new InkJuice();
+  private drawIn: DrawIn | null = null;
+  private vignette: Phaser.GameObjects.Image | null = null;
+  /** The paper renders through its own camera under the world camera, so paper never boils. */
+  private paper: Phaser.GameObjects.GameObject | null = null;
+  private paperCamera: Phaser.Cameras.Scene2D.Camera | null = null;
+  /** Above the boiling world: the hero and spikes stay crisp (owner, 2026-10-12). */
+  private crispCamera: Phaser.Cameras.Scene2D.Camera | null = null;
+  private crispObjects = new WeakSet<Phaser.GameObjects.GameObject>();
+  private heroG!: Phaser.GameObjects.Graphics;
+  /** Live pool surfaces (ripples, bubbles), over the static pool body in the kit canvas. */
+  private poolG!: Phaser.GameObjects.Graphics;
+  private pools: PoolShape[] = [];
 
   kitPresentation(): {
     ready: boolean;
@@ -150,7 +182,8 @@ export class GameScene extends Phaser.Scene {
     backgrounds: ReturnType<Kit17Background['presentation']>;
   } {
     return {
-      ready: !!this.kit,
+      // Fully presented: the kit is built and the level has finished inking itself onto the page.
+      ready: !!(this.kit as LevelKit | undefined) && (this.drawIn?.finished ?? true),
       theme: getLevelTheme(this.opts.level),
       ...this.kit.stats(),
       backgrounds: this.kit17Background?.presentation() ?? {
@@ -226,6 +259,7 @@ export class GameScene extends Phaser.Scene {
 
   create(): void {
     this.eraserCamera = false;
+    this.juice = new InkJuice();
     this.splats = [];
     this.stomps = [];
     this.lastTime = 0;
@@ -235,8 +269,22 @@ export class GameScene extends Phaser.Scene {
         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.highContrast = this.opts.accessibility?.().highContrast ?? false;
     this.pencil = this.highContrast ? PENCIL_HC : PENCIL;
-    this.cameras.main.setBackgroundColor(PAPER);
     this.drawStaticPage();
+    // Paper camera first in the render list; the world camera above it is transparent and boils.
+    this.paperCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    this.paperCamera.setBackgroundColor(PAPER);
+    const list = (this.cameras as unknown as { cameras: Phaser.Cameras.Scene2D.Camera[] }).cameras;
+    placeCamera(list, this.paperCamera, 0);
+    this.boil = new LineBoil(this, this.cameras.main);
+    // Crisp layer renders between the paper and the boiling world. (A camera drawn after a
+    // filtered camera in Phaser 4 loses the filtered camera's composite, so it cannot go on top.)
+    this.crispCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
+    placeCamera(list, this.crispCamera, 1);
+    this.crispObjects = new WeakSet();
+    this.pools = this.opts.level.solids
+      .filter((s) => s.kind === 'hazard' && kitHazardKind(s.id) === 'pool')
+      .map(poolShape);
+    this.poolG = this.add.graphics().setDepth(-48.5);
     this.bodies = new BodiesLayer(
       this,
       this.opts.level,
@@ -249,9 +297,14 @@ export class GameScene extends Phaser.Scene {
     this.ghostG = this.add.graphics().setAlpha(0.22);
     this.pbGhostG = this.add.graphics().setAlpha(PB_GHOST_ALPHA).setName('pb-ghost');
     this.dynamic = this.add.graphics();
+    this.heroG = this.add.graphics();
+    this.crispObjects.add(this.heroG);
     // Above the anchor rings (depth 1): erases timed rings segment by segment (GMR-60, H3).
     this.anchorFx = this.add.graphics().setDepth(1.5);
     this.head = new HeroHead(this, 2);
+    // The level inks itself in on first appearance (never after a death: retry stays instant).
+    this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true);
+    if (this.head.object) this.crispObjects.add(this.head.object);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
       .setOrigin(0.5, 1)
@@ -260,6 +313,7 @@ export class GameScene extends Phaser.Scene {
       .setVisible(false);
     this.feedback = new FailureFeedback();
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
+    this.vignette = addPageVignette(this, 85);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
     const hand = { fontFamily: '"Caveat", "Patrick Hand", cursive', color: '#16161a' };
@@ -327,12 +381,13 @@ ${this.opts.debugExtra()}`
         return `${exitSpec(this.opts.level.exit)}${extra}
 art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB
 bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
-a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x`;
+a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
       this.overlay?.onEvents(events);
       this.feedback.onEvents(events);
+      this.juice.onEvents(events);
       for (const e of events) {
         if (e.type === 'reset') this.stomps = [];
         if (e.type === 'stomp') this.stomps.push({ tick: e.tick, at: e.at });
@@ -371,10 +426,32 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
    * Screen-fixed objects (scroll factor 0) belong to the UI camera, everything else to the world
    * camera. Runs every frame so objects created later (overlays, touch controls) are routed too.
    */
+  private syncPaperCamera(): void {
+    const main = this.cameras.main;
+    for (const cam of [this.paperCamera, this.crispCamera]) {
+      if (!cam) continue;
+      cam.setViewport(main.x, main.y, main.width, main.height);
+      cam.setZoom(main.zoom);
+      cam.setScroll(main.scrollX, main.scrollY);
+    }
+  }
+
   private routeCameras(): void {
     for (const obj of this.children.list) {
       if (this.routed.has(obj)) continue;
       this.routed.add(obj);
+      if (obj === this.paper) {
+        this.cameras.main.ignore(obj);
+        this.uiCamera.ignore(obj);
+        continue;
+      }
+      this.paperCamera?.ignore(obj);
+      if (this.crispObjects.has(obj) || this.kit.crisp.includes(obj)) {
+        this.cameras.main.ignore(obj);
+        this.uiCamera.ignore(obj);
+        continue;
+      }
+      this.crispCamera?.ignore(obj);
       const screen = (obj as unknown as { scrollFactorX?: number }).scrollFactorX === 0;
       (screen ? this.cameras.main : this.uiCamera).ignore(obj);
     }
@@ -387,6 +464,11 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
     this.lastTime = time;
     this.followCamera(frame, dt);
     this.kit17Background?.update(this.cameras.main, this.reducedMotion);
+    this.syncPaperCamera();
+    this.drawIn?.update(dt, this.cameras.main.worldView);
+    this.vignette?.setDisplaySize(this.scale.width, this.scale.height);
+    this.boil?.setEnabled(!this.reducedMotion);
+    this.boil?.update(time / 1000);
     // Body physics caps its own catch-up; presentation effects keep their wall-time duration.
     this.bodies.update(Math.max(0, deltaMs / 1000));
     this.drawDynamic(frame, dt);
@@ -470,7 +552,7 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
   private drawStaticPage(): void {
     const { anchors } = this.opts.level;
     // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
-    addPaper(this, this.opts.level);
+    this.paper = addPaper(this, this.opts.level);
     this.kit17Background =
       !this.highContrast &&
       typeof window !== 'undefined' &&
@@ -782,10 +864,33 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
       const prevPoint = previous.rope?.point ?? current.rope.point;
       const anchor = lerpV(prevPoint, current.rope.point, t);
       const hand = this.handPoint(player, anchor);
-      dashedInk(g, anchor, hand, m(0.2), m(0.13), this.highContrast ? 3.4 : 2.6, INK);
+      // The rope draws itself on from the hand to the anchor in a few frames (visual only).
+      const drawn = this.juice.ropeDrawn(this.reducedMotion);
+      const tip =
+        drawn >= 1
+          ? anchor
+          : { x: hand.x + (anchor.x - hand.x) * drawn, y: hand.y + (anchor.y - hand.y) * drawn };
+      dashedInk(g, tip, hand, m(0.2), m(0.13), this.highContrast ? 3.4 : 2.6, INK);
     }
 
-    this.drawPlayer(g, player, current, frame);
+    this.juice.update(dt, current, this.reducedMotion);
+    this.juice.draw(
+      g,
+      player,
+      current.player.velocity,
+      this.highContrast ? 2.6 : 2,
+      this.reducedMotion,
+    );
+    this.heroG.clear();
+    this.drawPlayer(this.heroG, player, current, frame);
+    this.poolG.clear();
+    drawPoolSurfaces(
+      this.poolG,
+      this.pools,
+      this.cameras.main.worldView,
+      this.time.now / 1000,
+      this.reducedMotion,
+    );
 
     const miss = current.lastExitAttempt;
     const missAge = miss ? current.tick - miss.tick : Infinity;

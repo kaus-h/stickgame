@@ -53,7 +53,7 @@ async function load(page: Page, url: string): Promise<void> {
   await page.goto(url);
   await page.waitForFunction(() => '__stickgame' in window);
   await page.waitForFunction(
-    () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().cameras === 2,
+    () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().cameras === 4,
   );
 }
 

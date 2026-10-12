@@ -11,7 +11,8 @@ import { classifyTerrainSurfaceEdges, type TerrainEdge } from './terrainEdges';
 import { BorderMass } from './BorderMass';
 import { loadKit17, paintKit17Terrain, resolveKitVersion } from './Kit17Terrain';
 import { loadKit17Background } from './Kit17Background';
-import { loadKit17Pool, paintKit17Pool } from './Kit17Pool';
+import { paintInkPool } from '../living/inkPool';
+import { paintPencilShadows } from '../living/pencilShadow';
 
 const urls = {
   ledge: ledgeUrl,
@@ -109,7 +110,7 @@ export function loadLevelKit(): Promise<void> {
   const kitId = resolveKitVersion(typeof window === 'undefined' ? '' : window.location.search);
   kit17Pending ??=
     kitId === '0017'
-      ? Promise.all([loadKit17(), loadKit17Pool(), loadKit17Background()]).then(() => undefined)
+      ? Promise.all([loadKit17(), loadKit17Background()]).then(() => undefined)
       : Promise.resolve();
   return Promise.all([pending, kit17Pending]).then(() => undefined);
 }
@@ -158,6 +159,8 @@ const outline = (c: CanvasRenderingContext2D, solid: SolidDef): void => {
 const MAX_DOOR_OPENING = 3;
 
 export class LevelKit {
+  /** Objects that must stay crisp (no line boil): the spike layers. */
+  readonly crisp: Phaser.GameObjects.GameObject[] = [];
   private readonly rings: Phaser.GameObjects.Image[] = [];
   private readonly keys: string[] = [];
   private readonly art = images;
@@ -282,6 +285,9 @@ export class LevelKit {
         const c = texture.getContext();
         c.translate(-x, -y);
         const solids = visible.filter((s) => s.kind === 'solid');
+        // Living Notebook depth: a soft pencil shadow under every block, drawn first and cut
+        // out of the blocks so only the offset rim shows below and to the right.
+        paintPencilShadows(c, solids);
         // Connected rock mass and its world-locked hatch remain the base layer in both kits.
         // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
         this.paintMass(
@@ -311,10 +317,26 @@ export class LevelKit {
           for (const solid of solids) this.paintSolid(c, solid);
           this.paintCorners(c);
         }
-        for (const solid of visible.filter((s) => s.kind === 'hazard')) this.paintHazard(c, solid);
+        const hazards = visible.filter((s) => s.kind === 'hazard');
+        for (const solid of hazards)
+          if (kitHazardKind(solid.id) === 'pool') this.paintHazard(c, solid);
         this.paintExit(c);
         texture.refresh();
         this.scene.add.image(x, y, key).setOrigin(0, 0).setDepth(-49);
+        // Spikes get their own layer so the scene can keep them out of the line boil.
+        const spikes = hazards.filter((s) => kitHazardKind(s.id) === 'spikes');
+        if (spikes.length > 0) {
+          const spikeKey = `${key}-spikes`;
+          const layer = this.scene.textures.createCanvas(spikeKey, texture.width, texture.height);
+          if (layer) {
+            this.keys.push(spikeKey);
+            const sc = layer.getContext();
+            sc.translate(-x, -y);
+            for (const solid of spikes) this.paintHazard(sc, solid);
+            layer.refresh();
+            this.crisp.push(this.scene.add.image(x, y, spikeKey).setOrigin(0, 0).setDepth(-48));
+          }
+        }
       }
     }
   }
@@ -544,8 +566,9 @@ export class LevelKit {
     c.restore();
   }
   private paintHazard(c: CanvasRenderingContext2D, solid: SolidDef): void {
-    if (this.kitId === '0017' && kitHazardKind(solid.id) === 'pool') {
-      paintKit17Pool(c, this.level, solid, this.usedParts);
+    if (kitHazardKind(solid.id) === 'pool') {
+      // Living Notebook: drawn red ballpoint; the live surface is drawn by the scene.
+      paintInkPool(c, solid);
       return;
     }
     const box = bounds(solid),
