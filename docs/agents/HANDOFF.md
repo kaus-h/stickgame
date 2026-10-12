@@ -1,6 +1,6 @@
 # Handoff
 
-The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before starting a fresh session ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
+The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
 _Last updated: 2026-10-12, at the 400k-context handoff. **The owner's direction: beauty first, optimization deferred. Opus builds visual, feel and level work hands-on.**_
 
