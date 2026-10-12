@@ -67,14 +67,16 @@ function check(levelId: string, replay: string): Miss[] {
     const framed = framedAnchors(level.anchors);
     const world = World.create(level, tuning);
     const source = new ReplayIntentSource(decoded);
-    let center: Vec2 | null = null;
+    // As in GameScene: the eased centre is never clamped; Phaser clamps only the rendered view.
+    let eased: Vec2 | null = null;
+    let center: Vec2 = { x: 0, y: 0 };
     let resets = -1;
     let attemptStart = 0;
     const seen = new Map<number, number>(); // anchor -> consecutive visible ticks
     while (world.tick < decoded.ticks) {
       const events = world.step({ intents: (t) => source.poll(t) });
       const s = world.sim.snapshot();
-      const snap = center === null || s.resets !== resets;
+      const snap = eased === null || s.resets !== resets;
       if (s.resets !== resets) {
         resets = s.resets;
         attemptStart = world.tick;
@@ -89,12 +91,8 @@ function check(levelId: string, replay: string): Miss[] {
         viewH,
         tuning.sim.rope.maxLength,
       );
-      center = clampToBounds(
-        stepCamera(center ?? target, target, 1 / 60, DEFAULT_CAMERA, snap),
-        viewW,
-        viewH,
-        level.bounds,
-      );
+      eased = stepCamera(eased ?? target, target, 1 / 60, DEFAULT_CAMERA, snap);
+      center = clampToBounds(eased, viewW, viewH, level.bounds);
       // The actual (eased, bounds-clamped) camera must keep the player well inside the frame.
       if (
         Math.abs(s.player.position.x - center.x) > safeW / 2 - 0.35 - PLAYER_MARGIN ||
@@ -104,8 +102,8 @@ function check(levelId: string, replay: string): Miss[] {
       s.anchors.forEach((a, i) => {
         const r = level.anchors[i]?.radius ?? 0.4;
         const inside =
-          Math.abs(a.x - (center as Vec2).x) <= safeW / 2 - r - MARGIN &&
-          Math.abs(a.y - (center as Vec2).y) <= viewH / 2 - r - MARGIN;
+          Math.abs(a.x - center.x) <= safeW / 2 - r - MARGIN &&
+          Math.abs(a.y - center.y) <= viewH / 2 - r - MARGIN;
         seen.set(i, inside ? (seen.get(i) ?? 0) + 1 : 0);
       });
       for (const e of events) {

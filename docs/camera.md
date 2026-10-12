@@ -43,4 +43,4 @@ The 0.023 m error is one frame of camera motion. It is well inside the 1.1 m sel
   - Every committed solver route is replayed through the real camera maths. Every anchor it ropes has its whole disc on screen, inside the safe area, for the 0.5 s before the press.
   - Every tagged required shot (`requiredFrom`) is on screen with a 0.5 m margin from its authored take-off, standing still.
   - Before anchor attention, 1-1, 1-2, 1-3 and 2-1 all failed on wide or phone aspects (1-3 also failed at 16:9). All four pass now.
-- **Authoring rule update:** the 7 m vertical limit for required shots no longer applies on wide screens, because anchor attention frames them. Keep it as a guideline for comfortable shots.
+- **Authoring rule unchanged (doc 09 E2):** keep required anchors at most about 7 m above the take-off point. Anchor attention is a safety net that keeps such shots visible on height-bound wide and phone screens; it does not relax the rule.
