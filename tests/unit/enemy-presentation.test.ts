@@ -1,20 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import { metersToPixels as m, vec2 } from '../../src/core';
-import { goonSeed, patrollerMarks, SAFE_TOP_BAND } from '../../src/render/enemy';
+import { goonSeed, patrollerMarks, SAFE_TOP_BAND, STROKE_REACH } from '../../src/render/enemy';
 import { causeText } from '../../src/render/feedback/causeText';
 
 describe('patroller presentation', () => {
   const sizes = [vec2(1.2, 1), vec2(1.8, 1), vec2(2, 1), vec2(0.8, 0.8)];
 
-  it('keeps every mark inside the authored collision box, for any walk phase', () => {
+  it('keeps all rendered ink inside the authored collision box, for any walk phase', () => {
     for (const size of sizes)
       for (const facing of [-1, 1])
         for (const stride of [0, 0.1, 0.37, 2.5]) {
           const k = patrollerMarks(vec2(3, 4), size, facing, goonSeed('g1'), stride);
-          const minX = m(3 - size.x / 2) - 1e-6;
-          const maxX = m(3 + size.x / 2) + 1e-6;
-          const minY = m(4 - size.y / 2) - 1e-6;
-          const maxY = m(4 + size.y / 2) + 1e-6;
+          // Rendered ink, not centrelines: every point sits at least the widest half-stroke inside.
+          const reach = k.line * STROKE_REACH - 1e-6;
+          const minX = m(3 - size.x / 2) + reach;
+          const maxX = m(3 + size.x / 2) - reach;
+          const minY = m(4 - size.y / 2) + reach;
+          const maxY = m(4 + size.y / 2) - reach;
           const pts = [
             ...k.body,
             ...k.back,

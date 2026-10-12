@@ -8,6 +8,16 @@ const RED_PEN = 0xc5302a;
 /** Red marks (the dangerous sides) start this far down the body; the top band stays ink only. */
 export const SAFE_TOP_BAND = 0.32;
 
+/** Base pen width for a goon of this pixel height. */
+export function patrollerLine(heightPx: number): number {
+  return Math.max(2, heightPx * 0.055);
+}
+/**
+ * Widest stroke half-width in units of `line`: the back is 1.5 lines, strokeInk varies width up
+ * to 1.18x, so 0.885 lines from its centreline. Every mark sits at least this far inside.
+ */
+export const STROKE_REACH = 0.9;
+
 /** A pen line segment in pixels. */
 export interface Seg {
   readonly a: Pt;
@@ -17,6 +27,8 @@ export interface Seg {
 /** Everything the goon drawing uses, in pixels, all inside the authored collision box. */
 export interface PatrollerMarks {
   readonly box: { readonly x: number; readonly y: number; readonly w: number; readonly h: number };
+  /** Base stroke width in pixels; no stroke is wider than line * 2 * STROKE_REACH. */
+  readonly line: number;
   /** Closed wobbly body contour (feet hang below it, still inside the box). */
   readonly body: readonly Pt[];
   /** The flat back the player lands on: a heavier ink stroke along the top. */
@@ -49,8 +61,14 @@ export function patrollerMarks(
   seed: number,
   stride: number,
 ): PatrollerMarks {
-  const w = m(size.x);
-  const h = m(size.y);
+  const bw = m(size.x);
+  const bh = m(size.y);
+  const line = patrollerLine(bh);
+  // Build inside the box shrunk by the widest stroke's half-width, so rendered ink (not just
+  // stroke centrelines) never leaves collision.
+  const pad = line * STROKE_REACH;
+  const w = bw - 2 * pad;
+  const h = bh - 2 * pad;
   const x = m(position.x) - w / 2;
   const y = m(position.y) - h / 2;
   const legH = h * 0.14;
@@ -155,7 +173,16 @@ export function patrollerMarks(
       b: { x: Math.min(x + w - 1, Math.max(x + 1, lx + swing)), y: y + h - 1 },
     });
   }
-  return { box: { x, y, w, h }, body, back, eyes, bristles, red, legs };
+  return {
+    box: { x: x - pad, y: y - pad, w: bw, h: bh },
+    line,
+    body,
+    back,
+    eyes,
+    bristles,
+    red,
+    legs,
+  };
 }
 
 /** Draw the critter. Ink everywhere except red on the parts that kill. */
@@ -168,7 +195,7 @@ export function drawPatroller(
   stride: number,
 ): void {
   const k = patrollerMarks(position, size, facing, seed, stride);
-  const line = Math.max(2, k.box.h * 0.055);
+  const { line } = k;
   for (const leg of k.legs) strokeInk(g, [leg.a, leg.b], line * 0.9, INK, 1, seed);
   g.fillStyle(PAPER, 1).fillPoints(
     k.body.map((p) => ({ x: p.x, y: p.y })) as unknown as Parameters<
