@@ -12,6 +12,7 @@ import { BorderMass } from './BorderMass';
 import { loadKit17, paintKit17Terrain, resolveKitVersion } from './Kit17Terrain';
 import { loadKit17Background } from './Kit17Background';
 import { paintInkPool } from '../living/inkPool';
+import { paintPencilShadow } from '../living/pencilShadow';
 
 const urls = {
   ledge: ledgeUrl,
@@ -284,6 +285,9 @@ export class LevelKit {
         const c = texture.getContext();
         c.translate(-x, -y);
         const solids = visible.filter((s) => s.kind === 'solid');
+        // Living Notebook depth: a soft pencil shadow under every block, drawn first so the
+        // block itself covers it and only the offset rim shows below and to the right.
+        for (const solid of solids) paintPencilShadow(c, solid);
         // Connected rock mass and its world-locked hatch remain the base layer in both kits.
         // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
         this.paintMass(
