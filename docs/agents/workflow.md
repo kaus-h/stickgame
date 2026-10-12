@@ -19,7 +19,8 @@ The rule behind this doc (revised by the 2026-10-12 speed audit): **Opus builds 
 Every Opus tool call is billed at the full current context. The audit measured where two long sessions went: about two thirds of Opus's tokens went to relaying work through other agents (ChatGPT/Muse tabs, Linear, gh/CI/merge, the Codex app), and about 5% to looking at the game. So:
 
 1. **Opus builds by default.** Visual, feel, level, UX and gameplay code, and any change it can finish in a few calls, Opus writes, checks in the running build and iterates. No Linear brief is needed for that work. A one-line Linear comment when it merges is enough.
-2. **Delegate only big, isolated, spec-exact modules that run in parallel** (about 300 lines or more, no taste calls, nothing Opus will touch while it's in flight): BrowserGPT → patch inbox, or Codex when it needs local runs. Muse handles batched tiny chores only.
+2. **Delegate only big, isolated, spec-exact modules that run in parallel.** The first choice is **GPT-6.1 sol, headless:** `scripts/agents/codex-task.sh <branch> <brief.md> [effort]` creates a worktree, runs sol and `npm run check`, then pushes and opens a PR, with no app driving. Briefs must be self-contained, since sol has no Linear access. For reviews, use `codex exec review --base main`.
+   **Earlier wording:** (about 300 lines or more, no taste calls, nothing Opus will touch while it's in flight): BrowserGPT → patch inbox, or Codex when it needs local runs. Muse handles batched tiny chores only.
 3. **Loops go to subagents:** level build/solve/screenshot loops and bulk mechanical edits. Use an Opus subagent for visual judgment and Sonnet for the mechanical ones. Their output stays out of the main context.
 4. **Review:** CI plus Opus's own read for Opus's code. BrowserGPT reviews delegated code only.
 5. **Context:** hand off at 400k (see Milestones). A user-level hook injects a `CONTEXT WATCHDOG` reminder at 300k and 400k.
