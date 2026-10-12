@@ -11,6 +11,7 @@ interface BodyStats {
 }
 
 interface Snapshot {
+  tick: number;
   deaths: number;
   resets: number;
   completion: unknown;
@@ -24,7 +25,8 @@ interface Hook {
   save(): { data: { settings: { bodies: boolean } } };
   flushSave(): Promise<void>;
   benchFrames(frames: number): number;
-  resources(): { cameras: number };
+  resources(): { cameras: number; textures: number };
+  pageTurn(): { active: boolean; progress: number };
   debugResults(ticks: number, deaths: number): void;
   eraser(): {
     scrollX: number;
@@ -244,6 +246,9 @@ test('completion presentation erases bodies across the level before showing resu
       erased: number[];
       bodyCount: number;
       sweeping: boolean;
+      turnActive: boolean;
+      flow: string;
+      tick: number;
       viewportWidth: number;
     }[] = [];
     const start = performance.now();
@@ -288,6 +293,9 @@ test('completion presentation erases bodies across the level before showing resu
           erased: [...state.erased],
           bodyCount: g.bodies().count,
           sweeping: g.bodies().sweeping,
+          turnActive: g.pageTurn().active,
+          flow: g.flow(),
+          tick: g.snapshot().tick,
           viewportWidth: canvas?.width ?? 0,
         });
         if (!sawSweep || g.bodies().sweeping) requestAnimationFrame(record);
@@ -333,6 +341,9 @@ test('completion presentation erases bodies across the level before showing resu
       erased: number[];
       bodyCount: number;
       sweeping: boolean;
+      turnActive: boolean;
+      flow: string;
+      tick: number;
       viewportWidth: number;
     }[];
   };
@@ -375,6 +386,12 @@ test('completion presentation erases bodies across the level before showing resu
   // The last active RAF can precede the final step by a whole browser frame. Verify the
   // finished camera endpoint above; unit tests also verify the exact world-space exit edge.
   expect(finished.sweeping).toBe(false);
+  expect(finished.turnActive).toBe(true);
+  expect(finished.flow).toBe('playing');
+  // Recorder setup precedes debugResults; only presentation samples must keep ticks frozen.
+  expect(
+    [...activeSamples, finished].every((sample) => sample.tick === activeSamples[0]?.tick),
+  ).toBe(true);
   const firstErasedSample = activeSamples.find((sample) => sample.erased.length > 0);
   expect(firstErasedSample).toBeDefined();
   if (!firstErasedSample) throw new Error('no body was erased during the presentation');
@@ -442,7 +459,9 @@ test('accepted exit clears bodies after its lab eraser presentation', async ({ p
   expect(duration).toBeLessThanOrEqual(4);
 });
 
-test('reduced motion completes erasing in 200 ms without camera travel', async ({ page }) => {
+test('reduced motion erases and turns calmly without camera travel or simulation ticks', async ({
+  page,
+}) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await load(page, '/?level=lab-01&renderer=canvas');
   await addBody(page, 8, 7);
@@ -452,42 +471,202 @@ test('reduced motion completes erasing in 200 ms without camera travel', async (
     const before = g.eraser().scrollX;
     g.debugResults(120, 0);
     const duration = g.eraser().duration;
-    return new Promise<{ duration: number | null; scrolls: number[]; count: number }>(
-      (resolve, reject) => {
-        const scrolls = [before];
-        let frame = 0;
-        const watchdog = window.setTimeout(() => {
-          cancelAnimationFrame(frame);
-          reject(new Error('Reduced-motion fade did not complete within 2 seconds'));
-        }, 2_000);
-        const record = (): void => {
-          scrolls.push(g.eraser().scrollX);
-          if (g.bodies().sweeping) frame = requestAnimationFrame(record);
-          else {
-            clearTimeout(watchdog);
-            resolve({ duration, scrolls, count: g.bodies().count });
-          }
-        };
-        frame = requestAnimationFrame(record);
-      },
-    );
+    const tick = g.snapshot().tick;
+    return new Promise<{
+      duration: number | null;
+      scrolls: number[];
+      count: number;
+      sawTurn: boolean;
+      frozen: boolean;
+    }>((resolve, reject) => {
+      const scrolls = [before];
+      let sawTurn = false;
+      let frozen = true;
+      let frame = 0;
+      const watchdog = window.setTimeout(() => {
+        cancelAnimationFrame(frame);
+        reject(new Error('Reduced-motion eraser and turn did not complete within 2 seconds'));
+      }, 2_000);
+      const record = (): void => {
+        scrolls.push(g.eraser().scrollX);
+        sawTurn ||= g.pageTurn().active;
+        frozen &&= g.snapshot().tick === tick;
+        if (g.flow() !== 'results') frame = requestAnimationFrame(record);
+        else {
+          clearTimeout(watchdog);
+          resolve({ duration, scrolls, count: g.bodies().count, sawTurn, frozen });
+        }
+      };
+      frame = requestAnimationFrame(record);
+    });
   });
   expect(observed.duration).toBe(0.2);
   expect(observed.count).toBe(0);
+  expect(observed.sawTurn).toBe(true);
+  expect(observed.frozen).toBe(true);
   expect(Math.max(...observed.scrolls) - Math.min(...observed.scrolls)).toBeLessThan(1);
 });
 
-test('completion with no bodies goes directly to results', async ({ page }) => {
+test('completion with no bodies still turns the page while simulation and results wait', async ({
+  page,
+}, info) => {
   await load(page, '/?level=lab-01&renderer=canvas');
+  const observed = await page.evaluate(() => {
+    const g = (window as unknown as { __stickgame: Hook }).__stickgame;
+    const samples: { active: boolean; progress: number; flow: string; tick: number }[] = [];
+    g.debugResults(120, 0);
+    return new Promise<typeof samples>((resolve, reject) => {
+      let frame = 0;
+      const watchdog = window.setTimeout(() => {
+        cancelAnimationFrame(frame);
+        reject(new Error('Page turn did not reach results within 3 seconds'));
+      }, 3_000);
+      const record = (): void => {
+        samples.push({ ...g.pageTurn(), flow: g.flow(), tick: g.snapshot().tick });
+        if (g.flow() === 'results') {
+          clearTimeout(watchdog);
+          resolve(samples);
+        } else frame = requestAnimationFrame(record);
+      };
+      record();
+    });
+  });
+  const active = observed.filter((sample) => sample.active);
+  expect(active.length).toBeGreaterThan(1);
+  expect(active.every((sample) => sample.flow === 'playing')).toBe(true);
+  expect(observed.every((sample) => sample.tick === observed[0]?.tick)).toBe(true);
+  expect(active.some((sample) => sample.progress > 0 && sample.progress < 1)).toBe(true);
+  expect(
+    active.every((sample, index) => sample.progress >= (active[index - 1]?.progress ?? 0)),
+  ).toBe(true);
+  expect(observed.at(-1)).toMatchObject({ active: false, flow: 'results' });
+  expect((await bodyStats(page)).sweeping).toBe(false);
+  await expect(page.getByRole('heading', { name: /cleared/i })).toBeVisible();
+  await info.attach('No-body page turn timeline', {
+    body: JSON.stringify(observed, null, 2),
+    contentType: 'application/json',
+  });
+});
+
+for (const input of ['key', 'touch'] as const) {
+  test(
+    'the page turn can be skipped with a ' + input + ' without activating results controls',
+    async ({ page }) => {
+      await load(page, '/?touch=1&level=lab-01&renderer=canvas');
+      await page.evaluate(() => {
+        (window as unknown as { __stickgame: Hook }).__stickgame.debugResults(120, 0);
+      });
+      await expect
+        .poll(async () =>
+          page.evaluate(
+            () => (window as unknown as { __stickgame: Hook }).__stickgame.pageTurn().active,
+          ),
+        )
+        .toBe(true);
+      const stoppedAt = (await snap(page)).tick;
+      await expect(page.getByRole('heading', { name: /cleared/i })).toBeHidden();
+      if (input === 'key') await page.keyboard.press('Space');
+      else await tapCanvas(page, 480, 360);
+      await expect
+        .poll(async () =>
+          page.evaluate(() => (window as unknown as { __stickgame: Hook }).__stickgame.flow()),
+        )
+        .toBe('results');
+      expect(
+        await page.evaluate(
+          () => (window as unknown as { __stickgame: Hook }).__stickgame.pageTurn().active,
+        ),
+      ).toBe(false);
+      expect((await snap(page)).tick).toBe(stoppedAt);
+      await expect(page.getByRole('heading', { name: /cleared/i })).toBeVisible();
+    },
+  );
+}
+
+test('holding Enter across the final skip does not activate the focused results action', async ({
+  page,
+}) => {
+  await load(page, '/?renderer=canvas');
+  await expect(page.getByRole('heading', { name: 'StickSwing' })).toBeVisible();
+  await page.keyboard.press('Enter');
+  const level = () =>
+    page.evaluate(
+      () =>
+        (
+          window as unknown as { __stickgame: Hook & { level(): { id: string } } }
+        ).__stickgame.level().id,
+    );
+  const completedLevel = await level();
   await page.evaluate(() => {
     (window as unknown as { __stickgame: Hook }).__stickgame.debugResults(120, 0);
   });
   await expect
     .poll(async () =>
+      page.evaluate(
+        () => (window as unknown as { __stickgame: Hook }).__stickgame.pageTurn().active,
+      ),
+    )
+    .toBe(true);
+
+  await page.keyboard.down('Enter');
+  try {
+    await expect(page.getByRole('heading', { name: /cleared/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Next', exact: true })).toBeFocused();
+    const stoppedAt = (await snap(page)).tick;
+    // Playwright repeats keydown while Enter remains held, like keyboard auto-repeat.
+    await page.keyboard.down('Enter');
+    await page.keyboard.down('Enter');
+    expect(
+      await page.evaluate(() => (window as unknown as { __stickgame: Hook }).__stickgame.flow()),
+    ).toBe('results');
+    expect(await level()).toBe(completedLevel);
+    expect((await snap(page)).tick).toBe(stoppedAt);
+  } finally {
+    await page.keyboard.up('Enter');
+  }
+  // A fresh intentional press can use the focused primary action after release.
+  await page.keyboard.press('Enter');
+  await expect
+    .poll(async () =>
       page.evaluate(() => (window as unknown as { __stickgame: Hook }).__stickgame.flow()),
     )
-    .toBe('results');
-  expect((await bodyStats(page)).sweeping).toBe(false);
+    .toBe('playing');
+  expect(await level()).toBe('1-2');
+});
+
+test('repeated page turns and skips release captured textures and cameras', async ({ page }) => {
+  await load(page, '/?level=lab-01&renderer=canvas');
+  const baseline = await page.evaluate(() =>
+    (window as unknown as { __stickgame: Hook }).__stickgame.resources(),
+  );
+  for (let attempt = 0; attempt < 4; attempt++) {
+    await page.evaluate(() => {
+      (window as unknown as { __stickgame: Hook }).__stickgame.debugResults(120, 0);
+    });
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          () => (window as unknown as { __stickgame: Hook }).__stickgame.pageTurn().active,
+        ),
+      )
+      .toBe(true);
+    if (attempt % 2 === 1) await page.keyboard.press('Space');
+    await expect(page.getByRole('heading', { name: /cleared/i })).toBeVisible();
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().textures,
+        ),
+      )
+      .toBe(baseline.textures);
+    expect(
+      await page.evaluate(
+        () => (window as unknown as { __stickgame: Hook }).__stickgame.resources().cameras,
+      ),
+    ).toBe(baseline.cameras);
+    await page.getByRole('button', { name: 'Retry', exact: true }).click();
+    await expect(page.getByRole('dialog')).toBeHidden();
+  }
 });
 
 test('the completion eraser can be skipped with a touch tap', async ({ page }) => {

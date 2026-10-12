@@ -343,7 +343,9 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     expect(elapsed).toBeGreaterThanOrEqual(duration);
     expect(elapsed).toBeLessThanOrEqual(duration + 1 / 60);
     expect(done).toHaveBeenCalledOnce();
-    expect(fakeWindow.addEventListener).toHaveBeenCalledWith('pointerdown', expect.any(Function));
+    expect(fakeWindow.addEventListener).toHaveBeenCalledWith('pointerdown', expect.any(Function), {
+      capture: true,
+    });
     expect(image?.setCrop).toHaveBeenCalled();
     expect(textures[0]?.texture.frames.size).toBe(0);
     expect(textures[0]?.destroyed).toBe(true);
@@ -364,6 +366,7 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     expect(fakeWindow.removeEventListener).toHaveBeenCalledWith(
       'pointerdown',
       expect.any(Function),
+      { capture: true },
     );
     layer.destroy();
   });
@@ -458,10 +461,13 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     expect(follow).toHaveBeenLastCalledWith(150 * 64);
     expect(layer.sweeping).toBe(false);
     expect(done).toHaveBeenCalledOnce();
-    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), {
+      capture: true,
+    });
     expect(fakeWindow.removeEventListener).toHaveBeenCalledWith(
       'pointerdown',
       expect.any(Function),
+      { capture: true },
     );
     layer.destroy();
   });
@@ -556,10 +562,13 @@ describe('BodiesLayer render lifecycle (GMR-104)', () => {
     expect(remainingTexture?.destroyed).toBe(true);
     expect(image?.destroyed).toBe(true);
     expect(textures[0]?.destroyed).toBe(true);
-    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function));
+    expect(fakeWindow.removeEventListener).toHaveBeenCalledWith('keydown', expect.any(Function), {
+      capture: true,
+    });
     expect(fakeWindow.removeEventListener).toHaveBeenCalledWith(
       'pointerdown',
       expect.any(Function),
+      { capture: true },
     );
   });
 });

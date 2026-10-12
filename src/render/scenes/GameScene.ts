@@ -24,6 +24,7 @@ import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
 import { DrawIn } from '../living/drawIn';
+import { PageTurn } from '../living/pageTurn';
 import { InkJuice } from '../living/inkJuice';
 import { addPageVignette } from '../living/pageVignette';
 import { drawPoolSurfaces, poolShape, type PoolShape } from '../living/inkPool';
@@ -83,6 +84,8 @@ export interface GameSceneOptions {
   readonly reducedMotion?: () => boolean | undefined;
   /** Draw the in-canvas exit result card (labs and tests); the app menu UI replaces it. */
   readonly showExitResult?: boolean;
+  /** Release the completion pause if a scene reload cancels a presentation. */
+  readonly onPresentationCancel?: () => void;
   /** Level-design review: fit the whole level on screen and hold the camera still (?overview=1). */
   readonly overview?: boolean;
   /** On-screen touch controls this frame (GMR-27); null or inactive hides them. */
@@ -161,6 +164,7 @@ export class GameScene extends Phaser.Scene {
   private boil: LineBoil | null = null;
   private juice = new InkJuice();
   private drawIn: DrawIn | null = null;
+  private pageTurn: PageTurn | null = null;
   private vignette: Phaser.GameObjects.Image | null = null;
   /** The paper renders through its own camera under the world camera, so paper never boils. */
   private paper: Phaser.GameObjects.GameObject | null = null;
@@ -235,6 +239,16 @@ export class GameScene extends Phaser.Scene {
     };
   }
 
+  /** Only accepted exits call this: no turn or delay on death/retry. */
+  turnPage(done: () => void): void {
+    this.pageTurn?.start(done);
+    this.routeCameras();
+  }
+
+  pageTurnPresentation(): { active: boolean; progress: number } {
+    return this.pageTurn?.presentation() ?? { active: false, progress: 0 };
+  }
+
   bodyStats(): BodiesStats {
     return this.bodies.stats();
   }
@@ -269,6 +283,7 @@ export class GameScene extends Phaser.Scene {
         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.highContrast = this.opts.accessibility?.().highContrast ?? false;
     this.pencil = this.highContrast ? PENCIL_HC : PENCIL;
+    this.pageTurn = new PageTurn(this, this.reducedMotion, this.highContrast);
     this.drawStaticPage();
     // Paper camera first in the render list; the world camera above it is transparent and boils.
     this.paperCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
@@ -381,6 +396,7 @@ ${this.opts.debugExtra()}`
         return `${exitSpec(this.opts.level.exit)}${extra}
 art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB
 bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
+page turn ${this.pageTurnPresentation().active ? 'active' : 'idle'} | progress ${this.pageTurnPresentation().progress.toFixed(3)}
 a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
@@ -389,7 +405,10 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
       this.feedback.onEvents(events);
       this.juice.onEvents(events);
       for (const e of events) {
-        if (e.type === 'reset') this.stomps = [];
+        if (e.type === 'reset') {
+          this.stomps = [];
+          this.pageTurn?.clear();
+        }
         if (e.type === 'stomp') this.stomps.push({ tick: e.tick, at: e.at });
         if (e.type === 'death') {
           this.splats.push({ x: m(e.at.x), y: m(e.at.y), age: 0, seed: e.tick });
@@ -415,6 +434,9 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
       this.overlay?.destroy();
       this.overlay = null;
       this.bodies.destroy();
+      this.pageTurn?.destroy();
+      this.pageTurn = null;
+      this.opts.onPresentationCancel?.();
     });
     this.fitCamera();
     this.kit17Background?.update(this.cameras.main, this.reducedMotion);
@@ -471,6 +493,7 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
     this.boil?.update(time / 1000);
     // Body physics caps its own catch-up; presentation effects keep their wall-time duration.
     this.bodies.update(Math.max(0, deltaMs / 1000));
+    this.pageTurn?.update(Math.max(0, deltaMs / 1000), this.scale.width, this.scale.height);
     this.drawDynamic(frame, dt);
     this.drawHud(frame);
     this.routeCameras(); // bodies baked this frame
@@ -1290,7 +1313,8 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
       this.opts.showExitResult !== false &&
         completion !== null &&
         completion.accepted &&
-        !this.bodies.sweeping,
+        !this.bodies.sweeping &&
+        !this.pageTurnPresentation().active,
     );
     if (completion?.accepted) {
       this.exitResult

@@ -291,11 +291,11 @@ async function start(): Promise<void> {
           });
           timing.setPb(pb);
         }
-        // Leftover death bodies are rubbed out by the eraser first (GMR-104); the menu waits for
-        // it with the simulation paused, so a key that skips the sweep cannot leak into play.
+        // Accepted exits erase bodies, turn the notebook page, then show results. The simulation
+        // stays paused through both stages, and their shared skip input cannot leak into play.
         const results = (): void => {
-          if (!flowMode || !flow) return;
           runtime.pause('sweep', false);
+          if (!flowMode || !flow) return;
           flow.showResults({
             levelId: level.id,
             ticks: e.runTicks,
@@ -314,8 +314,8 @@ async function start(): Promise<void> {
               : null,
           });
         };
-        if (flowMode) runtime.pause('sweep', true);
-        if (scene) scene.eraseBodies(results);
+        runtime.pause('sweep', true);
+        if (scene) scene.eraseBodies(() => scene?.turnPage(results));
         else results();
       }
     }
@@ -332,6 +332,9 @@ async function start(): Promise<void> {
       return r === 'system' ? undefined : r === 'on';
     },
     showExitResult: !flowMode,
+    onPresentationCancel: () => {
+      runtime.pause('sweep', false);
+    },
     overview: params.has('overview'),
     strings: stringsEn,
     gravity: tuning.sim.gravity,
@@ -457,7 +460,7 @@ async function start(): Promise<void> {
         mapper.blur();
         intents.clear();
         intents.clearLog();
-        // Scene restart cancels any in-flight eraser; do not retain its menu pause.
+        // Scene restart cancels any in-flight eraser/page turn; do not retain its menu pause.
         runtime.pause('sweep', false);
         runtime.replaceLevel(next);
         level = next;
@@ -562,13 +565,16 @@ async function start(): Promise<void> {
         debugResults: (ticks: number, deaths: number) => {
           runtime.pause('sweep', true);
           devScene.eraseBodies(() => {
-            runtime.pause('sweep', false);
-            flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+            devScene.turnPage(() => {
+              runtime.pause('sweep', false);
+              flow.showResults({ levelId: level.id, ticks, deaths, newBest: true });
+            });
           });
         },
         // GMR-104: death bodies (count, settling, visible) and dev-only body placement.
         bodies: () => devScene.bodyStats(),
         eraser: () => devScene.eraserPresentation(),
+        pageTurn: () => devScene.pageTurnPresentation(),
         addBody: (x: number, y: number, vx = 0, vy = 0, tick = 0) => {
           devScene.addBody({ tick, at: vec2(x, y), velocity: vec2(vx, vy) });
         },

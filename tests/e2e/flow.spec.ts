@@ -76,7 +76,25 @@ test('results Next follows Section 1 through finale 1-3', async ({ page }) => {
       window as unknown as { __stickgame: { debugResults(t: number, d: number): void } }
     ).__stickgame.debugResults(3723, 2);
   });
+  await expect
+    .poll(async () =>
+      page.evaluate(
+        () =>
+          (
+            window as unknown as { __stickgame: { pageTurn(): { active: boolean } } }
+          ).__stickgame.pageTurn().active,
+      ),
+    )
+    .toBe(true);
+  expect(await screen(page)).toBe('playing');
+  const completionTick = await tick(page);
+  await expect(page.getByRole('heading', { name: '1-1 cleared' })).toBeHidden();
+  // Escape is consumed by the turn; it must not open Pause or trigger the results Next button.
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('heading', { name: '1-1 cleared' })).toBeVisible();
+  expect(await screen(page)).toBe('results');
+  expect(await tick(page)).toBe(completionTick);
+  await expect(page.getByRole('heading', { name: 'Paused' })).toBeHidden();
   await expect(page.getByText('01:02.05')).toBeVisible();
   await expect(page.getByText('2 deaths')).toBeVisible();
   await expect(page.getByText('new best')).toBeVisible();

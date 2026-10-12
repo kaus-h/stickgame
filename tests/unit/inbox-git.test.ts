@@ -18,7 +18,8 @@ import {
   runGit,
 } from '../../scripts/agents/inbox-git.mjs';
 
-const tempBase = process.platform === 'win32' ? 'D:/tmp' : tmpdir();
+const tempBase =
+  process.env.STICKGAME_TEST_TMP ?? (process.platform === 'win32' ? 'D:/tmp' : tmpdir());
 let tempRoot: string;
 let repo: string;
 let worktree: string;
