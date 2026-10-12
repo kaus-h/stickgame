@@ -1,7 +1,7 @@
 import * as Phaser from 'phaser';
-import farUrl from '../../../assets/art/kit-0017/1x/t40-background-distant-mesa.png?no-inline';
-import middleUrl from '../../../assets/art/kit-0017/1x/t41-background-arches.png?no-inline';
-import nearUrl from '../../../assets/art/kit-0017/1x/t42-background-rock-spires.png?no-inline';
+import farUrl from '../../../assets/art/kit-0017/runtime/t40-background-distant-mesa.webp?no-inline';
+import middleUrl from '../../../assets/art/kit-0017/runtime/t41-background-arches.webp?no-inline';
+import nearUrl from '../../../assets/art/kit-0017/runtime/t42-background-rock-spires.webp?no-inline';
 
 const layerSpecs = [
   {

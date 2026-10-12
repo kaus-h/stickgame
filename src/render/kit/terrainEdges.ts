@@ -221,3 +221,16 @@ export function classifyTerrainEdges(level: LevelDef, solid: SolidDef): TerrainE
   }
   return out;
 }
+
+/** Teeth sit on a continuous terrain surface; pools still terminate its contact contour. */
+export function classifyTerrainSurfaceEdges(level: LevelDef, solid: SolidDef): TerrainEdge[] {
+  return classifyTerrainEdges(
+    {
+      ...level,
+      solids: level.solids.filter(
+        (other) => other.kind !== 'hazard' || !/thorn|spike|teeth/i.test(other.id),
+      ),
+    },
+    solid,
+  );
+}

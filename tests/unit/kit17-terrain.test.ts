@@ -100,6 +100,22 @@ describe('kit 0017 terrain selection', () => {
     );
   });
 
+  it('keeps the terrain crest continuous beneath a spike strip', () => {
+    const floor = rectangle('floor', 0, 8, 10, 3);
+    const spikes = { ...rectangle('floor-spikes', 4, 7.5, 1, 0.5), kind: 'hazard' as const };
+    const tops = selectKit17Topology(level([floor, spikes]), floor).edges.filter(
+      ({ edge }) => edge.side === 'top',
+    );
+    expect(tops).toHaveLength(1);
+    expect(tops[0]?.edge).toMatchObject({ a: vec2(0, 8), b: vec2(10, 8) });
+    const pool = { ...spikes, id: 'pool' };
+    expect(
+      selectKit17Topology(level([floor, pool]), floor).edges.filter(
+        ({ edge }) => edge.side === 'top',
+      ),
+    ).toHaveLength(2);
+  });
+
   it('preserves corner selection when an authored polygon reverses winding', () => {
     const solid: SolidDef = {
       id: 'recess',

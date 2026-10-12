@@ -264,8 +264,8 @@
           "t10-outer-bl",
           "t11-outer-br",
           "t16-vertical-wall-strip",
-          "t17-wall-top-cap",
           "t21-ceiling-span",
+          "t28-isolated-platform",
           "t34-pool-surface-span",
           "t35-pool-left-wall-join",
           "t36-pool-right-wall-join",
@@ -298,7 +298,7 @@
         "fingerprint": "52e221e9"
       },
       "resources": {
-        "textures": 45,
+        "textures": 47,
         "cameras": 2
       },
       "level": {
@@ -310,7 +310,8 @@
         },
         "error": null
       }
-    }
+    },
+    "review": "Opus revision: main 4cca463; red mass and continuous spike-floor crest"
   },
   {
     "id": "1-2",
@@ -467,12 +468,16 @@
           "t01-solid-infill",
           "t02-top-edge-a",
           "t03-top-edge-b",
+          "t04-bottom-edge",
           "t05-left-edge",
           "t06-right-edge",
           "t08-outer-tl",
           "t09-outer-tr",
+          "t10-outer-bl",
+          "t11-outer-br",
           "t16-vertical-wall-strip",
           "t17-wall-top-cap",
+          "t25-left-ledge-end",
           "t27-thin-solid-bridge",
           "t34-pool-surface-span",
           "t35-pool-left-wall-join",
@@ -506,7 +511,7 @@
         "fingerprint": "a19dc448"
       },
       "resources": {
-        "textures": 44,
+        "textures": 46,
         "cameras": 2
       },
       "level": {
@@ -518,7 +523,8 @@
         },
         "error": null
       }
-    }
+    },
+    "review": "Opus revision: main 4cca463; red mass and continuous spike-floor crest"
   },
   {
     "id": "1-3",

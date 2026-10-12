@@ -2,12 +2,12 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m } from '../../core';
 import type { LevelDef, SolidDef } from '../../sim';
 import manifest from '../../../assets/art/kit-0016/manifest.json';
-import ledgeUrl from '../../../assets/art/kit-0016/1x/ledge-top.png';
+import ledgeUrl from '../../../assets/art/kit-0016/runtime/ledge-top.webp?no-inline';
 import spikesUrl from '../../../assets/art/kit-0016/1x/spikes.png';
-import poolUrl from '../../../assets/art/kit-0016/1x/ink-pool.png';
+import poolUrl from '../../../assets/art/kit-0016/runtime/ink-pool.webp?no-inline';
 import ringUrl from '../../../assets/art/kit-0016/1x/anchor-ring.png';
 import doorUrl from '../../../assets/art/kit-0016/1x/exit-door.png';
-import { classifyTerrainEdges, type TerrainEdge } from './terrainEdges';
+import { classifyTerrainSurfaceEdges, type TerrainEdge } from './terrainEdges';
 import { BorderMass } from './BorderMass';
 import { loadKit17, paintKit17Terrain, resolveKitVersion } from './Kit17Terrain';
 import { loadKit17Background } from './Kit17Background';
@@ -184,7 +184,7 @@ export class LevelKit {
       scene.events.off('prerender', updateBorder);
     });
     for (const solid of level.solids.filter((s) => s.kind === 'solid'))
-      this.edges.set(solid, classifyTerrainEdges(level, solid));
+      this.edges.set(solid, classifyTerrainSurfaceEdges(level, solid));
     for (const edge of [...this.edges.values()].flat())
       if (edge.contact === 'exposed') this.allExposedEdges.push(edge);
     const endpoints = new Map<string, { vertex: TerrainEdge['a']; edges: TerrainEdge[] }>();

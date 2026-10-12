@@ -48,7 +48,6 @@ export function loadKit17Pool(): Promise<void> {
       ctx.drawImage(image, 0, 0);
       const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
       let redY = canvas.height,
-        lastRedY = -1,
         minX = canvas.width,
         maxX = -1;
       const redByRow = new Uint16Array(canvas.height);
@@ -74,30 +73,39 @@ export function loadKit17Pool(): Promise<void> {
       for (let y = 0; y < redByRow.length; y++)
         if ((redByRow[y] ?? 0) >= coverageThreshold) {
           if (redY === canvas.height) redY = y;
-          lastRedY = y;
         }
       if (redY === canvas.height) redY = redByRow.findIndex((count) => count > 0);
       if (redY < 0) redY = 0;
       ctx.putImageData(pixels, 0, 0);
       let output = canvas;
       if (asset.name === 't39-pool-depth-fill') {
-        const cropY = Math.min(canvas.height - 1, Math.max(redY, lastRedY) + 8);
         const cropped = document.createElement('canvas');
         cropped.width = canvas.width;
-        cropped.height = Math.max(1, canvas.height - cropY);
-        cropped
-          .getContext('2d')
-          ?.drawImage(
-            canvas,
-            0,
-            cropY,
-            canvas.width,
-            cropped.height,
-            0,
-            0,
-            canvas.width,
-            cropped.height,
-          );
+        cropped.height = Math.ceil(m(1.8));
+        const depthContext = cropped.getContext('2d');
+        if (!depthContext) throw new Error('Canvas 2D context unavailable for kit 0017 pool');
+        // T39 is only a thin red meniscus over transparent paper and black glyphs. Reusing its
+        // lower pixels exposes those glyphs as a pale repeating band, so make the depth a
+        // continuous red-ink mass and use the source's rough, hand-drawn character as strokes.
+        depthContext.fillStyle = '#92212c';
+        depthContext.fillRect(0, 0, cropped.width, cropped.height);
+        depthContext.lineCap = 'round';
+        depthContext.lineJoin = 'round';
+        // Native-height, irregular pen strokes avoid enlarging a short source into a lattice.
+        for (let stroke = 0; stroke < 220; stroke++) {
+          const x = ((stroke * 47.13) % (cropped.width + 40)) - 20;
+          const y = (stroke * 23.77) % cropped.height;
+          const length = 18 + ((stroke * 17) % 45);
+          const slope = Math.sin(stroke * 2.1) * 0.8;
+          depthContext.beginPath();
+          depthContext.moveTo(x, y);
+          for (let t = 4; t <= length; t += 4) {
+            depthContext.lineTo(x + t, y + slope * t + Math.sin(t * 0.7 + stroke) * 1.5);
+          }
+          depthContext.strokeStyle = stroke % 2 === 0 ? '#b12a35' : '#7e1b25';
+          depthContext.lineWidth = 0.7 + (stroke % 4) * 0.3;
+          depthContext.stroke();
+        }
         output = cropped;
       }
       // bankWidth records the source bank's bounding extent for calibration/debug; rendered joins are red-only.
@@ -238,8 +246,7 @@ export function paintKit17Pool(
     y = m(b.minY),
     width = m(b.maxX - b.minX),
     height = m(b.maxY - b.minY);
-  const depthInset = Math.min(8, height);
-  drawDepth(c, depth, x, y + depthInset, width, height - depthInset);
+  drawDepth(c, depth, x, y, width, height);
   usedParts.add(selected.depth.name);
   // Tile the red-only span on the hazard's upper collision boundary, using its measured redline.
   const redline = surface.redY;

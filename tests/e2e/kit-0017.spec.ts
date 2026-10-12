@@ -152,7 +152,10 @@ test('0017 pool meniscus repeats continuously and depth has no extra contact str
     let red = 0,
       gap = 0,
       longestGap = 0,
-      maxDepthRow = 0;
+      interiorRed = 0,
+      interiorPale = 0,
+      maxDepthRow = 0,
+      interiorPixels = 0;
     for (let col = 0; col < width; col++) {
       let marked = false;
       for (let row = 0; row < topRows; row++) {
@@ -172,17 +175,24 @@ test('0017 pool meniscus repeats continuously and depth has no extra contact str
       let dark = 0;
       for (let col = 0; col < width; col++) {
         const i = (row * width + col) * 4;
-        if (
-          (data[i] ?? 255) * 0.2126 +
-            (data[i + 1] ?? 255) * 0.7152 +
-            (data[i + 2] ?? 255) * 0.0722 <
-          160
-        )
-          dark++;
+        const r = data[i] ?? 255,
+          g = data[i + 1] ?? 255,
+          b = data[i + 2] ?? 255,
+          luminance = r * 0.2126 + g * 0.7152 + b * 0.0722;
+        if (luminance < 160 && Math.abs(r - g) < 25 && Math.abs(r - b) < 25) dark++;
+        if (r > g * 1.3 && r > b * 1.3) interiorRed++;
+        if (luminance > 175) interiorPale++;
+        interiorPixels++;
       }
       maxDepthRow = Math.max(maxDepthRow, dark / width);
     }
-    return { redCoverage: red / (width * topRows), longestGap, maxDepthRow };
+    return {
+      redCoverage: red / (width * topRows),
+      longestGap,
+      maxDepthRow,
+      interiorRedCoverage: interiorRed / interiorPixels,
+      interiorPaleCoverage: interiorPale / interiorPixels,
+    };
   });
   await info.attach('0017 pool pixel metrics', {
     body: JSON.stringify(pixels),
@@ -194,5 +204,47 @@ test('0017 pool meniscus repeats continuously and depth has no extra contact str
   );
   expect(pixels.maxDepthRow, 'depth cannot imply another horizontal contact line').toBeLessThan(
     0.25,
+  );
+  expect(
+    pixels.interiorRedCoverage,
+    'the entire lethal pool interior reads as red ink',
+  ).toBeGreaterThan(0.9);
+  expect(pixels.interiorPaleCoverage, 'depth contains no pale repeating glyph band').toBeLessThan(
+    0.05,
+  );
+});
+
+test('1-2: a continuous ink crest remains underneath the spike strip', async ({ page }) => {
+  await page.setViewportSize({ width: 1600, height: 900 });
+  await boot(page, '1-2');
+  const coverage = await page.evaluate(() => {
+    const h = (window as unknown as { __stickgame: KitHook }).__stickgame;
+    const canvas = document.querySelector<HTMLCanvasElement>('#game canvas');
+    const c = canvas?.getContext('2d');
+    if (!canvas || !c) throw new Error('Missing Canvas renderer');
+    const a = h.worldToScreen(5.55, 8),
+      b = h.worldToScreen(6.45, 8.08);
+    const x = Math.floor(a.x),
+      y = Math.floor(a.y);
+    const width = Math.ceil(b.x) - x,
+      height = Math.ceil(b.y) - y;
+    const pixels = c.getImageData(x, y, width, height).data;
+    let inkColumns = 0;
+    for (let col = 0; col < width; col++) {
+      for (let row = 0; row < height; row++) {
+        const i = (row * width + col) * 4;
+        const r = pixels[i] ?? 255,
+          g = pixels[i + 1] ?? 255,
+          b = pixels[i + 2] ?? 255;
+        if (r < 170 && Math.abs(r - g) < 25 && Math.abs(r - b) < 25) {
+          inkColumns++;
+          break;
+        }
+      }
+    }
+    return inkColumns / width;
+  });
+  expect(coverage, 'spike art must not cut a pale notch in the supporting floor').toBeGreaterThan(
+    0.95,
   );
 });

@@ -218,7 +218,7 @@ for (const levelId of LEVEL_IDS) {
   });
 }
 
-test('1-2: grounded kit mass continues to the hazard bed and hazards retain paper gaps', async ({
+test('1-2: grounded mass meets the red lethal pool and spikes retain paper gaps', async ({
   page,
 }, info) => {
   const pageErrors: string[] = [];
@@ -265,7 +265,7 @@ test('1-2: grounded kit mass continues to the hazard bed and hazards retain pape
   ).toBeGreaterThan(0.45);
   expect(share(lowerEdge, 'ink'), 'ground mass should meet the hazard bed').toBeGreaterThan(0.02);
 
-  // A tooth patch and the lethal floor each contain red marks and visible paper between them.
+  // Teeth retain paper-negative gaps; the lethal floor reads as red mass (doc 09 H4).
   const spikePatch = await sampleWorldRect(page, {
     minX: 5.55,
     maxX: 6.45,
@@ -275,7 +275,6 @@ test('1-2: grounded kit mass continues to the hazard bed and hazards retain pape
   const poolPatch = await sampleWorldRect(page, {
     minX: 1,
     maxX: 3,
-    // 0017 reserves red for the dangerous meniscus rather than a filled depth stripe.
     minY: 11.4,
     maxY: 11.65,
   });
@@ -283,8 +282,10 @@ test('1-2: grounded kit mass continues to the hazard bed and hazards retain pape
   expect(share(spikePatch, 'paper'), 'spikes should have paper-negative gaps').toBeGreaterThan(
     0.08,
   );
-  expect(share(poolPatch, 'red'), 'pool should contain red hatch').toBeGreaterThan(0.08);
-  expect(share(poolPatch, 'paper'), 'pool hatching should leave paper gaps').toBeGreaterThan(0.08);
+  expect(share(poolPatch, 'red'), 'the whole lethal pool should read as red mass').toBeGreaterThan(
+    0.9,
+  );
+  expect(share(poolPatch, 'paper'), 'the lethal pool must not have a pale band').toBeLessThan(0.05);
   expect(pageErrors).toEqual([]);
 });
 

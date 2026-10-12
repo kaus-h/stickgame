@@ -1,7 +1,11 @@
 import type { LevelDef, SolidDef } from '../../sim';
 import { metersToPixels as m } from '../../core';
 import runtime from '../../../assets/art/kit-0017/runtime.json';
-import { classifyTerrainEdges, type TerrainEdge, type TerrainEdgeSide } from './terrainEdges';
+import {
+  classifyTerrainSurfaceEdges,
+  type TerrainEdge,
+  type TerrainEdgeSide,
+} from './terrainEdges';
 import { kit17AssetUrl } from './Kit17Assets';
 
 export type KitVersion = '0016' | '0017';
@@ -199,7 +203,7 @@ function cornerFromEdges(
 
 /** Select exposed edge and turn assets directly from GMR-111 geometry classification. */
 export function selectKit17Topology(level: LevelDef, solid: SolidDef): Kit17TopologySelection {
-  const allEdges = classifyTerrainEdges(level, solid);
+  const allEdges = classifyTerrainSurfaceEdges(level, solid);
   return selectKit17TopologyFromEdges(solid, allEdges);
 }
 
@@ -422,7 +426,7 @@ export function paintKit17Terrain(
 ): Kit17TopologySelection {
   const selected = selectKit17TopologyFromEdges(
     solid,
-    classifiedEdges ?? classifyTerrainEdges(level, solid),
+    classifiedEdges ?? classifyTerrainSurfaceEdges(level, solid),
     globalExposedEdges,
   );
   c.save();
