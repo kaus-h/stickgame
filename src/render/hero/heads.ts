@@ -40,6 +40,11 @@ const key = (frame: HeadFrame): string => `hero-head-${frame}`;
 export class HeroHead {
   private readonly image: Phaser.GameObjects.Image | null;
 
+  /** The head sprite, for camera routing (it must not line-boil). */
+  get object(): Phaser.GameObjects.Image | null {
+    return this.image;
+  }
+
   constructor(scene: Phaser.Scene, depth: number, alpha = 1) {
     if (!images) {
       this.image = null;
