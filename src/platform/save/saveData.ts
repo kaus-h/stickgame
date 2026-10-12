@@ -4,7 +4,7 @@
  * blocks play; the store also keeps the previous good copy as a backup.
  */
 
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 export interface LevelRecord {
   readonly cleared: boolean;
@@ -43,6 +43,33 @@ export interface PersonalBest {
 
 export type ReducedMotion = 'system' | 'on' | 'off';
 
+// Keep the save schema platform-only (AGENTS.md): this type mirrors the action names in
+// src/input/bindings.ts but must not import from src/input across the platform layer boundary.
+type BindableAction =
+  | 'left'
+  | 'right'
+  | 'jump'
+  | 'rope'
+  | 'restart'
+  | 'respawn'
+  | 'pause'
+  | 'ghost'
+  | 'bodies'
+  | 'clearBodies';
+
+const BINDABLE_ACTIONS: readonly BindableAction[] = [
+  'left',
+  'right',
+  'jump',
+  'rope',
+  'restart',
+  'respawn',
+  'pause',
+  'ghost',
+  'bodies',
+  'clearBodies',
+];
+
 export interface Settings {
   readonly masterVolume: number;
   readonly sfxVolume: number;
@@ -57,6 +84,8 @@ export interface Settings {
   readonly ghost: boolean;
   /** Show the death bodies (GMR-104); B toggles them. */
   readonly bodies: boolean;
+  /** Player keyboard overrides; an empty map means desktop defaults. */
+  readonly keyBindings: Readonly<Partial<Record<BindableAction, readonly string[]>>>;
 }
 
 export interface SaveData {
@@ -77,6 +106,7 @@ export const DEFAULT_SETTINGS: Settings = {
   assist: 'standard',
   ghost: true,
   bodies: true,
+  keyBindings: {},
 };
 
 export function emptySave(): SaveData {
@@ -110,6 +140,12 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
     delete next.ghosts;
     return next;
   },
+  // GMR-50: existing settings are preserved while key overrides start empty.
+  2: (d) => ({
+    ...d,
+    version: 3,
+    settings: { ...(isRecord(d.settings) ? d.settings : {}), keyBindings: {} },
+  }),
 };
 
 export class SaveVersionError extends Error {}
@@ -163,6 +199,20 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     }
   }
   const s = isRecord(data.settings) ? data.settings : {};
+  const keyBindings: Partial<Record<BindableAction, readonly string[]>> = {};
+  if (isRecord(s.keyBindings)) {
+    for (const action of BINDABLE_ACTIONS) {
+      const codes = s.keyBindings[action];
+      if (!Array.isArray(codes)) continue;
+      keyBindings[action] = codes.filter(
+        (code): code is string =>
+          typeof code === 'string' &&
+          code.length > 0 &&
+          code !== 'Tab' &&
+          (code !== 'Escape' || action === 'pause'),
+      );
+    }
+  }
   const settings: Settings = {
     masterVolume: num(s.masterVolume, 0, 1, DEFAULT_SETTINGS.masterVolume),
     sfxVolume: num(s.sfxVolume, 0, 1, DEFAULT_SETTINGS.sfxVolume),
@@ -174,6 +224,7 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     assist: s.assist === 'wide-select' || s.assist === 'snap' ? s.assist : 'standard',
     ghost: s.ghost !== false,
     bodies: s.bodies !== false,
+    keyBindings,
   };
   const pbs: Record<string, PersonalBest> = {};
   if (isRecord(data.pbs)) {

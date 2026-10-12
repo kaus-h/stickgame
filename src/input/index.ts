@@ -2,6 +2,8 @@
 // May import core only.
 export { bindDom, DEFAULT_DESKTOP_BINDINGS, DesktopInputMapper } from './DesktopInputMapper';
 export type { DesktopBindings, ScreenToWorld } from './DesktopInputMapper';
+export { assignKey, BINDABLE_ACTIONS, resolveBindings } from './bindings';
+export type { BindableAction, KeyBindingOverrides } from './bindings';
 export { IntentQueue } from './IntentQueue';
 export type { IntentLogEntry } from './IntentQueue';
 export {

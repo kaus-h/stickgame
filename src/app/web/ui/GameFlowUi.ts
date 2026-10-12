@@ -1,4 +1,5 @@
 import type { SaveData, Settings } from '../../../platform';
+import { ControlsPanel } from './ControlsPanel';
 import { DELTA_COLOURS, formatDelta } from '../../../render/race';
 import {
   continueLevel,
@@ -96,6 +97,8 @@ export class GameFlowUi {
   private readonly root: HTMLDivElement;
   private currentLevel: string | null = null;
   private settingsReturn: Screen = 'title';
+  /** Key remapping (GMR-50); lives only while the settings screen is shown. */
+  private controls: ControlsPanel | null = null;
 
   constructor(
     host: HTMLElement,
@@ -322,6 +325,7 @@ export class GameFlowUi {
       };
       return h('label', { class: 'setting' }, [label, el]);
     };
+    const controlsHost = h('div', {}, []);
     this.render('settings', [
       h('h2', {}, [this.s('settings.heading')]),
       slider('masterVolume', this.s('settings.master')),
@@ -352,6 +356,7 @@ export class GameFlowUi {
           this.actions.settings({ assist: v });
         },
       ),
+      controlsHost,
       row(
         button(
           this.s('settings.back'),
@@ -365,6 +370,9 @@ export class GameFlowUi {
         ),
       ),
     ]);
+    this.controls = new ControlsPanel(controlsHost, this.strings, s.keyBindings, (keyBindings) => {
+      this.actions.settings({ keyBindings });
+    });
   }
 
   /** Start a level from the menus (or after results). */
@@ -377,6 +385,7 @@ export class GameFlowUi {
   /** Close the menus and run the game. */
   resume(): void {
     this.screen = 'playing';
+    this.dropControls();
     this.root.hidden = true;
     this.root.replaceChildren();
     this.actions.setMenuPaused(false);
@@ -469,7 +478,13 @@ export class GameFlowUi {
     return t(this.strings, key, vars);
   }
 
+  private dropControls(): void {
+    this.controls?.destroy();
+    this.controls = null;
+  }
+
   private render(screen: Screen, children: (Node | null)[]): void {
+    this.dropControls();
     this.screen = screen;
     const card = h('div', { class: 'flow-card' }, children);
     this.root.replaceChildren(card);
