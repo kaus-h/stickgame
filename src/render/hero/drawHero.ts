@@ -2,6 +2,7 @@ import type * as Phaser from 'phaser';
 import { metersToPixels as m, type Vec2 } from '../../core';
 import type { PlayerMode } from '../../sim';
 import { strokeInk, type Pt } from '../ink';
+import { REST_ANIM, type HeroAnim } from './animator';
 
 const HERO_INK = 0x16161a;
 const PAPER = 0xf3efe6;
@@ -23,6 +24,44 @@ export interface HeroPose {
   readonly line: number;
   /** Line colour; default ink. The PB ghost (GMR-103) draws in pencil grey. */
   readonly ink?: number;
+  /** Squash, stretch and lean (GMR-69); default the rest pose. */
+  readonly anim?: HeroAnim;
+  /** The head is a drawn sprite placed by the scene (heroHeadTransform); skip the ink head. */
+  readonly spriteHead?: boolean;
+}
+
+/** Where the head sprite goes: world-pixel centre, display diameter and rotation (GMR-69). */
+export interface HeadTransform {
+  readonly x: number;
+  readonly y: number;
+  readonly size: number;
+  readonly rotation: number;
+}
+
+/** Head centre and radius in the body's own frame (before scale, squash and lean). */
+function headLocal(c: Pt, facing: -1 | 1): { x: number; y: number; r: number } {
+  return { x: c.x + facing * m(0.01), y: c.y - m(0.13), r: m(0.2) };
+}
+
+/**
+ * The same transform drawHero applies to the body (art scale, squash about the feet, lean about the
+ * feet), applied to the head, so a sprite head sits exactly where the ink head would.
+ */
+export function heroHeadTransform(p: HeroPose): HeadTransform {
+  const a = p.anim ?? REST_ANIM;
+  const feet = { x: p.c.x, y: p.c.y + m(0.35) };
+  const h = headLocal(p.c, p.facing);
+  const lx = (h.x - feet.x) * HERO_ART_SCALE * a.sx;
+  const ly = (h.y - feet.y) * HERO_ART_SCALE * a.sy;
+  const cos = Math.cos(a.lean);
+  const sin = Math.sin(a.lean);
+  return {
+    x: feet.x + lx * cos - ly * sin,
+    y: feet.y + lx * sin + ly * cos,
+    // The sprite's circle fills about 93% of its square; its lumpy outline is ~4% outside r.
+    size: (2 * h.r * HERO_ART_SCALE * Math.sqrt(a.sx * a.sy) * 1.04) / 0.93,
+    rotation: a.lean * 0.6,
+  };
 }
 
 /**
@@ -40,18 +79,15 @@ export const HERO_ART_SCALE = 1.3;
 
 export function drawHero(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   const feet = { x: p.c.x, y: p.c.y + m(0.35) };
+  const a = p.anim ?? REST_ANIM;
   g.save();
   g.translateCanvas(feet.x, feet.y);
-  g.scaleCanvas(HERO_ART_SCALE, HERO_ART_SCALE);
+  g.rotateCanvas(a.lean);
+  g.scaleCanvas(HERO_ART_SCALE * a.sx, HERO_ART_SCALE * a.sy);
   g.translateCanvas(-feet.x, -feet.y);
   // The rope is drawn to p.hand in world space; express it in the scaled frame so the drawn hand
   // lands exactly on the rope end.
-  const hand = p.hand
-    ? {
-        x: feet.x + (p.hand.x - feet.x) / HERO_ART_SCALE,
-        y: feet.y + (p.hand.y - feet.y) / HERO_ART_SCALE,
-      }
-    : null;
+  const hand = p.hand ? toBodyFrame(p.hand, feet, a) : null;
   drawHeroBody(g, { ...p, hand });
   g.restore();
 }
@@ -59,8 +95,7 @@ export function drawHero(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
 function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   const { c, facing: face, velocity: v, mode, line: L } = p;
   const INK = p.ink ?? HERO_INK;
-  const headR = m(0.2);
-  const head = { x: c.x + face * m(0.01), y: c.y - m(0.13) };
+  const { r: headR, ...head } = headLocal(c, face);
   const neck = { x: c.x, y: c.y + m(0.06) };
   const hip = { x: c.x - face * m(0.015), y: c.y + m(0.19) };
   const speed = Math.hypot(v.x, v.y);
@@ -111,6 +146,33 @@ function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
   g.fillStyle(INK, 1);
   for (const h of hands) g.fillCircle(h.x, h.y, m(0.028) * Math.max(1, L * 0.8));
 
+  if (!p.spriteHead) drawInkHead(g, head, headR, face, mode, v, L, INK);
+  drawSpeedLines(g, c, v, speed, L, INK);
+}
+
+/** Inverse of the body transform: a world point expressed in the unscaled body frame. */
+function toBodyFrame(q: Pt, feet: Pt, a: HeroAnim): Pt {
+  const dx = q.x - feet.x;
+  const dy = q.y - feet.y;
+  const cos = Math.cos(-a.lean);
+  const sin = Math.sin(-a.lean);
+  return {
+    x: feet.x + (dx * cos - dy * sin) / (HERO_ART_SCALE * a.sx),
+    y: feet.y + (dx * sin + dy * cos) / (HERO_ART_SCALE * a.sy),
+  };
+}
+
+/** The procedural ink head (the PB ghost and labs keep it; the player uses the drawn sprites). */
+function drawInkHead(
+  g: Phaser.GameObjects.Graphics,
+  head: Pt,
+  headR: number,
+  face: -1 | 1,
+  mode: PlayerMode,
+  v: Vec2,
+  L: number,
+  INK: number,
+): void {
   // Head: paper fill, lumpy ink outline, underside hatching, eye holes, stitched mouth.
   g.fillStyle(PAPER, 1).fillCircle(head.x, head.y, headR);
   const ring: Pt[] = [];
@@ -145,7 +207,16 @@ function drawHeroBody(g: Phaser.GameObjects.Graphics, p: HeroPose): void {
     const sx = head.x + face * m(0.015 + k * 0.038);
     g.lineBetween(sx, my - m(0.026), sx, my + m(0.026));
   }
+}
 
+function drawSpeedLines(
+  g: Phaser.GameObjects.Graphics,
+  c: Pt,
+  v: Vec2,
+  speed: number,
+  L: number,
+  INK: number,
+): void {
   // Speed lines when moving fast: three short pencil-weight dashes behind the body.
   if (speed > 9) {
     const ux = -v.x / speed;

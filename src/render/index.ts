@@ -10,3 +10,4 @@ export { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from 
 export type { DeltaTone } from './race';
 
 export { loadLevelKit } from './kit/LevelKit';
+export { loadHeroHeads } from './hero/heads';
