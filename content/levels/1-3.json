@@ -783,15 +783,11 @@
       "side": "top",
       "angle": {
         "min": 0,
-        "max": 25
-      },
-      "speed": {
-        "min": 20,
-        "max": 28
+        "max": 90
       },
       "alignment": {
-        "min": 0.03,
-        "max": 0.97
+        "min": 0,
+        "max": 1
       }
     }
   }

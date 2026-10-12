@@ -609,7 +609,8 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
       );
     }
     if (entry) {
-      this.drawEntryFan(g, midpoint, normal, entry.angle);
+      // No angle rule (max 90: any inward approach) means no cone, like no streaks for speed.
+      if (entry.angle.max < 90) this.drawEntryFan(g, midpoint, normal, entry.angle);
       // Speed streaks trail the arrow's tail: three for "come in from a fast swing".
       const streaks = speedStreaks(entry.speed);
       const offsets = streaks === 3 ? [-0.22, 0, 0.22] : streaks === 1 ? [0] : [];
