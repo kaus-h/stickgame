@@ -7,7 +7,7 @@ const goon: PatrollerDef = {
   kind: 'patroller',
   position: { x: 0, y: 0 },
   size: { x: 2, y: 1 },
-  stomp: { minDownSpeed: 2, reboundSpeed: 15, topInset: 0.15 },
+  stomp: { minDownSpeed: 2, reboundSpeed: 15 },
 };
 
 it('has no false or missed top classifications across 252 speed, offset and patrol cases', () => {
@@ -26,7 +26,20 @@ it('has no false or missed top classifications across 252 speed, offset and patr
           0.35,
           duration,
         );
-        const intended = Math.abs(x) <= 0.85 && speed >= 2;
+        // Independent oracle (STOMP_MIN_UP): at the reported contact, the normal from the nearest
+        // point of the box to the player's centre must be within 60 degrees of straight up.
+        let intended = false;
+        if (hit) {
+          const lx = hit.at.x - hit.enemyAt.x;
+          const ly = hit.at.y - hit.enemyAt.y;
+          const nx = lx - Math.max(-1, Math.min(1, lx));
+          const ny = ly - Math.max(-0.5, Math.min(0.5, ly));
+          const len = Math.hypot(nx, ny);
+          intended = speed >= 2 && len > 0 && -ny / len >= 0.5;
+        }
+        // No missed tops: a centred-over-the-top descent always makes contact.
+        if (Math.abs(x) <= 1 && speed >= 2)
+          expect(hit, `missed top at x=${String(x)}`).not.toBeNull();
         expect(
           hit?.stomp ?? false,
           `speed=${String(speed)}, x=${String(x)}, patrol=${String(patrolSpeed)}`,

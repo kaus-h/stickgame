@@ -107,11 +107,10 @@ const schema6 = {
         stomp: {
           type: 'object',
           additionalProperties: false,
-          required: ['minDownSpeed', 'reboundSpeed', 'topInset'],
+          required: ['minDownSpeed', 'reboundSpeed'],
           properties: {
             minDownSpeed: { type: 'number', exclusiveMinimum: 0 },
             reboundSpeed: { type: 'number', exclusiveMinimum: 0 },
-            topInset: { type: 'number', minimum: 0 },
           },
         },
       },
@@ -1738,11 +1737,10 @@ const schema14 = {
     stomp: {
       type: 'object',
       additionalProperties: false,
-      required: ['minDownSpeed', 'reboundSpeed', 'topInset'],
+      required: ['minDownSpeed', 'reboundSpeed'],
       properties: {
         minDownSpeed: { type: 'number', exclusiveMinimum: 0 },
         reboundSpeed: { type: 'number', exclusiveMinimum: 0 },
-        topInset: { type: 'number', minimum: 0 },
       },
     },
   },
@@ -1955,24 +1953,9 @@ function validate45(
           }
           errors++;
         }
-        if (data5.topInset === undefined) {
-          const err9 = {
-            instancePath: instancePath + '/stomp',
-            schemaPath: '#/properties/stomp/required',
-            keyword: 'required',
-            params: { missingProperty: 'topInset' },
-            message: "must have required property '" + 'topInset' + "'",
-          };
-          if (vErrors === null) {
-            vErrors = [err9];
-          } else {
-            vErrors.push(err9);
-          }
-          errors++;
-        }
         for (const key1 in data5) {
-          if (!(key1 === 'minDownSpeed' || key1 === 'reboundSpeed' || key1 === 'topInset')) {
-            const err10 = {
+          if (!(key1 === 'minDownSpeed' || key1 === 'reboundSpeed')) {
+            const err9 = {
               instancePath: instancePath + '/stomp',
               schemaPath: '#/properties/stomp/additionalProperties',
               keyword: 'additionalProperties',
@@ -1980,9 +1963,9 @@ function validate45(
               message: 'must NOT have additional properties',
             };
             if (vErrors === null) {
-              vErrors = [err10];
+              vErrors = [err9];
             } else {
-              vErrors.push(err10);
+              vErrors.push(err9);
             }
             errors++;
           }
@@ -1991,7 +1974,7 @@ function validate45(
           let data6 = data5.minDownSpeed;
           if (typeof data6 == 'number' && isFinite(data6)) {
             if (data6 <= 0 || isNaN(data6)) {
-              const err11 = {
+              const err10 = {
                 instancePath: instancePath + '/stomp/minDownSpeed',
                 schemaPath: '#/properties/stomp/properties/minDownSpeed/exclusiveMinimum',
                 keyword: 'exclusiveMinimum',
@@ -1999,14 +1982,14 @@ function validate45(
                 message: 'must be > 0',
               };
               if (vErrors === null) {
-                vErrors = [err11];
+                vErrors = [err10];
               } else {
-                vErrors.push(err11);
+                vErrors.push(err10);
               }
               errors++;
             }
           } else {
-            const err12 = {
+            const err11 = {
               instancePath: instancePath + '/stomp/minDownSpeed',
               schemaPath: '#/properties/stomp/properties/minDownSpeed/type',
               keyword: 'type',
@@ -2014,9 +1997,9 @@ function validate45(
               message: 'must be number',
             };
             if (vErrors === null) {
-              vErrors = [err12];
+              vErrors = [err11];
             } else {
-              vErrors.push(err12);
+              vErrors.push(err11);
             }
             errors++;
           }
@@ -2025,7 +2008,7 @@ function validate45(
           let data7 = data5.reboundSpeed;
           if (typeof data7 == 'number' && isFinite(data7)) {
             if (data7 <= 0 || isNaN(data7)) {
-              const err13 = {
+              const err12 = {
                 instancePath: instancePath + '/stomp/reboundSpeed',
                 schemaPath: '#/properties/stomp/properties/reboundSpeed/exclusiveMinimum',
                 keyword: 'exclusiveMinimum',
@@ -2033,14 +2016,14 @@ function validate45(
                 message: 'must be > 0',
               };
               if (vErrors === null) {
-                vErrors = [err13];
+                vErrors = [err12];
               } else {
-                vErrors.push(err13);
+                vErrors.push(err12);
               }
               errors++;
             }
           } else {
-            const err14 = {
+            const err13 = {
               instancePath: instancePath + '/stomp/reboundSpeed',
               schemaPath: '#/properties/stomp/properties/reboundSpeed/type',
               keyword: 'type',
@@ -2048,49 +2031,15 @@ function validate45(
               message: 'must be number',
             };
             if (vErrors === null) {
-              vErrors = [err14];
+              vErrors = [err13];
             } else {
-              vErrors.push(err14);
-            }
-            errors++;
-          }
-        }
-        if (data5.topInset !== undefined) {
-          let data8 = data5.topInset;
-          if (typeof data8 == 'number' && isFinite(data8)) {
-            if (data8 < 0 || isNaN(data8)) {
-              const err15 = {
-                instancePath: instancePath + '/stomp/topInset',
-                schemaPath: '#/properties/stomp/properties/topInset/minimum',
-                keyword: 'minimum',
-                params: { comparison: '>=', limit: 0 },
-                message: 'must be >= 0',
-              };
-              if (vErrors === null) {
-                vErrors = [err15];
-              } else {
-                vErrors.push(err15);
-              }
-              errors++;
-            }
-          } else {
-            const err16 = {
-              instancePath: instancePath + '/stomp/topInset',
-              schemaPath: '#/properties/stomp/properties/topInset/type',
-              keyword: 'type',
-              params: { type: 'number' },
-              message: 'must be number',
-            };
-            if (vErrors === null) {
-              vErrors = [err16];
-            } else {
-              vErrors.push(err16);
+              vErrors.push(err13);
             }
             errors++;
           }
         }
       } else {
-        const err17 = {
+        const err14 = {
           instancePath: instancePath + '/stomp',
           schemaPath: '#/properties/stomp/type',
           keyword: 'type',
@@ -2098,15 +2047,15 @@ function validate45(
           message: 'must be object',
         };
         if (vErrors === null) {
-          vErrors = [err17];
+          vErrors = [err14];
         } else {
-          vErrors.push(err17);
+          vErrors.push(err14);
         }
         errors++;
       }
     }
   } else {
-    const err18 = {
+    const err15 = {
       instancePath,
       schemaPath: '#/type',
       keyword: 'type',
@@ -2114,9 +2063,9 @@ function validate45(
       message: 'must be object',
     };
     if (vErrors === null) {
-      vErrors = [err18];
+      vErrors = [err15];
     } else {
-      vErrors.push(err18);
+      vErrors.push(err15);
     }
     errors++;
   }

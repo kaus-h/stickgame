@@ -22,7 +22,7 @@ import { addPaper, drawDoodles, drawFrame } from '../page/NotebookPage';
 import { TouchControlsView, type TouchControlsViewState } from '../TouchControlsView';
 import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
-import { drawPatroller } from '../enemy';
+import { drawPatroller, goonSeed } from '../enemy';
 import { causeText } from '../feedback/causeText';
 import { DELTA_COLOURS, formatDelta, formatRaceTime, SPLIT_VISIBLE_TICKS } from '../race';
 import { BodiesLayer, type BodiesStats } from '../bodies/BodiesLayer';
@@ -699,8 +699,8 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
         lerp(before.position.x, enemy.position.x, t),
         lerp(before.position.y, enemy.position.y, t),
       );
-      const authored = this.opts.level.enemies?.find((item) => item.id === enemy.id);
-      drawPatroller(g, position, enemy.size, authored?.stomp.topInset ?? 0, enemy.facing);
+      // Legs step with distance walked (position.x), so a still goon stands still.
+      drawPatroller(g, position, enemy.size, enemy.facing, goonSeed(enemy.id), position.x);
     }
     this.stomps = this.stomps.filter((stomp) => current.tick - stomp.tick < 24);
     for (const stomp of this.stomps) {

@@ -91,7 +91,6 @@ export interface PatrollerDef {
   readonly stomp: {
     readonly minDownSpeed: number;
     readonly reboundSpeed: number;
-    readonly topInset: number;
   };
 }
 

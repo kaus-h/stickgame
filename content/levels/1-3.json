@@ -667,8 +667,7 @@
       },
       "stomp": {
         "minDownSpeed": 1,
-        "reboundSpeed": 15,
-        "topInset": 0.12
+        "reboundSpeed": 15
       }
     },
     {
@@ -682,8 +681,7 @@
       },
       "stomp": {
         "minDownSpeed": 1,
-        "reboundSpeed": 15,
-        "topInset": 0.12
+        "reboundSpeed": 15
       }
     },
     {
@@ -697,8 +695,7 @@
       },
       "stomp": {
         "minDownSpeed": 1,
-        "reboundSpeed": 15,
-        "topInset": 0.12
+        "reboundSpeed": 15
       }
     }
   ],

@@ -34,17 +34,14 @@ describe('v2 patroller authoring', () => {
         validateLevelSchema(withEnemy(changes));
       }).toThrow('level.enemies[0]');
     }
-    for (const changes of [{ minDownSpeed: 0 }, { reboundSpeed: -1 }, { topInset: -0.1 }]) {
+    for (const changes of [{ minDownSpeed: 0 }, { reboundSpeed: -1 }, { topInset: 0.1 }]) {
       expect(() => {
         validateLevelSchema(withEnemy({ stomp: { ...enemy.stomp, ...changes } }));
       }).toThrow('level.enemies[0].stomp');
     }
   });
-  it('rejects nonpositive body dimensions and a top inset consuming the vulnerable span', () => {
+  it('rejects nonpositive body dimensions', () => {
     expect(() => compileLevel(withEnemy({ size: [0, 1] }))).toThrow('level.enemies[0].size');
-    expect(() => compileLevel(withEnemy({ stomp: { ...enemy.stomp, topInset: 0.6 } }))).toThrow(
-      'level.enemies[0].stomp.topInset',
-    );
   });
   it('requires horizontal paths with peak speed at most 3 m/s and valid phase', () => {
     expect(() => compileLevel(withEnemy({ path: { to: [9, 7], period: 6 } }))).toThrow(
