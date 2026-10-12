@@ -3,10 +3,15 @@ import runtimeJson from '../../content/tuning/runtime.json';
 import { parseRuntimeTuning } from '../../src/content';
 import { vec2 } from '../../src/core';
 import {
+  ATTENTION_FLOOR,
+  ATTENTION_MARGIN,
+  attentionTarget,
+  CALM_CAMERA,
   cameraScale,
   cameraTarget,
   clampToBounds,
   DEFAULT_CAMERA,
+  framedAnchors,
   stepCamera,
 } from '../../src/render/camera';
 
@@ -57,5 +62,45 @@ describe('camera framing (GMR-25)', () => {
     const b = { minX: 0, minY: 0, maxX: 100, maxY: 10 };
     expect(clampToBounds(vec2(2, 5), 20, 12, b)).toEqual(vec2(10, 5));
     expect(clampToBounds(vec2(99, 5), 20, 12, b).x).toBe(90);
+  });
+});
+
+describe('anchor attention (GMR-44)', () => {
+  const view = { w: 28, h: 12 };
+  const anchor = (x: number, y: number) => {
+    const [a] = framedAnchors([{ position: { x, y }, radius: 0.4 }]);
+    if (!a) throw new Error('no anchor');
+    return a;
+  };
+  it('lifts the view to show a reachable anchor above the frame', () => {
+    const player = { x: 0, y: 8 };
+    const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA); // y = 7
+    const t = attentionTarget(base, player, [anchor(5, 0)], view.w, view.h, 11);
+    expect(t.y - view.h / 2).toBeLessThanOrEqual(0 - 0.4 - ATTENTION_MARGIN + 1e-9);
+    expect(t.y + view.h / 2).toBeGreaterThanOrEqual(player.y + ATTENTION_FLOOR - 1e-9);
+  });
+  it('ignores anchors out of reach and leaves an already-visible frame alone', () => {
+    const player = { x: 0, y: 8 };
+    const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA);
+    expect(attentionTarget(base, player, [anchor(0, -20)], view.w, view.h, 11)).toEqual(base);
+    expect(attentionTarget(base, player, [anchor(3, 4)], view.w, view.h, 11)).toEqual(base);
+  });
+  it('never lifts so far that the player or a lower anchor in reach leaves the bottom edge', () => {
+    const player = { x: 0, y: 8 };
+    const base = cameraTarget(player, { x: 0, y: 0 }, DEFAULT_CAMERA);
+    const t = attentionTarget(base, player, [anchor(4, -4), anchor(6, 9)], view.w, view.h, 11);
+    expect(t.y + view.h / 2).toBeGreaterThanOrEqual(9 + 0.4 + ATTENTION_MARGIN - 1e-9);
+  });
+  it('frames the whole path of a moving anchor', () => {
+    const [a] = framedAnchors([
+      { position: { x: 0, y: 4 }, radius: 0.4, path: { to: { x: 6, y: -0.5 } } },
+    ]);
+    expect(a).toEqual({ minX: -0.4, maxX: 6.4, top: -0.9, bottom: 4.4 });
+  });
+  it('reduced motion drops the velocity lookahead only', () => {
+    expect(cameraTarget({ x: 0, y: 0 }, { x: 20, y: 10 }, CALM_CAMERA)).toEqual({
+      x: 0,
+      y: CALM_CAMERA.verticalBias,
+    });
   });
 });

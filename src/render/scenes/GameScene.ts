@@ -2,7 +2,16 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m, vec2, type Vec2 } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
-import { cameraScale, cameraTarget, DEFAULT_CAMERA, stepCamera } from '../camera';
+import {
+  attentionTarget,
+  cameraScale,
+  cameraTarget,
+  CALM_CAMERA,
+  DEFAULT_CAMERA,
+  framedAnchors,
+  stepCamera,
+  type FramedAnchor,
+} from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
 import { FailureFeedback } from '../feedback/FailureFeedback';
 import { HeroAnimator } from '../hero/animator';
@@ -74,6 +83,8 @@ const PB_GHOST_ALPHA = 0.35;
  */
 export class GameScene extends Phaser.Scene {
   private dynamic!: Phaser.GameObjects.Graphics;
+  /** Anchor path extents for the camera's anchor attention (GMR-44), per level. */
+  private framed: FramedAnchor[] = [];
   private anchorFx!: Phaser.GameObjects.Graphics;
   /** Hero squash, stretch, lean and head choice (GMR-69); presentation only. */
   private readonly animator = new HeroAnimator();
@@ -380,7 +391,20 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
     const p = previous.player.position;
     const c = current.player.position;
     const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
-    const target = cameraTarget(position, current.player.velocity, DEFAULT_CAMERA);
+    // Anchor attention (GMR-44): lift to show reachable anchors above a height-bound view.
+    const screen = cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA);
+    const target = attentionTarget(
+      cameraTarget(
+        position,
+        current.player.velocity,
+        this.reducedMotion ? CALM_CAMERA : DEFAULT_CAMERA,
+      ),
+      position,
+      this.framed,
+      this.scale.width / screen,
+      this.scale.height / screen,
+      this.opts.ropeReach ?? 11,
+    );
     const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
     this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);
     this.cameras.main.centerOn(m(this.camCenter.x), m(this.camCenter.y));
@@ -400,6 +424,7 @@ art 0016/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | canvas $
     const g = this.add.graphics();
     if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level);
     this.kit = new LevelKit(this, this.opts.level);
+    this.framed = framedAnchors(this.opts.level.anchors);
 
     // Moving-anchor tracks: faint pencil dots telegraph the motion.
     for (const a of anchors) {
