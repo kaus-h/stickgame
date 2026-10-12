@@ -24,6 +24,7 @@ import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
 import { DrawIn } from '../living/drawIn';
+import { MarginDoodles } from '../living/marginDoodles';
 import { InkJuice } from '../living/inkJuice';
 import { addPageVignette } from '../living/pageVignette';
 import { drawPoolSurfaces, poolShape, type PoolShape } from '../living/inkPool';
@@ -161,6 +162,7 @@ export class GameScene extends Phaser.Scene {
   private boil: LineBoil | null = null;
   private juice = new InkJuice();
   private drawIn: DrawIn | null = null;
+  private doodles: MarginDoodles | null = null;
   private vignette: Phaser.GameObjects.Image | null = null;
   /** The paper renders through its own camera under the world camera, so paper never boils. */
   private paper: Phaser.GameObjects.GameObject | null = null;
@@ -285,6 +287,13 @@ export class GameScene extends Phaser.Scene {
       .filter((s) => s.kind === 'hazard' && kitHazardKind(s.id) === 'pool')
       .map(poolShape);
     this.poolG = this.add.graphics().setDepth(-48.5);
+    // Margin doodles sit on the page behind the terrain, above the sketched scenery (-97..-99).
+    this.doodles = new MarginDoodles(
+      this.add.graphics().setDepth(-60),
+      this.opts.level,
+      this.opts.level.spawn,
+      this.highContrast,
+    );
     this.bodies = new BodiesLayer(
       this,
       this.opts.level,
@@ -381,7 +390,8 @@ ${this.opts.debugExtra()}`
         return `${exitSpec(this.opts.level.exit)}${extra}
 art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | backgrounds ${String(bg?.layers.length ?? 0)} | canvas ${(((k.surfacePixels + (bg?.surfacePixels ?? 0)) * 4) / 1024 / 1024).toFixed(1)} MiB
 bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
-a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}`;
+a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}
+doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this.doodles?.stats().flying ?? 0)}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -874,6 +884,15 @@ a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.r
     }
 
     this.juice.update(dt, current, this.reducedMotion);
+    const heroView = {
+      x: current.player.position.x,
+      y: current.player.position.y,
+      vx: current.player.velocity.x,
+      vy: current.player.velocity.y,
+      roped: !!current.rope,
+    };
+    this.doodles?.update(dt, heroView, this.reducedMotion);
+    this.doodles?.draw(this.cameras.main.worldView, heroView, this.reducedMotion);
     this.juice.draw(
       g,
       player,

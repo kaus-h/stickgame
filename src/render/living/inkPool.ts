@@ -12,6 +12,8 @@ import { hash, type Pt } from '../ink';
 const RED = '#b8322b';
 const RED_DARK = '#7d1a16';
 const RED_LIGHT = '#e0645a';
+/** Pooled ink at depth. Kept at r >= 125 so the whole body still classifies as lethal red. */
+const RED_DEEP = '#8e1f19';
 export const POOL_RED = 0xb8322b;
 const POOL_RED_DARK = 0x7d1a16;
 const POOL_RED_LIGHT = 0xe0645a;
@@ -63,11 +65,52 @@ export function paintInkPool(c: CanvasRenderingContext2D, solid: SolidDef): void
   c.beginPath();
   c.rect(x0, y0, x1 - x0, y1 - y0);
   c.clip();
-  c.fillStyle = RED;
+  // Ink pools deeper toward the bottom: bright where the surface catches light, dark below.
+  const depth = y1 - y0;
+  const fill = c.createLinearGradient(0, y0, 0, y1);
+  fill.addColorStop(0, RED);
+  fill.addColorStop(Math.min(0.9, m(0.5) / depth), '#ab2a23');
+  fill.addColorStop(1, RED_DEEP);
+  c.fillStyle = fill;
   c.fillRect(x0, y0, x1 - x0, y1 - y0);
   c.lineCap = 'round';
-  // Pass 1: long dark ballpoint diagonals, denser with depth.
-  const depth = y1 - y0;
+  c.lineJoin = 'round';
+  // Coloured in with a red ballpoint: overlapping patches of tight back-and-forth strokes, each
+  // patch at its own slant, like a hand filling a shape. This is what makes the pool read as ink.
+  const patchW = 46;
+  const patchH = Math.min(depth, 34);
+  let k = 0;
+  for (let py = y0 - 6; py < y1; py += patchH * 0.7) {
+    for (let px = x0 - patchW * 0.5; px < x1 + patchW * 0.5; px += patchW * 0.62, k++) {
+      const r = hash(k * 0.613 + s.seed);
+      const angle = 1.15 + (r - 0.5) * 0.7; // mostly steep strokes, leaning right
+      const ux = Math.cos(angle + Math.PI / 2);
+      const uy = Math.sin(angle + Math.PI / 2);
+      const vx = Math.cos(angle);
+      const vy = Math.sin(angle);
+      const cx = px + (hash(k * 1.91 + s.seed) - 0.5) * 10;
+      const cy = py + patchH / 2;
+      const half = patchH * (0.55 + 0.25 * hash(k * 2.7 + s.seed));
+      const deep = Math.min(1, Math.max(0, (cy - y0) / depth));
+      c.strokeStyle = RED_DARK;
+      c.lineWidth = 1.15;
+      c.globalAlpha = 0.34 + 0.2 * deep + 0.1 * hash(k * 3.3 + s.seed);
+      c.beginPath();
+      const n = Math.round(patchW / 4.6);
+      for (let i = 0; i <= n; i++) {
+        const u = (i / n - 0.5) * patchW;
+        const side = i % 2 === 0 ? -1 : 1;
+        const v = side * half * (0.82 + 0.18 * hash(i * 0.37 + k));
+        const x = cx + ux * u + vx * v;
+        const y = cy + uy * u + vy * v;
+        if (i === 0) c.moveTo(x, y);
+        else c.lineTo(x, y);
+      }
+      c.stroke();
+    }
+  }
+  c.globalAlpha = 1;
+  // Long pen strokes over the colouring: a few dark diagonals, denser with depth.
   const stroke = (
     color: string,
     alpha: number,
@@ -101,8 +144,8 @@ export function paintInkPool(c: CanvasRenderingContext2D, solid: SolidDef): void
       c.stroke();
     }
   };
-  stroke(RED_DARK, 0.55, 1.2, 5, 1.05, 0.05, s.seed);
-  stroke(RED_DARK, 0.45, 1, 7, 2.0, 0.35, s.seed + 11);
+  stroke(RED_DARK, 0.35, 1.1, 11, 1.05, 0.05, s.seed);
+  stroke(RED_DARK, 0.3, 1, 14, 2.0, 0.35, s.seed + 11);
   // Pass 2: light red ballpoint near the surface, like the pen catching light on wet ink.
   stroke(RED_LIGHT, 0.4, 1, 9, 0.55, 0, s.seed + 23);
   // Pass 3: a scribbled dark seam along the bottom.
