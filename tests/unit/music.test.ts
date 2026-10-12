@@ -63,7 +63,9 @@ describe('music transport (GMR-42)', () => {
   it('skips a stall to the next bar line instead of replaying the backlog', () => {
     const t = new Transport(0);
     t.pump(0.1);
-    const after = [...t.pump(30), ...t.pump(30 + SECONDS_PER_BEAT * 4)]; // hidden for 30 s
+    // Hidden for 30 s, then the 25 ms timer resumes.
+    const after: { beat: number; time: number }[] = [];
+    for (let now = 30; now < 32.5; now += 0.025) after.push(...t.pump(now));
     expect(after.length).toBeGreaterThan(0);
     expect(after.length).toBeLessThanOrEqual(6);
     expect((after[0]?.beat ?? 1) % 4).toBe(0);

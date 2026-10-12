@@ -25,10 +25,14 @@ The tempo is 100 BPM in 4/4.
 ## Retry safety (the contract)
 
 - **One transport for the app's lifetime** (`src/audio/music/transport.ts`). It starts on the first audio unlock and is never restarted by deaths, retries, respawns or level changes. Section banks swap at a bar line.
-- **A death changes one gain target** (tension), ramped on the audio clock. The phase, bar and beat never jump.
+- **A death changes one gain target** (tension). It drops within about 0.15 s and recovers on a bar line. The phase, bar and beat never jump.
+- **Chamber-driven tension changes on the next bar line** and crossfades over one bar.
+- **Pulse follows movement energy continuously** (0.25 s ramps), by design: it isn't a chamber layer.
+- **Section swaps** happen at a bar line, with the old bank's base layer overlapping softly for one bar.
 - **Lookahead scheduling:** a 25 ms timer schedules notes 150 ms ahead at absolute AudioContext times. After a stall (a hidden tab) it skips to the next bar line on the original grid and never replays the backlog.
 - **Audio never feeds the sim.** `MusicDirector` reads snapshots and events and only outputs gain targets and stings. The score uses its own integer hash, never the sim RNG.
 - Mute and the music volume act on the music bus.
+- The debug overlay (backtick) shows the bank, the bar and the layer targets.
 
 ## Measured (offline render of 12 s of section 1 at full intensity in Chrome)
 

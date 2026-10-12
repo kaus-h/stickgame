@@ -15,6 +15,8 @@ export interface MusicTargets {
   readonly base: number;
   readonly pulse: number;
   readonly tension: number;
+  /** A death dip is in progress: the tension drop is applied at once (not on the next bar). */
+  readonly dipping: boolean;
   /** Section bank id (switched at the next bar line by the engine). */
   readonly bank: string;
 }
@@ -82,6 +84,7 @@ export class MusicDirector {
       base: 1,
       pulse: 0.15 + 0.85 * this.energy,
       tension,
+      dipping: this.dip > 0,
       bank: this.level.section === 'section-2' ? 'section-2' : 'section-1',
     });
   }

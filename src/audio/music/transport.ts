@@ -14,6 +14,8 @@ export interface ScheduledBeat {
 }
 
 export const LOOKAHEAD_S = 0.15;
+/** A beat this late or less still plays (scheduling jitter); later ones are skipped. */
+export const LATE_TOLERANCE_S = 0.02;
 
 export class Transport {
   private nextBeat = 0;
@@ -35,7 +37,10 @@ export class Transport {
     }
     const out: ScheduledBeat[] = [];
     while (this.nextTime < now + LOOKAHEAD_S) {
-      out.push({ beat: this.nextBeat, time: this.nextTime });
+      // A beat already in the past (a short stall, under a bar) is skipped, not played late:
+      // late notes would all fire at once. The grid and bar phase are untouched.
+      if (this.nextTime >= now - LATE_TOLERANCE_S)
+        out.push({ beat: this.nextBeat, time: this.nextTime });
       this.nextBeat++;
       this.nextTime += SECONDS_PER_BEAT;
     }

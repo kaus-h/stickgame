@@ -28,7 +28,15 @@ export class MusicEngine implements MusicSink {
   private noise: AudioBuffer | null = null;
   private bank: Bank = SECTION_1;
   private pendingBank: Bank | null = null;
-  private targets: MusicTargets = { base: 1, pulse: 0.2, tension: 0.15, bank: 'section-1' };
+  private targets: MusicTargets = {
+    base: 1,
+    pulse: 0.2,
+    tension: 0.15,
+    dipping: false,
+    bank: 'section-1',
+  };
+  /** The bank being left: its base layer plays softly for one more bar (a 1-bar overlap). */
+  private fading: { bank: Bank; until: number } | null = null;
 
   constructor(private readonly output: () => { ctx: AudioContext; bus: GainNode } | null) {}
 
@@ -65,11 +73,20 @@ export class MusicEngine implements MusicSink {
     const changed =
       Math.abs(t.base - this.targets.base) > 0.01 ||
       Math.abs(t.pulse - this.targets.pulse) > 0.01 ||
-      Math.abs(t.tension - this.targets.tension) > 0.01;
+      Math.abs(t.tension - this.targets.tension) > 0.01 ||
+      t.dipping !== this.targets.dipping;
     if (t.bank !== this.bank.id && BANKS[t.bank]) this.pendingBank = BANKS[t.bank] ?? null;
     this.targets = t;
     const out = this.output();
     if (changed && out && this.transport) this.applyTargets(out.ctx.currentTime);
+  }
+
+  /** One line for the debug overlay (AGENTS: new state is visible). */
+  debugLine(): string {
+    if (!this.transport) return 'music: waiting for audio unlock';
+    const t = this.targets;
+    const bar = Math.floor(this.transport.beat / 4);
+    return `music ${this.bank.id} bar ${String(bar)} | base ${t.base.toFixed(2)} pulse ${t.pulse.toFixed(2)} tension ${t.tension.toFixed(2)}${t.dipping ? ' (dip)' : ''}`;
   }
 
   sting(): void {
@@ -94,20 +111,32 @@ export class MusicEngine implements MusicSink {
     if (!out || !this.transport || out.ctx.state !== 'running') return;
     for (const { beat, time } of this.transport.pump(out.ctx.currentTime)) {
       if (beat % 4 === 0 && this.pendingBank) {
+        this.fading = { bank: this.bank, until: beat + 4 };
         this.bank = this.pendingBank;
         this.pendingBank = null;
       }
       for (const n of notesForBeat(this.bank, beat)) this.play(out.ctx, n, time);
+      if (this.fading && beat < this.fading.until) {
+        for (const n of notesForBeat(this.fading.bank, beat))
+          if (n.layer === 'base') this.play(out.ctx, { ...n, velocity: n.velocity * 0.5 }, time);
+      } else this.fading = null;
     }
   }
 
+  /**
+   * Base and pulse follow at once with a short ramp (pulse tracks movement energy continuously, by
+   * design). Tension is chamber-driven, so it changes on the next bar line and crossfades over one
+   * bar, except a death dip, which drops at once (about 0.15 s) and recovers on a bar line.
+   */
   private applyTargets(now: number): void {
-    const set = (layer: Layer, v: number): void => {
-      this.gains.get(layer)?.gain.setTargetAtTime(v, now, RAMP_TC);
+    const set = (layer: Layer, v: number, at: number, tc: number): void => {
+      this.gains.get(layer)?.gain.setTargetAtTime(v, at, tc);
     };
-    set('base', 0.5 * this.targets.base);
-    set('pulse', 0.35 * this.targets.pulse);
-    set('tension', 0.22 * this.targets.tension);
+    set('base', 0.5 * this.targets.base, now, RAMP_TC);
+    set('pulse', 0.35 * this.targets.pulse, now, RAMP_TC);
+    const tension = 0.22 * this.targets.tension;
+    if (this.targets.dipping || !this.transport) set('tension', tension, now, 0.15 / 3);
+    else set('tension', tension, this.transport.nextBarTime().time, (SECONDS_PER_BEAT * 4) / 3);
   }
 
   private play(ctx: AudioContext, n: NoteEvent, beatTime: number): void {

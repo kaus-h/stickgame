@@ -319,6 +319,7 @@ async function start(): Promise<void> {
     overview: params.has('overview'),
     strings: stringsEn,
     gravity: tuning.sim.gravity,
+    debugExtra: () => musicEngine.debugLine(),
     ropeReach: tuning.sim.rope.maxLength,
     bodiesVisible: () => save.current.settings.bodies,
   });
