@@ -92,6 +92,7 @@ function check(levelId: string, replay: string): Miss[] {
         viewH,
         tuning.sim.rope.maxLength,
         HUD_BAND_PX / scale,
+        level.solids,
       );
       eased = stepCamera(eased ?? target, target, 1 / 60, DEFAULT_CAMERA, snap);
       center = clampToBounds(eased, viewW, viewH, level.bounds);
@@ -152,6 +153,7 @@ describe('camera fairness for tagged required shots (GMR-44)', () => {
               viewH,
               tuning.sim.rope.maxLength,
               HUD_BAND_PX / scale,
+              level.solids,
             ),
             viewW,
             viewH,

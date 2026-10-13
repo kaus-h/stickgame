@@ -600,6 +600,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       this.scale.height / screen,
       this.opts.ropeReach ?? 11,
       HUD_BAND_PX / screen,
+      this.opts.level.solids,
     );
     const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
     this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);

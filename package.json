@@ -33,6 +33,7 @@
     "levels:solve": "node scripts/solve-levels.mjs",
     "levels:plot": "node scripts/plot-solution.mjs",
     "film": "node scripts/film.mjs",
+    "film:still": "node scripts/film-still.mjs",
     "inbox": "node scripts/agents/patch-inbox.mjs"
   },
   "dependencies": {

@@ -3,7 +3,7 @@
   "level": "1-1",
   "solved": true,
   "start": "spawn",
-  "totalTicks": 960,
+  "totalTicks": 954,
   "chambers": [
     {
       "id": "1-1-c1",
@@ -64,7 +64,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 4, "simTicks": 1413, "deathsEncountered": 4 }
+      "search": { "expansions": 4, "simTicks": 1414, "deathsEncountered": 4 }
     },
     {
       "id": "1-1-c2",
@@ -159,7 +159,7 @@
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 316, "simTicks": 250828, "deathsEncountered": 950 }
+      "search": { "expansions": 316, "simTicks": 250886, "deathsEncountered": 950 }
     },
     {
       "id": "1-1-c3",
@@ -209,7 +209,7 @@
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 2, "simTicks": 1634, "deathsEncountered": 19 }
+      "search": { "expansions": 2, "simTicks": 1652, "deathsEncountered": 17 }
     },
     {
       "id": "1-1-c5",
@@ -315,7 +315,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 344, "simTicks": 204275, "deathsEncountered": 1941 }
+      "search": { "expansions": 344, "simTicks": 204871, "deathsEncountered": 1918 }
     },
     {
       "id": "1-1-c6",
@@ -324,32 +324,33 @@
       "goal": { "kind": "region", "min": { "x": 122, "y": -6 }, "max": { "x": 141, "y": 11.4 } },
       "startTick": 714,
       "solved": true,
-      "endTick": 864,
-      "ticks": 150,
+      "endTick": 868,
+      "ticks": 154,
       "plan": [
-        { "t": 722, "action": "rope", "anchor": 5, "offset": 2, "release": 774 },
-        { "t": 793, "action": "rope", "anchor": 6, "offset": 1, "release": 842 }
+        { "t": 717, "action": "jump", "hold": 44 },
+        { "t": 762, "action": "rope", "anchor": 5, "offset": 1, "release": 784 },
+        { "t": 831, "action": "rope", "anchor": 6, "offset": 1, "release": 846 }
       ],
       "windows": [
         {
           "step": 9,
-          "action": "rope",
+          "action": "jump",
           "event": "press",
-          "tick": 722,
-          "earliest": -8,
-          "latest": 8,
-          "size": 17,
+          "tick": 717,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
           "capped": false,
           "startClipped": true
         },
         {
           "step": 9,
-          "action": "rope",
+          "action": "jump",
           "event": "release",
-          "tick": 774,
-          "earliest": -14,
-          "latest": 18,
-          "size": 33,
+          "tick": 761,
+          "earliest": -23,
+          "latest": 23,
+          "size": 47,
           "capped": false,
           "startClipped": false
         },
@@ -357,10 +358,10 @@
           "step": 10,
           "action": "rope",
           "event": "press",
-          "tick": 793,
-          "earliest": -19,
-          "latest": 20,
-          "size": 40,
+          "tick": 762,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
           "capped": false,
           "startClipped": false
         },
@@ -368,42 +369,64 @@
           "step": 10,
           "action": "rope",
           "event": "release",
-          "tick": 842,
-          "earliest": -17,
-          "latest": 17,
-          "size": 35,
+          "tick": 784,
+          "earliest": -7,
+          "latest": 6,
+          "size": 14,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "press",
+          "tick": 831,
+          "earliest": -8,
+          "latest": 8,
+          "size": 17,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "release",
+          "tick": 846,
+          "earliest": -6,
+          "latest": 5,
+          "size": 12,
           "capped": false,
           "startClipped": false
         }
       ],
       "tightestWindow": {
         "step": 9,
-        "action": "rope",
+        "action": "jump",
         "event": "press",
-        "tick": 722,
-        "earliest": -8,
-        "latest": 8,
-        "size": 17,
+        "tick": 717,
+        "earliest": -3,
+        "latest": 3,
+        "size": 7,
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 6, "simTicks": 2895, "deathsEncountered": 64 }
+      "search": { "expansions": 5, "simTicks": 2734, "deathsEncountered": 29 }
     },
     {
       "id": "1-1-c7",
       "problem": "Arrive in the wide compartment from its open side.",
       "challengeFamily": "exit",
       "goal": { "kind": "exit" },
-      "startTick": 864,
+      "startTick": 868,
       "solved": true,
-      "endTick": 960,
-      "ticks": 96,
+      "endTick": 954,
+      "ticks": 86,
       "plan": [],
       "windows": [],
       "tightestWindow": null,
-      "search": { "expansions": 2, "simTicks": 811, "deathsEncountered": 13 }
+      "search": { "expansions": 2, "simTicks": 949, "deathsEncountered": 1 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-1\",\"s\":0,\"n\":960,\"i\":[[0,[\"m\",1]],[52,\"j\"],[94,\"J\"],[163,[\"a\",26.5,2],\"r\"],[214,\"R\"],[258,\"j\"],[282,[\"a\",42.78,1.5],\"r\"],[295,\"J\"],[331,\"R\"],[416,[\"a\",61.72,0],\"r\"],[488,\"R\"],[539,[\"a\",80,1],\"r\"],[583,\"R\"],[600,[\"a\",80.28,1],\"r\"],[620,[\"a\",80.28,1],\"r\"],[632,\"R\"],[652,\"R\"],[722,[\"a\",103.72,1.6],\"r\"],[774,\"R\"],[793,[\"a\",115.28,1.6],\"r\"],[842,\"R\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-1\",\"s\":0,\"n\":954,\"i\":[[0,[\"m\",1]],[52,\"j\"],[94,\"J\"],[163,[\"a\",26.5,2],\"r\"],[214,\"R\"],[258,\"j\"],[282,[\"a\",42.78,1.5],\"r\"],[295,\"J\"],[331,\"R\"],[416,[\"a\",61.72,0],\"r\"],[488,\"R\"],[539,[\"a\",80,1],\"r\"],[583,\"R\"],[600,[\"a\",80.28,1],\"r\"],[620,[\"a\",80.28,1],\"r\"],[632,\"R\"],[652,\"R\"],[717,\"j\"],[761,\"J\"],[762,[\"a\",104.28,1.6],\"r\"],[784,\"R\"],[831,[\"a\",116.28,3.2],\"r\"],[846,\"R\"]]}"
 }

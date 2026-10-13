@@ -1,6 +1,6 @@
 # Context pack: StickSwing (repo StickGame; working title Precision Tether Platformer)
 
-`Context pack: 2026-10-12 (night) @ main after #87`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-13 @ main after #91`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -120,7 +120,7 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
   - hero heads and squash/lean
   - timed and one-use anchors
   - adaptive music (raw WebAudio)
-  - the anchor-attention camera with a fairness proof test
+  - the anchor-attention camera with a fairness proof test (vertical bias +1, lifted anchors clear the HUD band, anchors hidden behind terrain are not framed)
   - opt-in playtest telemetry (`?playtest=1`)
   - remapping, high contrast and a larger reticle (`docs/accessibility.md`)
 - **Owner rulings (2026-10-12):**
@@ -137,6 +137,8 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
   - an ink exit doorhouse lit with highlighter;
   - warm lamplight (flat under high contrast or `?lamp=0`), graphite motes;
   - a level title card on first entry;
-  - a lamplit front page.
+  - a lamplit front page;
+  - wide floating slabs drawn as hatched overhangs with ink drips (#90);
+  - C6 is the level's peak: a 7-tick connection window, then a short whip (#91).
 - **Font:** Mansalva (self-hosted, `src/render/typeface.ts`). Caveat is gone.
 - **Live plan:** `docs/agents/HANDOFF.md`. The visual pass is `docs/art/living-notebook.md`.
