@@ -1,6 +1,6 @@
 # Context pack: StickSwing (repo StickGame; working title Precision Tether Platformer)
 
-`Context pack: 2026-10-12 @ 9f884d6`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-12 (night) @ main after #87`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -131,4 +131,12 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
   - Beauty first; optimization deferred.
   - The hero and spikes never line-boil.
   - The game ships on every reachable platform (doc 14 §5, GMR-113).
+- **Golden 1-1 look (GMR-114, 2026-10-12):**
+  - the Living Notebook: line boil, ink juice, draw-in, margin doodles (no sun; a spider on solid silk), ballpoint pools;
+  - a page turn on accepted exits;
+  - an ink exit doorhouse lit with highlighter;
+  - warm lamplight (flat under high contrast or `?lamp=0`), graphite motes;
+  - a level title card on first entry;
+  - a lamplit front page.
+- **Font:** Mansalva (self-hosted, `src/render/typeface.ts`). Caveat is gone.
 - **Live plan:** `docs/agents/HANDOFF.md`. The visual pass is `docs/art/living-notebook.md`.

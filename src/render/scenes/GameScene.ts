@@ -359,7 +359,13 @@ export class GameScene extends Phaser.Scene {
       );
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
-    const hand = { fontFamily: HAND_FONT, color: '#16161a' };
+    // A paper halo keeps the HUD legible where it crosses hatched terrain (c6's ceiling bar).
+    const hand = {
+      fontFamily: HAND_FONT,
+      color: '#16161a',
+      stroke: '#f3efe6',
+      strokeThickness: 5,
+    };
     this.timer = this.add
       .text(0, 14, '', { ...hand, fontSize: '34px' })
       .setScrollFactor(0)

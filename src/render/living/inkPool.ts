@@ -9,11 +9,12 @@ import { hash, type Pt } from '../ink';
  * ballpoint hatching. The surface lives: a rippling contour, animated on twos, with bubbles that
  * rise and pop into little loops. Presentation only; the collision is the authored polygon.
  */
-const RED = '#b8322b';
+/** The wash under the ballpoint colouring: lighter than the strokes so they read on top. */
+const RED = '#d4534a';
 const RED_DARK = '#7d1a16';
 const RED_LIGHT = '#e0645a';
 /** Pooled ink at depth. Kept at r >= 125 so the whole body still classifies as lethal red. */
-const RED_DEEP = '#8e1f19';
+const RED_DEEP = '#a92b23';
 export const POOL_RED = 0xb8322b;
 const POOL_RED_DARK = 0x7d1a16;
 const POOL_RED_LIGHT = 0xe0645a;
@@ -68,8 +69,10 @@ export function paintInkPool(c: CanvasRenderingContext2D, solid: SolidDef): void
   // Ink pools deeper toward the bottom: bright where the surface catches light, dark below.
   const depth = y1 - y0;
   const fill = c.createLinearGradient(0, y0, 0, y1);
+  // A lighter red wash under the colouring, so the ballpoint strokes read as drawn ink on paper
+  // rather than vanishing into a painted slab (owner playtest 2026-10-12: polish).
   fill.addColorStop(0, RED);
-  fill.addColorStop(Math.min(0.9, m(0.5) / depth), '#ab2a23');
+  fill.addColorStop(Math.min(0.9, m(0.5) / depth), '#c8443b');
   fill.addColorStop(1, RED_DEEP);
   c.fillStyle = fill;
   c.fillRect(x0, y0, x1 - x0, y1 - y0);
@@ -94,7 +97,7 @@ export function paintInkPool(c: CanvasRenderingContext2D, solid: SolidDef): void
       const deep = Math.min(1, Math.max(0, (cy - y0) / depth));
       c.strokeStyle = RED_DARK;
       c.lineWidth = 1.15;
-      c.globalAlpha = 0.34 + 0.2 * deep + 0.1 * hash(k * 3.3 + s.seed);
+      c.globalAlpha = 0.5 + 0.25 * deep + 0.1 * hash(k * 3.3 + s.seed);
       c.beginPath();
       const n = Math.round(patchW / 4.6);
       for (let i = 0; i <= n; i++) {
