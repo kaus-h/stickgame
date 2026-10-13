@@ -1,15 +1,16 @@
 {
   "$comment": "Procedural SFX parameter sets (GMR-41). Rendered by src/audio/synth.ts at load. Edit freely: every sound must stay short, crisp and never delay retry. Each event also has a visual equivalent (doc 08).",
   "jump": {
-    "wave": "square",
-    "duty": 0.3,
-    "freq": 300,
-    "slide": 900,
-    "attack": 0.004,
-    "sustain": 0.04,
-    "release": 0.06,
-    "gain": 0.32,
-    "lowpass": 4000
+    "wave": "triangle",
+    "freq": 260,
+    "slide": 760,
+    "attack": 0.003,
+    "sustain": 0.03,
+    "release": 0.07,
+    "gain": 0.3,
+    "noiseMix": 0.32,
+    "lowpass": 3600,
+    "seed": 17
   },
   "stomp": {
     "wave": "triangle",
@@ -57,27 +58,30 @@
     "seed": 11
   },
   "ropeInvalid": {
-    "wave": "square",
-    "duty": 0.5,
-    "freq": 220,
-    "slide": -400,
+    "wave": "triangle",
+    "freq": 210,
+    "slide": -320,
     "attack": 0.002,
-    "sustain": 0.05,
-    "release": 0.06,
-    "gain": 0.22,
-    "lowpass": 1800
+    "sustain": 0.045,
+    "release": 0.07,
+    "gain": 0.26,
+    "noiseMix": 0.3,
+    "lowpass": 1600,
+    "seed": 19
   },
   "ropeTaut": {
-    "wave": "saw",
-    "freq": 140,
-    "slide": -60,
+    "wave": "triangle",
+    "freq": 150,
+    "slide": -50,
     "attack": 0.002,
     "sustain": 0.02,
-    "release": 0.16,
-    "gain": 0.3,
-    "vibratoDepth": 0.03,
-    "vibratoRate": 30,
-    "lowpass": 2200
+    "release": 0.18,
+    "gain": 0.32,
+    "vibratoDepth": 0.025,
+    "vibratoRate": 26,
+    "noiseMix": 0.12,
+    "lowpass": 2000,
+    "seed": 29
   },
   "ropeRelease": {
     "wave": "noise",

@@ -89,6 +89,26 @@ const CSS = `
 .flow table.splits th { font-weight: normal; color: #5a5a5a; padding: 0 10px; }
 .flow table.splits td { padding: 0 10px; text-align: right; }
 .flow table.splits td:first-child { text-align: left; }
+/* The front page (owner playtest 2026-10-12): no box, the title is written on a lamplit page. */
+.flow[data-screen=title] { background-color: #f3efe6;
+  background-image: radial-gradient(ellipse 80% 75% at 56% 34%, #fff 0%, #fbf7ef 40%, #e6dccb 82%, #d2c2a6 100%),
+    linear-gradient(90deg, transparent 63px, rgba(226, 138, 138, 0.75) 63px 65px, transparent 65px),
+    repeating-linear-gradient(180deg, transparent 0 31px, rgba(158, 194, 223, 0.55) 31px 32px),
+    radial-gradient(circle at 26px 17px, #cfc7b6 0 6.5px, rgba(138, 138, 138, 0.6) 6.5px 7.5px, transparent 7.5px);
+  background-size: 100% 100%, 100% 100%, 100% 32px, 52px 34px;
+  background-repeat: no-repeat, no-repeat, repeat, repeat-y;
+  background-blend-mode: multiply, multiply, normal, normal; }
+.flow[data-screen=title] .flow-card { background: none; border: none; box-shadow: none; }
+.flow[data-screen=title] h1.title { font-size: 112px; letter-spacing: 1px;
+  text-shadow: 0.6px 0.8px 0 rgba(22, 22, 26, 0.35); animation: flow-write 0.9s ease-out both; }
+.flow[data-screen=title] canvas.doodle { animation: flow-fade 0.6s ease-out 0.5s both; }
+.flow[data-screen=title] .tag { color: #6b675f; animation: flow-fade 0.6s ease-out 0.8s both; }
+.flow[data-screen=title] .row { animation: flow-rise 0.5s ease-out 1s both; }
+@keyframes flow-write { from { clip-path: inset(-20% 100% -20% 0); } to { clip-path: inset(-20% -5% -20% 0); } }
+@keyframes flow-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes flow-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+.flow.calm *, .flow.calm { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .flow * { animation: none !important; } }
 `;
 
 /**
@@ -162,6 +182,7 @@ export class GameFlowUi {
     const calm =
       pref === 'on' ||
       (pref === 'system' && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.root.classList.toggle('calm', calm);
     this.stopDoodle = startTitleDoodle(doodle, calm);
   }
 
