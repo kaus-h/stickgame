@@ -20,7 +20,10 @@ export interface CameraParams {
   readonly verticalLookaheadTime: number;
   readonly verticalMin: number;
   readonly verticalMax: number;
-  /** Framing offset: negative shows more space above the player (ropes go up). */
+  /**
+   * Framing offset: positive keeps the player above center, so less empty sky and more of the
+   * ground they run on. Anchor attention lifts the frame whenever a rope target is in reach.
+   */
   readonly verticalBias: number;
   /** Exponential ease rate, 1/s. */
   readonly smoothing: number;
@@ -36,7 +39,7 @@ export const DEFAULT_CAMERA: CameraParams = {
   verticalLookaheadTime: 0.12,
   verticalMin: -1.5,
   verticalMax: 2,
-  verticalBias: -1,
+  verticalBias: 1,
   smoothing: 6,
 };
 
@@ -111,8 +114,10 @@ export const ATTENTION_FLOOR = 1.5;
 export const ATTENTION_MARGIN = 0.5;
 /** Seconds of fall speed kept as extra room below the player while lifting (camera lag). */
 export const ATTENTION_FALL_LAG = 0.3;
+/** Screen pixels the HUD (title, run and life timers) covers at the top; framed anchors stay below. */
+export const HUD_BAND_PX = 80;
 /** Frame anchors this much before they come into rope reach, m. */
-export const ATTENTION_EARLY = 3;
+export const ATTENTION_EARLY = 4;
 
 /**
  * Anchor attention (GMR-44). Wide screens are height-bound (12 m tall), so an anchor 7–8 m above
@@ -128,19 +133,23 @@ export function attentionTarget(
   viewW: number,
   viewH: number,
   reach: number,
+  /** World meters at the top of the frame hidden by the HUD (HUD_BAND_PX at the current scale). */
+  topInset = 0,
 ): Vec2 {
   let need = Infinity;
   // Lowest point that must stay on screen. While falling, the eased camera trails the target, so
   // keep extra room below the player in proportion to the fall speed (about the camera's lag).
   let floor = player.y + ATTENTION_FLOOR + Math.max(0, velocity.y) * ATTENTION_FALL_LAG;
   for (const a of anchors) {
+    // Off screen horizontally: measured from the target, which leads a running player.
+    const sx = target.x < a.minX ? a.minX - target.x : target.x > a.maxX ? target.x - a.maxX : 0;
+    if (sx > viewW / 2) continue;
     // Distance to the nearest point of the anchor's whole path box (a mover can come close).
     const dx = player.x < a.minX ? a.minX - player.x : player.x > a.maxX ? player.x - a.maxX : 0;
-    if (dx > viewW / 2) continue; // not on screen horizontally anyway
     const dy = player.y < a.top ? a.top - player.y : player.y > a.bottom ? player.y - a.bottom : 0;
     // Start framing a little before the anchor is in reach, so the camera has settled by the shot.
     if (Math.hypot(dx, dy) > reach + ATTENTION_EARLY) continue;
-    need = Math.min(need, a.top - ATTENTION_MARGIN);
+    need = Math.min(need, a.top - ATTENTION_MARGIN - topInset);
     floor = Math.max(floor, a.bottom + ATTENTION_MARGIN);
   }
   if (!Number.isFinite(need)) return target;

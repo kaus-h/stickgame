@@ -4,6 +4,7 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { FrameSource, RenderFrame } from '../frame';
 import {
   attentionTarget,
+  HUD_BAND_PX,
   cameraScale,
   cameraTarget,
   CALM_CAMERA,
@@ -598,6 +599,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       this.scale.width / screen,
       this.scale.height / screen,
       this.opts.ropeReach ?? 11,
+      HUD_BAND_PX / screen,
     );
     const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
     this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);

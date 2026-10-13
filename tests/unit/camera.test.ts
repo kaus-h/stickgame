@@ -45,10 +45,14 @@ describe('camera framing (GMR-25)', () => {
   });
 
   it('looks ahead in the direction of travel, capped', () => {
-    expect(cameraTarget(vec2(0, 0), vec2(0, 0), DEFAULT_CAMERA)).toEqual(vec2(0, -1));
+    expect(cameraTarget(vec2(0, 0), vec2(0, 0), DEFAULT_CAMERA)).toEqual(
+      vec2(0, DEFAULT_CAMERA.verticalBias),
+    );
     expect(cameraTarget(vec2(0, 0), vec2(7.5, 0), DEFAULT_CAMERA).x).toBeCloseTo(2.625, 9);
     expect(cameraTarget(vec2(0, 0), vec2(-40, 0), DEFAULT_CAMERA).x).toBe(-3);
-    expect(cameraTarget(vec2(0, 0), vec2(0, 40), DEFAULT_CAMERA).y).toBe(1);
+    expect(cameraTarget(vec2(0, 0), vec2(0, 40), DEFAULT_CAMERA).y).toBe(
+      2 + DEFAULT_CAMERA.verticalBias,
+    );
   });
 
   it('eases toward the target and snaps on reset', () => {
