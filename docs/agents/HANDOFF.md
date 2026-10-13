@@ -1,66 +1,59 @@
 # Handoff
 
-The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before starting a fresh session ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
+The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-12, at the 400k-context handoff. **The owner's direction: beauty first, optimization deferred. Opus builds visual, feel and level work hands-on.**_
+_Last updated: 2026-10-12 (evening), at the 300k-context handoff. **Owner direction: beauty first, optimization deferred. Opus builds visual, feel and level work hands-on.**_
 
 ## State
 
-- **Main (9f884d6):** Section 1 plus 2-1. The game is named **StickSwing** (#74).
-- **Merged today:**
-  - **#61:** terrain kit 0017.
-  - **#70 and #72, GMR-50 done:**
-    - key remapping;
-    - high contrast and a larger reticle;
-    - `docs/accessibility.md`.
-  - **#71:** budgets re-based to 300 / 1220 KB.
-  - **#73, goons:** a 60Â° stomp rule, so corner landings are safe; a hatched ink critter with slit eyes; red thorns on the flanks only. The owner liked it ("feels way better").
-  - **#75, exits:** a reached exit always accepts. There are no speed, angle or alignment rejects in any chapter level, guarded by a test (owner ruling).
-- **Owner playtests** at `localhost:5173` from `D:\StickGame`. Keep it on main. The dev server was restarted through the preview tool (`launch.json` "dev"); the inbox watcher may need restarting.
+- **Main:** Living Notebook part 1 (#77) and the film tool (#80, `npm run film`, see `docs/film.md`).
+- **#77 fixes that landed with it:**
+  - E2E waits now expect **4 cameras** (paper, crisp, world, UI).
+  - `kitPresentation().ready` now also waits for the 0.6 s draw-in.
+  - The draw-in cover uses world-grid paper tiles, because a Phaser 4 Canvas TileSprite leaks its pattern texture on destroy.
+  - Pencil shadows are cut out of the blocks, because the ground mass is open hatching.
+- **#81** (a second GMR-115) was closed as a duplicate of #80, which another session merged first.
+- **Owner playtests** at `localhost:5173` from `D:\StickGame`, on main. `gifenc` is installed there.
 
-## Open PRs (both need CI green, a BrowserGPT MERGE verdict and `safe-merge.sh`)
+## Open PRs and tasks
 
-- **#76 (docs):** the Living Notebook plan, the 400k handoff rule and this HANDOFF.
-- **#77 (Living Notebook, branch `living-notebook`), four commits:**
-  - **Line boil:** a world-locked Displacement filter at 8 fps.
-  - **Camera stack, front to back:** paper (never boils), then crisp (the hero and spikes, which never boil, per the owner), then the boiling world, then the UI. A camera after a filtered camera drops its composite in Phaser 4, so the crisp camera sits _below_ the world camera.
-  - **Drawn red ink pools:** a live ripple and bubbles.
-  - **Ink juice:** dust, take-off kicks, the rope bite blot, the release flick, speed hatching and the rope draw-on.
-  - **Level draw-in:** a 0.6 s pen reveal.
-  - **Page vignette.**
-  - **Title page doodle:** the hero swings under "StickSwing".
-  - **Pencil drop-shadows.**
-  - **Expect e2e failures:** the pool pixel tests in `kit-0017.spec.ts` and `level-kit.spec.ts` assume the old pool slices. Update them, keeping the "red mass, no pale band" intent.
+- **#84 (GMR-114 part 1):**
+  - margin doodles that react: birds on a wire scatter and settle, a sun watches the hero, clouds drift and stars spin;
+  - ballpoint-coloured red ink pools.
+  - Locally `npm run check` and 18 chromium e2e specs pass. `safe-merge.sh 84` was started; if it's not merged, check CI and merge.
+- **Page-turn (GMR-114 part 2)** is with GPT-6.1 sol via `scripts/agents/codex-task.sh`:
+  - branch `kaustavkalra123/gmr-114-exit-page-turn`, brief `D:/tmp/codex/briefs/gmr-114-page-turn.md`;
+  - result `D:/tmp/codex/page-turn.result`, worktree `D:/tmp/codex/kaustavkalra123-gmr-114-exit-page-turn`.
+  - Before merging, judge its `artifacts/film/page-turn-sheet.png`: does it read as a real page turning, drawn rather than glossy?
+  - It was launched without `CODEX_SANDBOX=bypass`. If it failed on the sandbox, rerun the same command with that variable set.
+- **Merged from the other session:**
+  - #82: PRs run Chromium e2e only, and main runs all three engines;
+  - #83: handoffs end with a paste-ready prompt, and there are no scheduled sessions.
 
-## Next (roadmap rewrite, owner 2026-10-12: 5 chapters, about 50 levels; golden level, then factory, then batches)
+## Next (GMR-114 golden 1-1, then the Level Factory)
 
-Read doc 14 Â§1a and the speed audit (`workflow.md` Routing). Opus builds hands-on.
+1. Merge #84, then review and merge the page-turn.
+2. **Floating terrain that makes visual sense:** 1-1's `c6-ceiling` bar and `c7-roof` float with no support. Decide the treatment (taped paper strips? pencil hangers?). Collision stays authored.
+3. **Feel pass:**
+   - camera framing: the hero is small with a lot of empty sky above;
+   - an audio cue on every verb;
+   - the music arc across 1-1.
+   - Ask the owner for feel notes first.
+4. **Level pass:** every chamber reads at a glance, with the sawtooth per doc 14 §3a.
+5. **Owner sign-off** on 1-1.
+6. Then the Level Factory: GMR-116 (authoring format) and GMR-117 (mechanic catalog). Then levels in batches.
 
-1. **Golden Level milestone, GMR-114 golden 1-1:**
-   - land #77 (update the pool pixel e2e tests);
-   - finish the Living Notebook on 1-1: margin doodles, an exit page-turn, floating terrain, composition and depth;
-   - feel and audio pass;
-   - owner sign-off.
-2. **Level Factory milestone:**
-   - **GMR-115 `npm run film`:** a solver route becomes a GIF plus a contact sheet. Build it first or alongside GMR-114, so you can judge motion.
-   - **GMR-116:** the fast authoring format.
-   - **GMR-117:** the mechanic catalog.
-3. **Then levels in batches:** finish Chapter 1 (2-2 onward, the GMR-60 phase 2, GMR-61 and GMR-63 mechanics) through the factory. Then the Chapters 2â€“5 milestone: prototype each chapter's mechanic families in labs, get the owner's feel check, then build the levels.
-4. **Later:** GMR-113 platform reach and controller support (after the visual pass), GMR-36 load and code-split, GMR-51 trademark and domain (owner).
+## Workflow notes
 
-## Workflow notes from this session
-
-- The slowest parts of the loop:
-  - BrowserGPT review round-trips through Chrome (each Chrome call returns about 1.5k tokens of tab list);
-  - three-browser e2e on every push, about 15 min with cancellations.
-- Proposed to the owner and awaiting an answer:
-  - Opus-authored render PRs get CI plus an Opus self-review, without BrowserGPT;
-  - e2e runs Chromium on every push, with Firefox and WebKit on main.
-- `kit17-assets.test.ts` times out under full-suite load locally (it passes alone). A fix task chip was offered.
-- Playwright browsers aren't installed locally. Rely on CI for e2e.
+- **Look at motion cheaply:**
+  - `npm run film -- 1-1 --from <chamber|tick> --ticks N --every K --scale 1`.
+  - For native-size crops at chosen ticks, a ~40-line Playwright script works: vite on port 0, installed Chrome, `playReplay`, then screenshots with `clip`. View crops at native size and sheets downscaled to 800 px.
+- **Local e2e without downloading browsers:** `E2E_PORT=5186 PW_CHANNEL=chrome npx playwright test --project=chromium <specs>`. Never use port 5173.
+- **Parallel Opus subagents hit the usage limit** (two were lost mid-task). Use `codex-task.sh` (sol, a separate quota) for parallel modules; Opus keeps the taste work.
+- **Another session may be working the same roadmap.** Run `gh pr list` (and ListAgents) before starting an item.
 
 ## Watch out
 
-- **Slim Phaser:** filters exist on cameras, but helpers like `Color.IntegerToColor` don't. The Vignette filter crashes, so use canvas overlays.
-- **Slim guard test:** don't write `Phaser.Textures.*` in `src`; use structural types.
+- **Slim Phaser:** filters exist on cameras, but helpers like `Color.IntegerToColor` don't. Use canvas overlays, not the Vignette filter. Don't write `Phaser.Textures.*` in `src`.
+- **`npm run check | grep … && git commit` masks failures.** Check the exit code.
 - **Muse is at muse.ai.** Inbox PRs are drafts (`gh pr ready`). Never put issue keys in PR titles.

@@ -40,7 +40,11 @@ export function reflectInFold(p: Pt, normal: Pt, offset: number): Pt {
   return { x: p.x - 2 * normal.x * distance, y: p.y - 2 * normal.y * distance };
 }
 
-/** Screen-space geometry: the lifted corner reflects over a crease travelling upper-left. */
+/** The crease starts as a thumb-lift diagonal and swings upright toward the spiral spine. */
+const CREASE_START = (38 * Math.PI) / 180;
+const CREASE_END = (3 * Math.PI) / 180;
+
+/** Screen-space geometry: the lifted corner reflects over a crease travelling to the spine. */
 export function pageTurnGeometry(width: number, height: number, progress: number) {
   const sheet = [
     { x: 0, y: 0 },
@@ -48,8 +52,10 @@ export function pageTurnGeometry(width: number, height: number, progress: number
     { x: width, y: height },
     { x: 0, y: height },
   ];
-  const normal = { x: Math.SQRT1_2, y: Math.SQRT1_2 };
-  const offset = (width + height) * Math.SQRT1_2 * (1 - Math.min(1, Math.max(0, progress)));
+  const u = Math.min(1, Math.max(0, progress));
+  const angle = CREASE_START + (CREASE_END - CREASE_START) * u;
+  const normal = { x: Math.cos(angle), y: Math.sin(angle) };
+  const offset = (width * normal.x + height * normal.y) * (1 - u);
   const revealed = clipSheet(sheet, normal, offset);
   const fold = revealed.filter((p) => Math.abs(p.x * normal.x + p.y * normal.y - offset) < 1e-6);
   return {
@@ -59,6 +65,43 @@ export function pageTurnGeometry(width: number, height: number, progress: number
     fold,
     back: revealed.map((p) => reflectInFold(p, normal, offset)),
   };
+}
+
+/** Clip a segment to a convex polygon (either winding); null when it misses. */
+function clipToConvex(a: Pt, b: Pt, poly: readonly Pt[]): [Pt, Pt] | null {
+  if (poly.length < 3) return null;
+  let area = 0;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i] as Pt,
+      q = poly[(i + 1) % poly.length] as Pt;
+    area += p.x * q.y - q.x * p.y;
+  }
+  const sign = area >= 0 ? 1 : -1;
+  let t0 = 0,
+    t1 = 1;
+  const dx = b.x - a.x,
+    dy = b.y - a.y;
+  for (let i = 0; i < poly.length; i++) {
+    const p = poly[i] as Pt,
+      q = poly[(i + 1) % poly.length] as Pt;
+    // Inward edge normal; inside means (point - p) . n >= 0.
+    const nx = -(q.y - p.y) * sign,
+      ny = (q.x - p.x) * sign;
+    const num = (a.x - p.x) * nx + (a.y - p.y) * ny;
+    const den = dx * nx + dy * ny;
+    if (Math.abs(den) < 1e-9) {
+      if (num < 0) return null;
+      continue;
+    }
+    const t = -num / den;
+    if (den > 0) t0 = Math.max(t0, t);
+    else t1 = Math.min(t1, t);
+    if (t0 > t1) return null;
+  }
+  return [
+    { x: a.x + dx * t0, y: a.y + dy * t0 },
+    { x: a.x + dx * t1, y: a.y + dy * t1 },
+  ];
 }
 
 /** Intersect a horizontal ruling/fibre with the lifted portion of the original rectangle. */
@@ -177,19 +220,32 @@ export class PageTurn {
     if (this.reducedMotion || p <= 0 || p >= 1 || geo.fold.length < 2) return;
     const a = geo.fold[0] as Pt,
       b = geo.fold[1] as Pt;
-    // Soft contact shadow on the page underneath, four matte pencil-grey bands.
-    for (const band of [24, 16, 9, 3]) {
-      const n = geo.normal;
-      this.fill(
-        [
-          a,
-          b,
-          { x: b.x + n.x * band, y: b.y + n.y * band },
-          { x: a.x + n.x * band, y: a.y + n.y * band },
-        ],
-        EDGE,
-        0.045,
-      );
+    const n = geo.normal;
+    const along = { x: b.x - a.x, y: b.y - a.y };
+    const len = Math.hypot(along.x, along.y);
+    if (len < 1) return;
+    const t = { x: along.x / len, y: along.y / len };
+    const ink = this.highContrast ? PAGE.ink : EDGE;
+    // The lifted curl shades the fresh page beside the crease: quick slanted pencil hatching,
+    // longest at the crease's middle where the paper stands highest.
+    const lift = Math.sin(Math.PI * p);
+    for (let d = 3; d < len - 3; d += 4.5) {
+      const i = Math.round(d / 4.5);
+      const bulge = Math.sin((Math.PI * d) / len);
+      const reach = (6 + 16 * bulge * lift) * (0.7 + 0.5 * hash(i * 3.7 + 1));
+      const s0 = { x: a.x + t.x * d + n.x * 1.5, y: a.y + t.y * d + n.y * 1.5 };
+      const s1 = {
+        x: s0.x + n.x * reach - t.x * reach * 0.45,
+        y: s0.y + n.y * reach - t.y * reach * 0.45,
+      };
+      const seg = clipToConvex(s0, s1, geo.revealed);
+      if (seg)
+        g.lineStyle(0.9, PAGE.pencil, 0.5 + 0.2 * hash(i * 1.3)).lineBetween(
+          seg[0].x,
+          seg[0].y,
+          seg[1].x,
+          seg[1].y,
+        );
     }
     this.fill(geo.back, BACK);
     for (let y = 0.5; y < height; y += spacing) {
@@ -200,17 +256,23 @@ export class PageTurn {
       g.lineStyle(1.2, PAGE.rule, 0.25).lineBetween(ra.x, ra.y, rb.x, rb.y);
     }
     this.fibres(width, height, geo.normal, geo.offset, true, 1);
-    // Light free edges plus a single straight, slightly imperfect pencil crease.
+    // The bend itself: a few pen lines parallel to the crease on the back of the sheet, packed
+    // tight at the fold and opening out, like a quick drawn cylinder.
+    [2.5, 5.5, 9.5, 15, 22].forEach((gap, k) => {
+      const inset = 6 + 10 * hash(k * 5.1 + 2);
+      const from = { x: a.x - n.x * gap + t.x * inset, y: a.y - n.y * gap + t.y * inset };
+      const to = {
+        x: b.x - n.x * gap - t.x * (inset + 18 * hash(k * 2.3)),
+        y: b.y - n.y * gap - t.y * (inset + 18 * hash(k * 2.3)),
+      };
+      const seg = clipToConvex(from, to, geo.back);
+      if (seg)
+        strokeInk(g, wobble(seg, 41 + k, 0.5, 16), 0.85, ink, (0.55 - k * 0.09) * (0.5 + lift), k);
+    });
+    // Inked free edges and a firm crease: the turning page is drawn, not rendered.
     const outline = [...geo.back, geo.back[0] as Pt];
-    strokeInk(g, wobble(outline, 31, 0.35, 14), 0.8, EDGE, 0.35, 31);
-    strokeInk(
-      g,
-      wobble([a, b], 17, 0.4, 12),
-      this.highContrast ? 2 : 1.2,
-      this.highContrast ? PAGE.ink : EDGE,
-      0.95,
-      17,
-    );
+    strokeInk(g, wobble(outline, 31, 0.45, 14), 1, PAGE.ink, 0.7, 31);
+    strokeInk(g, wobble([a, b], 17, 0.4, 12), this.highContrast ? 2 : 1.5, PAGE.ink, 0.9, 17);
   }
 
   private fibres(

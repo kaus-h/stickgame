@@ -38,7 +38,7 @@ describe('accepted-exit page turn', () => {
       pageTurnEase(0.51) - pageTurnEase(0.5),
     );
   });
-  it('lifts the bottom-right corner and sweeps a straight fold toward the upper left', () => {
+  it('lifts the bottom-right corner and swings a straight fold upright toward the spine', () => {
     const start = pageTurnGeometry(960, 540, 0);
     const lift = pageTurnGeometry(960, 540, 0.05);
     const middle = pageTurnGeometry(960, 540, 0.5);
@@ -48,7 +48,8 @@ describe('accepted-exit page turn', () => {
     expect(lift.fold.every((p) => p.x > 800 && p.y > 400)).toBe(true);
     expect(middle.offset).toBeLessThan(lift.offset);
     expect(end.revealed).toHaveLength(4);
-    expect(end.back.every((p) => p.x <= 0.000001 && p.y <= 0.000001)).toBe(true);
+    expect(end.back.every((p) => p.x <= 0.000001)).toBe(true);
+    expect(Math.abs(end.normal.y)).toBeLessThan(Math.abs(lift.normal.y));
     for (const p of middle.fold)
       expect(p.x * middle.normal.x + p.y * middle.normal.y).toBeCloseTo(middle.offset);
   });
