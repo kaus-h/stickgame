@@ -92,7 +92,7 @@ export function selectKit17EdgeName(
         ? geometry.floating
           ? 'short-island'
           : 'wall-top-cap'
-        : ratio >= 4.5
+        : ratio >= 4.5 && geometry.heightPx <= m(1)
           ? 'bridge'
           : geometry.widthPx >= m(7)
             ? 'layered'

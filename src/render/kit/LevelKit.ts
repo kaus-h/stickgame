@@ -293,7 +293,9 @@ export class LevelKit {
         // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
         this.paintMass(
           c,
-          solids.filter((s) => !this.floating(s)),
+          // Floating slabs are made of the same hatched mass as the ground, so they read as
+          // overhangs rather than planks; small islands keep 07B's fading paper interior.
+          solids.filter((s) => !this.floating(s) || this.slab(s)),
           {
             x,
             y,
@@ -312,6 +314,7 @@ export class LevelKit {
               this.edges.get(solid),
               this.allExposedEdges,
             );
+            if (this.slab(solid)) this.paintSlabUnderside(c, solid);
             this.paintCeilingDrips(c, solid, this.edges.get(solid) ?? []);
           }
         } else {
@@ -384,6 +387,43 @@ export class LevelKit {
 
   private floating(solid: SolidDef): boolean {
     return (this.edges.get(solid) ?? []).every((edge) => edge.contact === 'exposed');
+  }
+
+  /** A wide floating solid (the kit's bridge proportion): a ceiling slab or a long overhang. */
+  private slab(solid: SolidDef): boolean {
+    if (!this.floating(solid)) return false;
+    const xs = solid.points.map((p) => p.x);
+    const ys = solid.points.map((p) => p.y);
+    const h = Math.max(...ys) - Math.min(...ys);
+    return h > 0 && (Math.max(...xs) - Math.min(...xs)) / h >= 4.5;
+  }
+
+  /**
+   * The lamp is above the page, so a slab's underside sits in its own shade: a denser pencil
+   * pass that darkens toward the bottom edge, inside the collision outline.
+   */
+  private paintSlabUnderside(c: CanvasRenderingContext2D, solid: SolidDef): void {
+    const ys = solid.points.map((p) => p.y);
+    const xs = solid.points.map((p) => p.x);
+    const bottom = m(Math.max(...ys));
+    const band = Math.min(m(0.5), (bottom - m(Math.min(...ys))) * 0.45);
+    const left = m(Math.min(...xs)) - band;
+    const right = m(Math.max(...xs)) + band;
+    c.save();
+    outline(c, solid);
+    c.clip();
+    const shade = c.createLinearGradient(0, bottom - band, 0, bottom);
+    shade.addColorStop(0, 'rgba(22, 22, 26, 0)');
+    shade.addColorStop(1, 'rgba(22, 22, 26, 0.62)');
+    c.strokeStyle = shade;
+    for (let x = left; x < right; x += 3.2) {
+      c.lineWidth = 0.55 + (Math.sin(x * 0.37) + 1) * 0.18;
+      c.beginPath();
+      c.moveTo(x, bottom - band);
+      c.lineTo(x + band * 0.62 + Math.sin(x * 0.11) * 1.4, bottom + 1);
+      c.stroke();
+    }
+    c.restore();
   }
 
   /** One world-locked hatch field continues across joined polygons and the page borders. */
@@ -500,29 +540,75 @@ export class LevelKit {
   ): void {
     const ceiling =
       edges.some((edge) => edge.side === 'top' && edge.contact === 'bounds') ||
-      /ceiling|roof|hang/i.test(solid.id);
+      /ceiling|roof|hang/i.test(solid.id) ||
+      this.slab(solid);
     if (!ceiling) return;
+    const rand = (k: number): number => {
+      const v = Math.sin(k * 127.1 + 311.7) * 43758.5453;
+      return v - Math.floor(v);
+    };
+    c.save();
+    c.fillStyle = '#16161a';
     for (const edge of edges) {
       if (edge.contact !== 'exposed' || edge.side !== 'bottom') continue;
-      const dx = m(edge.b.x - edge.a.x);
-      const dy = m(edge.b.y - edge.a.y);
+      const ax = m(edge.a.x),
+        ay = m(edge.a.y);
+      const dx = m(edge.b.x) - ax;
+      const dy = m(edge.b.y) - ay;
       const length = Math.hypot(dx, dy);
       if (length === 0) continue;
-      // Preserve GMR-111's sparse 3–9 px underside marks in both terrain kits.
-      c.save();
-      c.translate(m(edge.a.x), m(edge.a.y));
-      c.rotate(Math.atan2(dy, dx));
-      c.strokeStyle = '#16161a';
-      c.lineWidth = 0.9;
-      c.globalAlpha = 0.75;
-      for (let t = 18; t < length - 12; t += 43) {
-        c.beginPath();
-        c.moveTo(t, 0);
-        c.lineTo(t + Math.sin(t) * 1.1, -3 - (Math.sin(t * 0.3) + 1) * 3);
-        c.stroke();
+      const ux = dx / length,
+        uy = dy / length;
+      // Outward is down for an underside, whichever way the polygon winds.
+      const flip = ux < 0 ? -1 : 1;
+      const nx = -uy * flip,
+        ny = ux * flip;
+      // Ink that has run off the underside: small world-seeded clusters of rounded beads, now and
+      // then a long drip with its drop. Irregular on purpose (even ticks read as a ruler), and
+      // hairline weight, so the inked edge stays the collision boundary.
+      for (let t = 24 + rand(ax) * 60; t < length - 10;) {
+        const group = Math.round(t + ax);
+        const count = 1 + Math.floor(rand(group + 1) * 3);
+        const longAt = rand(group + 2) < 0.55 ? Math.floor(rand(group + 4) * count) : -1;
+        let at = t;
+        for (let k = 0; k < count && at < length - 6; k++) {
+          const seed = group * 7 + k;
+          const long = k === longAt;
+          const len = long ? 10 + rand(seed + 5) * 12 : 2.2 + rand(seed + 7) * 4.5;
+          const root = long ? 1.6 : 1.3;
+          const sway = (rand(seed + 11) - 0.5) * 1.4;
+          const x0 = ax + ux * at,
+            y0 = ay + uy * at;
+          const tipX = x0 + nx * len + ux * sway,
+            tipY = y0 + ny * len + uy * sway;
+          c.globalAlpha = 0.6 + rand(seed + 13) * 0.25;
+          c.beginPath();
+          c.moveTo(x0 - ux * root, y0 - uy * root);
+          c.quadraticCurveTo(
+            x0 + nx * len * 0.5 - ux * 0.4,
+            y0 + ny * len * 0.5 - uy * 0.4,
+            tipX,
+            tipY,
+          );
+          c.quadraticCurveTo(
+            x0 + nx * len * 0.5 + ux * 0.4,
+            y0 + ny * len * 0.5 + uy * 0.4,
+            x0 + ux * root,
+            y0 + uy * root,
+          );
+          c.closePath();
+          c.fill();
+          // Every drip ends in a bead; the long ones carry a fuller drop.
+          const r = long ? 1.75 : 1.05 + rand(seed + 19) * 0.4;
+          c.beginPath();
+          c.ellipse(tipX + nx * r * 0.6, tipY + ny * r * 0.6, r * 0.85, r, 0, 0, Math.PI * 2);
+          c.fill();
+          at += 4 + rand(seed + 17) * 7;
+        }
+        t += 60 + rand(group + 23) * 110;
       }
-      c.restore();
     }
+    c.restore();
   }
 
   /** Join the two offset contour strokes across convex and concave exposed corner turns. */
