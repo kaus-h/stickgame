@@ -11,6 +11,7 @@ import {
   clampToBounds,
   DEFAULT_CAMERA,
   framedAnchors,
+  HUD_BAND_PX,
   stepCamera,
 } from '../../src/render/camera';
 import { World } from '../../src/tools/route-solver/world';
@@ -25,7 +26,7 @@ const LEAD_TICKS = 30;
 const MARGIN = 0.25;
 /** The player (body radius 0.35 m) stays this far inside every edge of the actual camera. */
 const PLAYER_MARGIN = 0.5;
-/** Tagged required shots, from their authored take-off: disc plus this clear margin. */
+/** Tagged required shots, from their authored take-off: disc plus this clear margin, below the HUD band. */
 const REQUIRED_MARGIN = 0.5;
 const tuning = parseRuntimeTuning(runtimeJson);
 const VIEWPORTS = [
@@ -90,6 +91,7 @@ function check(levelId: string, replay: string): Miss[] {
         viewW,
         viewH,
         tuning.sim.rope.maxLength,
+        HUD_BAND_PX / scale,
       );
       eased = stepCamera(eased ?? target, target, 1 / 60, DEFAULT_CAMERA, snap);
       center = clampToBounds(eased, viewW, viewH, level.bounds);
@@ -149,6 +151,7 @@ describe('camera fairness for tagged required shots (GMR-44)', () => {
               viewW,
               viewH,
               tuning.sim.rope.maxLength,
+              HUD_BAND_PX / scale,
             ),
             viewW,
             viewH,
@@ -159,7 +162,8 @@ describe('camera fairness for tagged required shots (GMR-44)', () => {
           const ok = ends.every(
             (e) =>
               Math.abs(e.x - c.x) <= safeW / 2 - a.radius - REQUIRED_MARGIN &&
-              Math.abs(e.y - c.y) <= viewH / 2 - a.radius - REQUIRED_MARGIN,
+              e.y - a.radius - REQUIRED_MARGIN >= c.y - viewH / 2 + HUD_BAND_PX / scale &&
+              e.y + a.radius + REQUIRED_MARGIN <= c.y + viewH / 2,
           );
           if (!ok) misses.push(`${vp.name} ${a.id}`);
         }
