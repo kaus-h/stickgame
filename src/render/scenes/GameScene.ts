@@ -24,10 +24,12 @@ import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
 import { DrawIn } from '../living/drawIn';
+import { HAND_FONT } from '../typeface';
 import { PageTurn } from '../living/pageTurn';
 import { MarginDoodles } from '../living/marginDoodles';
 import { InkJuice } from '../living/inkJuice';
 import { addPageVignette } from '../living/pageVignette';
+import { DustMotes, LevelTitleCard } from '../living/atmosphere';
 import { drawPoolSurfaces, poolShape, type PoolShape } from '../living/inkPool';
 import { LineBoil } from '../living/lineBoil';
 import { causeText } from '../feedback/causeText';
@@ -168,6 +170,8 @@ export class GameScene extends Phaser.Scene {
   private pageTurn: PageTurn | null = null;
   private doodles: MarginDoodles | null = null;
   private vignette: Phaser.GameObjects.Image | null = null;
+  private motes: DustMotes | null = null;
+  private titleCard: LevelTitleCard | null = null;
   /** The paper renders through its own camera under the world camera, so paper never boils. */
   private paper: Phaser.GameObjects.GameObject | null = null;
   private paperCamera: Phaser.Cameras.Scene2D.Camera | null = null;
@@ -330,17 +334,32 @@ export class GameScene extends Phaser.Scene {
     this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true);
     if (this.head.object) this.crispObjects.add(this.head.object);
     this.causeLabel = this.add
-      .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
+      .text(0, 0, '', { fontFamily: HAND_FONT, fontSize: '30px', color: '#8a8a8a' })
       .setOrigin(0.5, 1)
       .setName('enemy-cause')
       .setDepth(20)
       .setVisible(false);
     this.feedback = new FailureFeedback();
     this.frameG = this.add.graphics().setScrollFactor(0).setDepth(90);
-    this.vignette = addPageVignette(this, 85);
+    // Lamplight; flat light under high contrast, and ?lamp=0 for pixel-measuring tests.
+    const flat =
+      this.highContrast ||
+      (typeof window !== 'undefined' &&
+        new URLSearchParams(window.location.search).get('lamp') === '0');
+    this.vignette = flat ? null : addPageVignette(this, 85);
+    this.motes = new DustMotes(this, 84, this.reducedMotion);
+    // Written onto the page as the level opens; the scene persists across deaths, so never on retry.
+    if (LevelTitleCard.shouldShow(this.opts.level.id) && this.opts.overview !== true)
+      this.titleCard = new LevelTitleCard(
+        this,
+        this.opts.level.id,
+        this.opts.level.name,
+        86,
+        this.reducedMotion,
+      );
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
-    const hand = { fontFamily: '"Caveat", "Patrick Hand", cursive', color: '#16161a' };
+    const hand = { fontFamily: HAND_FONT, color: '#16161a' };
     this.timer = this.add
       .text(0, 14, '', { ...hand, fontSize: '34px' })
       .setScrollFactor(0)
@@ -407,7 +426,7 @@ art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | ba
 bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
 page turn ${this.pageTurnPresentation().active ? 'active' : 'idle'} | progress ${this.pageTurnPresentation().progress.toFixed(3)}
 a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}
-doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this.doodles?.stats().flying ?? 0)}`;
+doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this.doodles?.stats().flying ?? 0)} | title card ${this.titleCard ? this.titleCard.progress().toFixed(2) : 'off'}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -499,6 +518,10 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     this.syncPaperCamera();
     this.drawIn?.update(dt, this.cameras.main.worldView);
     this.vignette?.setDisplaySize(this.scale.width, this.scale.height);
+    const cam = this.cameras.main;
+    this.motes?.update(dt, cam.scrollX, cam.scrollY, this.scale.width, this.scale.height);
+    this.titleCard?.update(dt, this.scale.width, this.scale.height);
+    if (this.titleCard && this.titleCard.progress() >= 1) this.titleCard = null;
     this.boil?.setEnabled(!this.reducedMotion);
     this.boil?.update(time / 1000);
     // Body physics caps its own catch-up; presentation effects keep their wall-time duration.

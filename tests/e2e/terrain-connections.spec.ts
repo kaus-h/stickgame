@@ -29,7 +29,8 @@ interface WorldRect {
 }
 
 function gameUrl(levelId: string, overview = false): string {
-  const query = new URLSearchParams({ level: levelId, renderer: 'canvas' });
+  // Flat light: these specs classify paper and ink by colour, which the lamplight shades.
+  const query = new URLSearchParams({ level: levelId, renderer: 'canvas', lamp: '0' });
   if (overview) query.set('overview', '1');
   return `/?${query.toString()}`;
 }

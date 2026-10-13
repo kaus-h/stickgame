@@ -13,7 +13,7 @@ describe('margin doodles (GMR-114)', () => {
       const a = placeDoodles(level, level.spawn);
       expect(placeDoodles(level, level.spawn)).toEqual(a);
       expect(a.length).toBeGreaterThan(2);
-      expect(a.filter((d) => d.kind === 'sun').length).toBeLessThanOrEqual(1);
+      expect(a.filter((d) => d.kind === 'spider').length).toBeLessThanOrEqual(1);
       for (const d of a) {
         expect(doodleClear(level, d.x, d.y)).toBe(true);
         for (const anchor of level.anchors)

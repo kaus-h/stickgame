@@ -30,7 +30,7 @@ import {
 import { levelFingerprint, type LevelDef, type SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
-import { GameScene, loadHeroHeads, loadLevelKit } from '../../render';
+import { GameScene, loadHandFont, loadHeroHeads, loadLevelKit } from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
@@ -74,7 +74,7 @@ async function start(): Promise<void> {
   }
 
   // The handwriting font must be ready before Phaser rasterizes HUD text.
-  await Promise.allSettled([document.fonts.load('34px "Caveat"'), document.fonts.ready]);
+  await Promise.allSettled([loadHandFont(), document.fonts.ready]);
 
   // ?level=lab-collision (GMR-24) or ?level=lab-moving (GMR-26) loads a lab (default: lab-01).
   const registry = new LevelRegistry(levelSources);

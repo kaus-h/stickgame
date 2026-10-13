@@ -1,3 +1,4 @@
+import { renderRoomTone, ROOM_TONE_GAIN } from './ambience';
 import { renderSfx, type SfxParams } from './synth';
 
 export interface PlayOptions {
@@ -48,12 +49,27 @@ export class AudioEngine {
         buf.copyToChannel(samples, 0);
         this.buffers.set(name, buf);
       }
+      this.startRoomTone(this.ctx, this.music);
     }
     // iOS reports 'interrupted' after calls or Siri; any non-running state is retried on a gesture.
     if (this.ctx.state !== 'running') void this.ctx.resume().catch(() => undefined);
   }
 
   /** The context and music bus for the music engine (GMR-42); null until audio is unlocked. */
+  /** The quiet room under the music: looped forever, so mute and the music slider govern it. */
+  private startRoomTone(ctx: AudioContext, bus: GainNode): void {
+    const samples = renderRoomTone(ctx.sampleRate);
+    const buf = ctx.createBuffer(1, samples.length, ctx.sampleRate);
+    buf.copyToChannel(samples, 0);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    src.loop = true;
+    const g = ctx.createGain();
+    g.gain.value = ROOM_TONE_GAIN;
+    src.connect(g).connect(bus);
+    src.start();
+  }
+
   musicOutput(): { ctx: AudioContext; bus: GainNode } | null {
     return this.ctx && this.music ? { ctx: this.ctx, bus: this.music } : null;
   }

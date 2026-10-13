@@ -5,11 +5,12 @@ import { hash, strokeInk, type Pt } from '../ink';
 
 /**
  * Margin doodles (Living Notebook pillar 4): the sky above the terrain is where a bored student
- * doodles. Pencil birds on a wire scatter when the hero comes close and settle back later, a sun
- * keeps an eye on the hero, clouds drift and little stars spin when the hero swings past.
+ * doodles. Pencil birds on a wire scatter when the hero comes close and settle back later, a small
+ * spider on a silk thread watches the hero and climbs away when they come close (owner: no sun),
+ * clouds drift and little stars spin when the hero swings past.
  * Presentation only: never red (lethal), never highlighter (target), never ring-shaped (anchor).
  */
-export type DoodleKind = 'sun' | 'birds' | 'cloud' | 'star';
+export type DoodleKind = 'spider' | 'birds' | 'cloud' | 'star';
 
 export interface Doodle {
   readonly kind: DoodleKind;
@@ -29,6 +30,8 @@ const DOODLE_FPS = 12;
 /** Birds take off when the hero is this close, then come back after SETTLE seconds. */
 const SCARE_RADIUS = 4;
 const SETTLE = 6;
+/** Spider silk length, m: it hangs this far below the point it climbs back to. */
+const SILK = 3.2;
 
 const KIND_CYCLE: readonly DoodleKind[] = [
   'birds',
@@ -97,7 +100,7 @@ function groundTop(level: PlacementLevel, x: number): number {
 }
 
 /**
- * Deterministic doodle placement for a level: one sun near the start, then a cluster every
+ * Deterministic doodle placement for a level: one spider near the start, then a cluster every
  * 8-14 m in the sky band between the anchors and the ground, wherever it keeps clear.
  */
 export function placeDoodles(level: PlacementLevel, spawn: { x: number; y: number }): Doodle[] {
@@ -106,9 +109,9 @@ export function placeDoodles(level: PlacementLevel, spawn: { x: number; y: numbe
   const minX = level.bounds.minX + 3;
   const maxX = level.bounds.maxX - 3;
   const skyTop = level.bounds.minY + 1;
-  const sun = { x: spawn.x + 6.5, y: spawn.y - 5.6 };
-  if (sun.y > skyTop && doodleClear(level, sun.x, sun.y))
-    out.push({ kind: 'sun', x: sun.x, y: sun.y, seed });
+  const sun = { x: spawn.x + 6.5, y: spawn.y - 4.6 };
+  if (sun.y - SILK > skyTop - 1 && doodleClear(level, sun.x, sun.y))
+    out.push({ kind: 'spider', x: sun.x, y: sun.y, seed });
   let k = 0;
   for (let x = minX + 6 + 4 * hash(seed); x < maxX; x += 8 + 6 * hash(seed + k * 1.7), k++) {
     if (Math.abs(x - sun.x) < 5) continue;
@@ -144,6 +147,8 @@ interface DoodleState {
   /** Star spin (radians) and angular speed (rad/s). */
   spin: number;
   spinSpeed: number;
+  /** Spider: 0 hanging at its rest point, 1 climbed up its thread. */
+  lift: number;
 }
 
 function ellipse(cx: number, cy: number, rx: number, ry: number, seed: number, n = 12): Pt[] {
@@ -170,7 +175,7 @@ export class MarginDoodles {
     hidden: boolean,
   ) {
     this.doodles = hidden ? [] : placeDoodles(level, spawn);
-    this.state = this.doodles.map(() => ({ flight: null, spin: 0, spinSpeed: 0 }));
+    this.state = this.doodles.map(() => ({ flight: null, spin: 0, spinSpeed: 0, lift: 0 }));
   }
 
   /** Doodles placed, and how many bird clusters are in the air (debug overlay). */
@@ -198,6 +203,11 @@ export class MarginDoodles {
           s.flight += dt;
           if (s.flight > SETTLE && Math.abs(dx) > 8) s.flight = null;
         }
+      } else if (d.kind === 'spider') {
+        // Climbs fast when the hero comes near, lowers itself slowly once they have gone.
+        const scared = Math.abs(dx) < 3.2 && Math.abs(dy) < 6;
+        const want = scared ? 1 : Math.abs(dx) > 6 ? 0 : s.lift;
+        s.lift += (want - s.lift) * (1 - Math.exp(-dt * (want > s.lift ? 7 : 0.9)));
       } else if (d.kind === 'star') {
         if (Math.hypot(dx, dy) < 3.5 && speed > 6) s.spinSpeed = Math.max(s.spinSpeed, 14);
         s.spin += s.spinSpeed * dt;
@@ -223,7 +233,7 @@ export class MarginDoodles {
       if (py < view.y - pad || py > view.y + view.height + pad) return;
       const s = this.state[i];
       if (!s) return;
-      if (d.kind === 'sun') this.sun(d, hero, t, calm);
+      if (d.kind === 'spider') this.spider(d, s, hero, t, calm);
       else if (d.kind === 'birds') this.birds(d, s, t);
       else if (d.kind === 'cloud') this.cloud(d, t);
       else this.star(d, s.spin);
@@ -234,68 +244,50 @@ export class MarginDoodles {
     strokeInk(this.g, points, width, PENCIL, alpha, seed);
   }
 
-  private sun(d: Doodle, hero: Hero, t: number, calm: boolean): void {
-    const cx = m(d.x);
-    const cy = m(d.y);
-    const r = m(0.72);
-    this.line(ellipse(cx, cy, r, r * 0.96, d.seed, 26), d.seed, 1.7);
-    // Rays turn slowly; alternate long and short.
-    const turn = t * 0.25;
-    for (let k = 0; k < 12; k++) {
-      const a = turn + (k / 12) * Math.PI * 2;
-      const r0 = r * 1.22;
-      const r1 = r * (k % 2 === 0 ? 1.62 : 1.45);
-      this.line(
-        [
-          { x: cx + Math.cos(a) * r0, y: cy + Math.sin(a) * r0 },
-          { x: cx + Math.cos(a) * r1, y: cy + Math.sin(a) * r1 },
-        ],
-        d.seed + k,
-        1.3,
-      );
-    }
-    // Eyes follow the hero; they squint happily while the hero swings, and blink now and then.
-    const ex = r * 0.34;
-    const ey = cy - r * 0.16;
-    const blink = !calm && t % 4.2 < 0.13;
-    const look = calm ? { x: 0, y: 0 } : { x: hero.x - d.x, y: hero.y - d.y };
-    const len = Math.hypot(look.x, look.y) || 1;
-    const lx = (look.x / len) * r * 0.09;
-    const ly = (look.y / len) * r * 0.09;
+  private spider(d: Doodle, s: DoodleState, hero: Hero, t: number, calm: boolean): void {
+    const top = m(d.y - SILK);
+    // A slow pendulum sway while it hangs; still while it climbs.
+    const sway = calm ? 0 : Math.sin(t * 1.4 + d.seed) * m(0.07) * (1 - s.lift);
+    const cx = m(d.x) + sway;
+    const cy = m(d.y) - s.lift * m(SILK - 0.7);
+    const r = m(0.2);
+    // Silk: one fine, unbroken pencil line (dashes belong to the rope alone).
+    this.line(
+      [
+        { x: m(d.x), y: top },
+        { x: (m(d.x) + cx) / 2, y: (top + cy) / 2 },
+        { x: cx, y: cy - r },
+      ],
+      d.seed + 1,
+      0.7,
+      0.5,
+    );
+    // Body: a small hatched bean and a head, dense pencil rather than an outline ring.
+    this.g.fillStyle(PENCIL, 0.75).fillEllipse(cx, cy + r * 0.25, r * 1.5, r * 1.9);
+    this.g.fillStyle(PENCIL, 0.9).fillCircle(cx, cy - r * 0.85, r * 0.55);
+    // Eight legs, bent at the knee, scrabbling a little in 1/12 s steps.
     for (const side of [-1, 1]) {
-      const x = cx + side * ex;
-      if (hero.roped && !calm) {
-        this.line(
-          [
-            { x: x - r * 0.12, y: ey + r * 0.04 },
-            { x, y: ey - r * 0.08 },
-            { x: x + r * 0.12, y: ey + r * 0.04 },
-          ],
-          d.seed + side,
-          1.5,
-        );
-      } else if (blink) {
-        this.line(
-          [
-            { x: x - r * 0.11, y: ey },
-            { x: x + r * 0.11, y: ey },
-          ],
-          d.seed + side,
-          1.5,
-        );
-      } else {
-        this.line(ellipse(x, ey, r * 0.13, r * 0.15, d.seed + side * 5, 9), d.seed + side, 1.2);
-        this.g.fillStyle(PENCIL, 0.8).fillCircle(x + lx, ey + ly, r * 0.06);
+      for (let k = 0; k < 4; k++) {
+        const wiggle = calm
+          ? 0
+          : (hash(d.seed + k + side + Math.round(t * DOODLE_FPS) * 0.1) - 0.5) * r * 0.25;
+        const ay = cy + r * (-0.35 + k * 0.32);
+        const knee = { x: cx + side * r * 1.35, y: ay - r * (0.75 - k * 0.22) + wiggle };
+        const foot = { x: cx + side * r * (1.7 + 0.12 * k), y: ay + r * (0.35 + k * 0.28) };
+        this.line([{ x: cx + side * r * 0.5, y: ay }, knee, foot], d.seed + k * 3 + side, 0.9, 0.7);
       }
     }
-    // Smile, wider while the hero swings.
-    const w = hero.roped && !calm ? 0.42 : 0.3;
-    const smile: Pt[] = [];
-    for (let k = 0; k <= 6; k++) {
-      const u = k / 6 - 0.5;
-      smile.push({ x: cx + u * r * w * 2, y: cy + r * 0.3 + (0.25 - u * u) * r * w * 0.9 });
-    }
-    this.line(smile, d.seed + 9, 1.4);
+    // Two pinprick eyes that track the hero; no cartoon eyes (owner, goons: not goofy).
+    const look = calm ? { x: 0, y: 0 } : { x: hero.x - d.x, y: hero.y - d.y };
+    const len = Math.hypot(look.x, look.y) || 1;
+    for (const side of [-1, 1])
+      this.g
+        .fillStyle(0xf3efe6, 1)
+        .fillCircle(
+          cx + side * r * 0.2 + (look.x / len) * r * 0.1,
+          cy - r * 0.9 + (look.y / len) * r * 0.1,
+          r * 0.11,
+        );
   }
 
   private birds(d: Doodle, s: DoodleState, t: number): void {

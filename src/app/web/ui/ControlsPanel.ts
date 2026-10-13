@@ -7,11 +7,12 @@ import {
   type KeyBindingOverrides,
 } from '../../../input/bindings';
 import { t, type Strings } from './flow';
+import { HAND_FONT } from '../../../render/typeface';
 import { captureNextKey } from './keyCapture';
 
 const CSS = `
-.controls-panel { margin: 10px 0 18px; text-align: left; font-family: "Caveat", cursive; }
-.controls-panel h3 { font-size: 32px; line-height: 1; margin: 6px 0 10px; }
+.controls-panel { margin: 10px 0 18px; text-align: left; font-family: ${HAND_FONT}; }
+.controls-panel h3 { font-weight: 400; font-size: 32px; line-height: 1; margin: 6px 0 10px; }
 .controls-panel .controls-row { display: flex; align-items: center; justify-content: space-between;
   gap: 12px; padding: 5px 0; border-bottom: 1px dashed rgba(22,22,26,.25); }
 .controls-panel .controls-name { flex: 1; font-size: 25px; }
