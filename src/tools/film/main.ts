@@ -1,8 +1,9 @@
 import * as Phaser from 'phaser';
+import '@fontsource/mansalva/latin-400.css';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import strings from '../../../content/strings/en.json';
 import { SIM_DT } from '../../core';
-import { GameScene, loadHeroHeads, loadLevelKit } from '../../render';
+import { GameScene, HAND_PROBE, loadHeroHeads, loadLevelKit } from '../../render';
 import { FilmSession } from './session';
 
 /** The CLI owns the clock. Browser refreshes never advance this simulation. */
@@ -36,7 +37,7 @@ export async function mountFilm(): Promise<void> {
   await Promise.all([
     loadLevelKit(),
     loadHeroHeads(),
-    document.fonts.load('34px "Caveat"'),
+    document.fonts.load(HAND_PROBE),
     document.fonts.ready,
   ]);
   const scene = new GameScene({

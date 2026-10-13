@@ -24,6 +24,7 @@ import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
 import { DrawIn } from '../living/drawIn';
+import { HAND_FONT } from '../typeface';
 import { PageTurn } from '../living/pageTurn';
 import { MarginDoodles } from '../living/marginDoodles';
 import { InkJuice } from '../living/inkJuice';
@@ -330,7 +331,7 @@ export class GameScene extends Phaser.Scene {
     this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true);
     if (this.head.object) this.crispObjects.add(this.head.object);
     this.causeLabel = this.add
-      .text(0, 0, '', { fontFamily: '"Caveat", cursive', fontSize: '30px', color: '#8a8a8a' })
+      .text(0, 0, '', { fontFamily: HAND_FONT, fontSize: '30px', color: '#8a8a8a' })
       .setOrigin(0.5, 1)
       .setName('enemy-cause')
       .setDepth(20)
@@ -340,7 +341,7 @@ export class GameScene extends Phaser.Scene {
     this.vignette = addPageVignette(this, 85);
     drawFrame(this.frameG, this.scale.height);
     this.hud = this.add.graphics().setScrollFactor(0);
-    const hand = { fontFamily: '"Caveat", "Patrick Hand", cursive', color: '#16161a' };
+    const hand = { fontFamily: HAND_FONT, color: '#16161a' };
     this.timer = this.add
       .text(0, 14, '', { ...hand, fontSize: '34px' })
       .setScrollFactor(0)

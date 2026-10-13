@@ -2,6 +2,7 @@ import type { SaveData, Settings } from '../../../platform';
 import { ControlsPanel } from './ControlsPanel';
 import { startTitleDoodle } from './titleDoodle';
 import { DELTA_COLOURS, formatDelta } from '../../../render/race';
+import { HAND_FONT } from '../../../render/typeface';
 import {
   continueLevel,
   formatTicks,
@@ -55,12 +56,13 @@ export interface ResultSplit {
 
 const CSS = `
 .flow { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-  background: rgba(243, 239, 230, 0.86); font-family: "Caveat", cursive; color: #16161a; z-index: 20;
+  background: rgba(243, 239, 230, 0.86); font-family: ${HAND_FONT}; color: #16161a; z-index: 20;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .flow[hidden] { display: none; }
 .flow-card { min-width: min(420px, 86vw); max-width: 92vw; max-height: 88vh; overflow: auto; padding: 18px 28px 22px;
   background: #f3efe6; border: 2.5px solid #16161a; border-radius: 6px 10px 7px 12px;
   box-shadow: 4px 5px 0 rgba(22, 22, 26, 0.18); text-align: center; }
+.flow h1, .flow h2, .flow h3 { font-weight: 400; }
 .flow h1 { font-size: 64px; margin: 4px 0 0; line-height: 1; }
 .flow h2 { font-size: 40px; margin: 4px 0 10px; line-height: 1.05; }
 .flow h1.title { font-size: 86px; transform: rotate(-2deg); margin-top: 0; }

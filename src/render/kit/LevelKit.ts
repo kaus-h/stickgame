@@ -10,6 +10,7 @@ import doorUrl from '../../../assets/art/kit-0016/1x/exit-door.png';
 import { classifyTerrainSurfaceEdges, type TerrainEdge } from './terrainEdges';
 import { BorderMass } from './BorderMass';
 import { loadKit17, paintKit17Terrain, resolveKitVersion } from './Kit17Terrain';
+import { paintExitDoor } from './exitDoor';
 import { loadKit17Background } from './Kit17Background';
 import { paintInkPool } from '../living/inkPool';
 import { paintPencilShadows } from '../living/pencilShadow';
@@ -623,43 +624,7 @@ export class LevelKit {
     c.restore();
   }
   private paintExit(c: CanvasRenderingContext2D): void {
-    const exit = this.level.exit,
-      image = this.art?.door,
-      opening = specs.door.metadata?.openingBoundsSheetPx;
-    if (!exit || !image || !opening) return;
-    const a = kitGuide('door', opening.x, opening.y),
-      z = kitGuide('door', opening.x + opening.width, opening.y + opening.height);
-    const side = 'entry' in exit ? exit.entry.side : 'left';
-    const vertical = side === 'top' || side === 'bottom';
-    if (vertical) {
-      // Shafts: the hut stands upright on the compartment floor under the mouth ("drop into the
-      // room"); turning it on its side read as a sideways building (GMR-56).
-      const room = m(exit.max.y - exit.min.y);
-      const upright = Math.min(room * 0.6, m(MAX_DOOR_OPENING)) / (z.y - a.y);
-      c.drawImage(
-        image,
-        m((exit.min.x + exit.max.x) / 2) - ((a.x + z.x) / 2) * upright,
-        m(exit.max.y) - z.y * upright,
-        image.width * upright,
-        image.height * upright,
-      );
-      return;
-    }
-    const length = m(exit.max.y - exit.min.y);
-    // Keep the hut recognizable, then expose the complete authored entry with its original marks.
-    // The door is a symbol, not a frame: it never grows past MAX_DOOR_OPENING and sits centred
-    // on wider mouths, whose extent the entry bracket shows instead (GMR-56).
-    const scale = Math.min(length, m(MAX_DOOR_OPENING)) / (z.y - a.y);
-    c.save();
-    c.translate(m(side === 'left' ? exit.min.x : exit.max.x), m((exit.min.y + exit.max.y) / 2));
-    if (side === 'right') c.scale(-1, 1);
-    c.drawImage(
-      image,
-      -a.x * scale,
-      (-(a.y + z.y) / 2) * scale,
-      image.width * scale,
-      image.height * scale,
-    );
-    c.restore();
+    // Vector ink at full resolution (owner playtest 2026-10-12: the bitmap hut read low-res).
+    paintExitDoor(c, this.level, MAX_DOOR_OPENING);
   }
 }
