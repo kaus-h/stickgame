@@ -80,6 +80,11 @@ describe('kit 0017 terrain selection', () => {
     expect(selectKit17Topology(level([bridge]), bridge).edges[0]?.assetName).toBe(
       't27-thin-solid-bridge',
     );
+    // A slab thicker than 1 m (1-1's c6 ceiling) is an overhang, not a plank: ground top edge.
+    const slab = rectangle('slab', 0, 0, 24, 1.2);
+    expect(selectKit17Topology(level([slab]), slab).edges[0]?.assetName).toMatch(
+      /^t0[23]-top-edge-[ab]$/,
+    );
     const wallCap = rectangle('wall-cap', 0, 0, 2, 0.5);
     expect(
       selectKit17Topology(level([wallCap, rectangle('support', -1, 0, 1, 3)]), wallCap).edges[0]
