@@ -13,6 +13,7 @@ import {
   DEFAULT_CAMERA,
   framedAnchors,
   stepCamera,
+  sightBlocked,
 } from '../../src/render/camera';
 
 const rope = parseRuntimeTuning(runtimeJson).sim.rope;
@@ -118,5 +119,30 @@ describe('anchor attention (GMR-44)', () => {
       x: 0,
       y: CALM_CAMERA.verticalBias,
     });
+  });
+
+  it('does not frame a static anchor hidden behind terrain for the next half second', () => {
+    // 1-1 c6: the m6 skip anchor sits above the ceiling; from below it cannot be roped.
+    const ceiling = {
+      kind: 'solid',
+      points: [vec2(98, -1.6), vec2(122, -1.6), vec2(122, -0.4), vec2(98, -0.4)],
+    };
+    const anchors = framedAnchors([{ position: vec2(110, -3.6), radius: 0.4 }]);
+    const player = vec2(108, 2);
+    const target = vec2(108, 3);
+    expect(sightBlocked(player, vec2(110, -3.6), [ceiling])).toBe(true);
+    expect(sightBlocked(player, vec2(110, -3.6), [{ ...ceiling, kind: 'hazard' }])).toBe(false);
+    const hidden = attentionTarget(target, player, vec2(2, 0), anchors, 23, 12.9, 11, 0, [ceiling]);
+    expect(hidden).toEqual(target);
+    // Without the ceiling the same anchor is in reach and lifts the frame.
+    const open = attentionTarget(target, player, vec2(2, 0), anchors, 23, 12.9, 11, 0, []);
+    expect(open.y).toBeLessThan(target.y);
+    // Rising out past the ceiling's end within half a second: framed early, as before.
+    const near = vec2(99, 3);
+    expect(sightBlocked(vec2(99, 0.5), vec2(110, -3.6), [ceiling])).toBe(true);
+    const leaving = attentionTarget(near, vec2(99, 0.5), vec2(-8, -4), anchors, 23, 12.9, 11, 0, [
+      ceiling,
+    ]);
+    expect(leaving.y).toBeLessThan(near.y);
   });
 });

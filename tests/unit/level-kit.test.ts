@@ -197,8 +197,9 @@ describe('level art kit calibration and asset pipeline (GMR-107)', () => {
     if (!ceiling || !hazard) throw new Error('Missing c6 collision fixtures');
     const ceilingBottom = Math.max(...ceiling.points.map((point) => point.y));
     const hazardTop = Math.min(...hazard.points.map((point) => point.y));
-    expect(hazardTop - ceilingBottom).toBe(9.4);
-    expect(metersToPixels(hazardTop - ceilingBottom)).toBe(601.6);
+    // GMR-114 climax pass: the pool rose 1 m so a long rope on a6a dips into the ink.
+    expect(hazardTop - ceilingBottom).toBeCloseTo(8.4, 9);
+    expect(metersToPixels(hazardTop - ceilingBottom)).toBeCloseTo(537.6, 6);
   });
 
   it('classifies every authored chapter 1 hazard like the existing death-cause label', () => {

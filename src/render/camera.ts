@@ -106,6 +106,35 @@ export interface FramedAnchor {
   readonly top: number;
   /** Lowest point of its disc anywhere on its path. */
   readonly bottom: number;
+  /** A static anchor's center (movers have none), for the line-of-sight check. */
+  readonly center?: Vec2 | undefined;
+}
+
+/** A level solid as the camera sees it: an outline that blocks a rope's line of sight. */
+export interface SightBlocker {
+  readonly kind?: string;
+  readonly points: readonly Vec2[];
+}
+
+/** True when the segment from `a` to `b` crosses the outline of a solid (hazards never block). */
+export function sightBlocked(a: Vec2, b: Vec2, solids: readonly SightBlocker[]): boolean {
+  const cross = (o: Vec2, p: Vec2, q: Vec2): number =>
+    (p.x - o.x) * (q.y - o.y) - (p.y - o.y) * (q.x - o.x);
+  for (const solid of solids) {
+    if (solid.kind !== undefined && solid.kind !== 'solid') continue;
+    const n = solid.points.length;
+    for (let i = 0; i < n; i++) {
+      const p = solid.points[i];
+      const q = solid.points[(i + 1) % n];
+      if (!p || !q) continue;
+      const d1 = cross(a, b, p);
+      const d2 = cross(a, b, q);
+      const d3 = cross(p, q, a);
+      const d4 = cross(p, q, b);
+      if (d1 * d2 < 0 && d3 * d4 < 0) return true;
+    }
+  }
+  return false;
 }
 
 /** Keep the player at least this far above the bottom edge when the camera lifts for an anchor. */
@@ -116,6 +145,8 @@ export const ATTENTION_MARGIN = 0.5;
 export const ATTENTION_FALL_LAG = 0.3;
 /** Screen pixels the HUD (title, run and life timers) covers at the top; framed anchors stay below. */
 export const HUD_BAND_PX = 80;
+/** Seconds of travel ahead at which a hidden anchor may come into line of sight. */
+export const ATTENTION_SIGHT_LEAD = 0.5;
 /** Frame anchors this much before they come into rope reach, m. */
 export const ATTENTION_EARLY = 4;
 
@@ -135,11 +166,17 @@ export function attentionTarget(
   reach: number,
   /** World meters at the top of the frame hidden by the HUD (HUD_BAND_PX at the current scale). */
   topInset = 0,
+  /** Level solids: a static anchor the player has no line of sight to cannot be roped, so it is not framed. */
+  solids: readonly SightBlocker[] = [],
 ): Vec2 {
   let need = Infinity;
   // Lowest point that must stay on screen. While falling, the eased camera trails the target, so
   // keep extra room below the player in proportion to the fall speed (about the camera's lag).
   let floor = player.y + ATTENTION_FLOOR + Math.max(0, velocity.y) * ATTENTION_FALL_LAG;
+  const ahead = {
+    x: player.x + velocity.x * ATTENTION_SIGHT_LEAD,
+    y: player.y + velocity.y * ATTENTION_SIGHT_LEAD,
+  };
   for (const a of anchors) {
     // Off screen horizontally: measured from the target, which leads a running player.
     const sx = target.x < a.minX ? a.minX - target.x : target.x > a.maxX ? target.x - a.maxX : 0;
@@ -149,6 +186,10 @@ export function attentionTarget(
     const dy = player.y < a.top ? a.top - player.y : player.y > a.bottom ? player.y - a.bottom : 0;
     // Start framing a little before the anchor is in reach, so the camera has settled by the shot.
     if (Math.hypot(dx, dy) > reach + ATTENTION_EARLY) continue;
+    // An anchor behind terrain that stays hidden for the next half second (1-1's m6 above the
+    // c6 ceiling) cannot be roped, and framing it would pull the hazards below out of view.
+    if (a.center && sightBlocked(player, a.center, solids) && sightBlocked(ahead, a.center, solids))
+      continue;
     need = Math.min(need, a.top - ATTENTION_MARGIN - topInset);
     floor = Math.max(floor, a.bottom + ATTENTION_MARGIN);
   }
@@ -171,6 +212,7 @@ export function framedAnchors(
   return anchors.map((a) => {
     const to = a.path?.to ?? a.position;
     return {
+      center: a.path ? undefined : a.position,
       minX: Math.min(a.position.x, to.x) - a.radius,
       maxX: Math.max(a.position.x, to.x) + a.radius,
       top: Math.min(a.position.y, to.y) - a.radius,
