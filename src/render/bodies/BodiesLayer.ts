@@ -1,3 +1,4 @@
+import { listenPresentationSkip } from '../living/presentationSkip';
 import type * as Phaser from 'phaser';
 import { metersToPixels as m } from '../../core';
 import type { DeathRecord, LevelDef } from '../../sim';
@@ -84,10 +85,7 @@ export class BodiesLayer {
   private clearT: number | null = null;
   private sweep: Sweep | null = null;
   private smudges: Smudge[] = [];
-  private readonly skip = (e: Event): void => {
-    if (e instanceof KeyboardEvent && e.repeat) return;
-    this.finishSweep();
-  };
+  private unlistenSkip: (() => void) | null = null;
 
   constructor(
     private readonly scene: Phaser.Scene,
@@ -224,10 +222,12 @@ export class BodiesLayer {
   }
 
   private listen(on: boolean): void {
-    for (const type of ['keydown', 'pointerdown'] as const) {
-      if (on) window.addEventListener(type, this.skip);
-      else window.removeEventListener(type, this.skip);
-    }
+    this.unlistenSkip?.();
+    this.unlistenSkip = on
+      ? listenPresentationSkip(() => {
+          this.finishSweep();
+        })
+      : null;
   }
 
   // --- drawing -----------------------------------------------------------------------------------
