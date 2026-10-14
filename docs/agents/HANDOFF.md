@@ -2,73 +2,62 @@
 
 The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The vision is shifting: 1-1's look is NOT signed off, and the game becomes a journey through art-style worlds.**_
+_Last updated: 2026-10-14 (second session of the day), at the 400k context handoff._
 
 ## State
 
-- **Owner checkpoint 2026-10-14** (played main on the :5191 preview; memory `owner-answers-2026-10-14`):
-  - The C4 and C5 lessons work.
-  - The sting should be subtle → done in #94.
-  - The lamp darkness is right, just less yellow → done in #94.
-  - The whole music track should sound **"cleaner, more cyberpunk future creative whimsy"** → not started.
-  - **1-1 look: "not at all" the aesthetic they want.** Everything bothers them: flat, beige, terrain reads as boxes, no wow moments.
-- **New vision (memories `chapter-worlds-idea`, `ava-inspiration`):**
-  - Each chapter is a distinct art-style world, with **sub-theme worlds** inside it. For example, Digital → home screen, software, file system, binary/code, internet, glitch.
-  - The owner loves Alan Becker's "Animation vs. Animator": kinetic choreography, digital environments, fight/adventure energy. **Use its qualities only**, never its sequences, characters or premise (AGENTS.md stop-and-ask).
-  - **Fights (owner decided 2026-10-14): no attack button.** Combat is momentum swing damage (swing precisely into targets or weak points on bosses; speed and angle matter) plus Mario-style stomps. The three verbs stay.
-  - Proposed arc: pencil → cut paper → paint → neon → digital (the drawing is scanned in).
-- **Concept frames:** round 1 (text-only, GPT-6 High) is in the StickGame ChatGPT project, as 4 chats (A notebook, B neon, C painterly, D cut-paper). Round 2, restyling our own frame `.claude/concept-refs/ref-0.png`, is **blocked until the owner says in chat "yes, upload the 1-1 screenshots to ChatGPT"**, or attaches the file themselves.
-- **Deep Research (BrowserGPT, StickGame project), started 2026-10-14:**
-  1. art-style worlds and sub-theme worlds for a three-verb rope platformer (precedents, a catalog, a 5-chapter map);
-  2. an extremely deep analysis of Animation vs. Animator (qualities → original game design, a do-not-copy list, set-piece concepts).
-     Chat 1: https://chatgpt.com/g/g-p-6ac63b6ae16881918b3dee9a81734dbe-stickgame/c/6acf534b-0758-83e8-b036-3d8f0f98755f
-     Chat 2: https://chatgpt.com/g/g-p-6ac63b6ae16881918b3dee9a81734dbe-stickgame/c/6acf53a6-5ce0-83e8-a5de-3dccd0e776f9
-     Read their final reports (with `get_page_text`, in a subagent) before designing.
-- **Preview:** `preview-main` in `.claude/launch.json` serves a detached main worktree at `D:/tmp/wt/preview-main`, port 5191. Update it with `git -C D:/tmp/wt/preview-main checkout --detach origin/main` after a fetch.
-- **Stash:** `stash@{0}` holds another session's dark-lamp WIP (PageLamp class missing). The owner's 2026-10-14 answer superseded it; drop it once the owner confirms.
+- **Landed today:**
+  - GMR-120: world-style plumbing (#96)
+  - GMR-119: swing-impact targets and `lab-impact` (#99)
+  - Music remix toward "cyberpunk future whimsy", unheard by Opus (#98)
+  - Bundle total budget raised to 1350 KB (#101)
+  - World bible draft `docs/art/worlds.md` and round-2 concept frames `assets/concepts/0018-worlds/` (#100)
+  - `scripts/agents/safe-merge.sh` (#100). **Always merge with it.** A hand gate once merged #99 before CI ran.
+- **Canon:** Linear docs 03, 04, 05, 08 and 12 cover Targeting v2 and combat = swing impacts + stomps (no attack button, ever).
+- **Owner said "you decide":**
+  - **Chapter order:** The Mark (pencil) → The Cut (paper) → The Wash (paint) → The Signal (neon) → The Upload (inside the machine).
+  - **Concept picks:** chapter 1 = `pencil.jpg`, chapter 5 = `digital-b.jpg`.
+  - `digital.jpg` is rejected: desktop windows and a cursor are on the AvA do-not-copy list.
+  - The owner has not yet seen the pencil build or heard the remix.
+- **Stash:** the dark-lamp WIP was dropped (owner OK).
 
-## In flight (GPT-6.1 sol, headless, started 2026-10-14)
+## In flight (check first)
 
-- **GMR-118** Targeting v2 (high effort): brief `D:/tmp/codex/briefs/gmr-118-targeting-v2.md`.
-- **GMR-119** swing-impact targets (high): brief `gmr-119-impact-targets.md`.
-- **GMR-120** world-style plumbing (medium, bypass sandbox): brief `gmr-120-world-style.md`; it must be pixel-identical.
-- Each run opens its own PR. Read only the PR and `D:/tmp/codex/<branch-slug>.result.md`. Review the diff yourself.
-- **Merge order:** 120 → 119 → 118. Schema conflicts are expected to be additive; for a fix round, rerun the script on the same branch.
-- 118's re-solve has a STOP rule: it never edits level geometry. If a lesson flips, the level design falls to Opus.
-- **Earlier Codex work:** the GIF/film capture tool (GMR-115) merged in #80. The Level Factory (GMR-116/117) was never started.
+- **#102, chapter 1 pencil world** (`opus/pencil-world-ch1`, worktree `D:/tmp/wt/pencil`):
+  - 1-1, 1-2, 1-3 and 2-1 are set to `world: pencil`. `?world=notebook` gives A/B.
+  - Notebook e2e specs are pinned to `?world=notebook`; `tests/e2e/pencil-world.spec.ts` is new.
+  - Merge with `safe-merge.sh 102` once CI is green.
+  - Known shortfalls: terrain silhouettes are still blocky because the level geometry is rectangles (a redesign task), hatching is a bit uniform, cloud streaks run horizontal.
+  - Unverified: phone memory (estimated 9–11 MB per level), high contrast.
+- **#97, GMR-118 Targeting v2:**
+  - Finished by a Sonnet agent after sol hit its usage limit. Main was merged in and `npm run check` passes.
+  - The route solver now vetoes camera-unfair presses (`camera-fair.ts`). Every fixture is re-solved, the level13 proofs re-derived by inputs, and the device-lab golden hashes updated.
+  - Lessons hold: in 1-1 C5 the run-off still dies and the early jump survives (inputs re-timed, no geometry change).
+  - Merge after #102 (re-merge main if it conflicts), then `safe-merge.sh 97`.
+  - Then run a hands-on feel check of the highlight on mouse and pad. Mobile tap vs. Rope button is still PROTOTYPE REQUIRED.
 
 ## Next
 
-0. **Targeting v2 (CONFIRMED by the owner 2026-10-14; memory `rope-targeting-brainstorm`):**
-   - highlight-based picking is the standard on every platform;
-   - the rope attaches at the anchor's centre;
-   - PC snaps within about 1.1 m;
-   - console: the right stick points at the target, with a stick-neutral default (nearest ahead and up) and Rope on RT;
-   - mobile: playtest tap against a Rope button before locking;
-   - stickiness so the highlight never flickers; the validator flags near-ties;
-   - one board, with runs tagged by input;
-   - never a release-timing cue.
-     First update Linear docs 04, 08 and 12 (AGENTS.md is already updated). Then build it: the input mappers send "aim at anchor N's centre + press on tick T", so there is one simulation. Then re-solve every level and re-pin `level11.test.ts`.
-
-1. **Owner decisions (batch them):**
-   - approve the screenshot upload for concept round 2 (add a 5th, digital, frame);
-   - choose the order of the chapter worlds;
-   - pick a concept direction for chapter 1.
-2. Digest both Deep Research reports into a short **world bible draft** (`docs/art/worlds.md`): chapters → sub-themes → signature hazard, anchor twist, set piece, palette, music. Update 07A, doc 14 and the `world-look-decision` memory once the owner confirms.
-3. **Music remix:** a cleaner synth palette and production, "cyberpunk future creative whimsy" (`src/audio/music/*`). It may become per-world banks.
-4. **Level Factory:** GMR-116 (authoring format, with a per-chapter **world style** field: palette, terrain kit, background, music bank) and GMR-117 (mechanic catalog). Each chamber gets a taught route plus a pinned mistake (the `tests/unit/level11.test.ts` pattern).
-5. Rebuild 1-1's look in the chosen chapter-1 style (terrain silhouettes, depth, wow moments).
+1. Merge #102, then #97. Update the owner's checkout (`git pull` in `D:/StickGame`) and the preview (`git -C D:/tmp/wt/preview-main checkout --detach origin/main`, port 5191).
+2. **Owner checkpoint (batch):**
+   - play the pencil chapter 1 (A/B with `?world=notebook`);
+   - listen to the music remix;
+   - try Targeting v2;
+   - answer the 4 open questions in `docs/art/worlds.md`, mainly: may a phased anchor pre-pulse its appearance?
+3. **1-1 terrain redesign in the pencil style:** organic silhouettes in level geometry (overhangs, ledges with lips, rock spires), keeping every lesson pinned (`level11.test.ts`). This is Opus's own level work.
+4. **Level Factory:** GMR-116 (authoring format; the world field now exists) and GMR-117 (mechanic catalog).
+5. Once the owner confirms the bible, fold it into 07A, doc 14 and the `world-look-decision` memory.
+6. A first boss prototype on GMR-119 impact targets (three hits, three arena states).
 
 ## Workflow notes
 
-- **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`; tile them and read at ≤ 1500 px.
-- **Hand routes:** the solver's `World` + `PlanSource` (`node_modules/.cache/route-solver/solver.mjs`). Fork from a committed replay state.
-- **BrowserGPT work runs in a subagent** (it drives `mcp__Claude_Browser__*` tabs, one chat per task, inside the StickGame project, GPT-6 High). Uploading local files to ChatGPT needs the owner's explicit approval in chat.
-- **Merging:** only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL. CI "Check" includes the bundle budget (1203/1220 KB).
+- **sol (Codex CLI):** always `CODEX_SANDBOX=bypass`. Judge runs by the branch commit, not the result file. The quota ran out 2026-10-14; fall back to Sonnet subagents for mechanical work.
+- **Stills:** `npm run film:still -- <level> <ticks> <out.png>`. Make contact sheets of at most 1500 px. Never Read a full-resolution PNG in the main thread.
+- **Local e2e:** `E2E_PORT=5197 PW_CHANNEL=chrome npx playwright test <spec>`. Never use :5173.
+- **Combined PRs can bust budgets** even when each passed alone. Re-check main CI after merging several.
 
 ## Watch out
 
-- **Slim Phaser:** use canvas overlays and string blend modes, not `Phaser.*` runtime constants.
-- **`npm run check | grep … && git commit` masks failures.** Check the exit code.
-- **No sun doodles.** Dashes belong to the rope alone. Red always means lethal.
-- **Windows Python:** pass `newline=''`. Don't print non-ASCII to cp1252. A failed script piped into `gh pr edit --body-file` blanks the PR body.
+- Slim Phaser: no `Phaser.*` runtime constants in render code.
+- Red always means lethal. The rope alone is dashed. No sun. No real desk objects. No evenly spaced marks.
+- Windows Python: `newline=''`, and no non-ASCII output on cp1252.
