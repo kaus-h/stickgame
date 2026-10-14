@@ -52,10 +52,12 @@ describe('world presentation metadata (GMR-120)', () => {
     expect(() => compileLevel({ ...lab01, world })).toThrow(path);
   });
 
-  it('ships the four existing content levels with the notebook world', () => {
-    for (const source of [firstRope, release, firstThreat, movingPivots]) {
-      expect(source.world).toEqual({ family: 'notebook' });
-      expect(getLevelWorld(compileLevel(source))).toEqual({ family: 'notebook' });
+  it('ships chapter 1 in the pencil world and 2-1 on its construction-lines sub-theme', () => {
+    for (const source of [firstRope, release, firstThreat]) {
+      expect(source.world).toEqual({ family: 'pencil', subTheme: 'margin-wilds' });
+      expect(getLevelWorld(compileLevel(source))).toEqual(source.world);
     }
+    expect(movingPivots.world).toEqual({ family: 'pencil', subTheme: 'construction-lines' });
+    expect(getLevelWorld(compileLevel(movingPivots))).toEqual(movingPivots.world);
   });
 });

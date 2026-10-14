@@ -24,7 +24,8 @@ const hook = (page: Page) =>
   );
 
 async function boot(page: Page, level: string, extra = ''): Promise<void> {
-  await page.goto(`/?level=${level}&renderer=canvas${extra}`);
+  // Kit 0017 is the notebook world's kit; chapter levels default to the pencil world.
+  await page.goto(`/?level=${level}&renderer=canvas&world=notebook${extra}`);
   await page.waitForFunction(() => {
     try {
       const h = (window as unknown as { __stickgame: KitHook }).__stickgame;

@@ -15,6 +15,7 @@ import { loadKit17Background } from './Kit17Background';
 import { paintInkPool } from '../living/inkPool';
 import { paintPencilShadows } from '../living/pencilShadow';
 import { NOTEBOOK_STYLE, worldColorCss, type WorldStyle } from '../world/WorldStyle';
+import { loadPencilWorld, pencilWorld } from '../world/pencilWorld';
 
 const urls = {
   ledge: ledgeUrl,
@@ -111,7 +112,9 @@ export function loadLevelKit(): Promise<void> {
   });
   // Level changes are synchronous. Decode both supported kits at boot so a world can
   // select either one without adding a loading pause during a scene replacement.
-  kit17Pending ??= Promise.all([loadKit17(), loadKit17Background()]).then(() => undefined);
+  kit17Pending ??= Promise.all([loadKit17(), loadKit17Background(), loadPencilWorld()]).then(
+    () => undefined,
+  );
   return Promise.all([pending, kit17Pending]).then(() => undefined);
 }
 
@@ -162,6 +165,8 @@ export class LevelKit {
   /** Objects that must stay crisp (no line boil): the spike layers. */
   readonly crisp: Phaser.GameObjects.GameObject[] = [];
   private readonly rings: Phaser.GameObjects.Image[] = [];
+  /** Pale halos behind the rings (worlds with darker tones), aligned with `rings`. */
+  private readonly halos: Phaser.GameObjects.Image[] = [];
   private readonly keys: string[] = [];
   private readonly art = images;
   private surfacePixels = 0;
@@ -214,6 +219,35 @@ export class LevelKit {
         (center[0] ?? 1001) + (specs.ring.metadata?.outerRadiusSheetPx ?? 56),
         center[1] ?? 812,
       ).x - guide.x;
+    const halo = style.anchorHalo;
+    if (halo) {
+      const haloKey = `anchor-halo:${style.id}`;
+      if (!scene.textures.exists(haloKey)) {
+        const t = scene.textures.createCanvas(haloKey, 128, 128);
+        if (t) {
+          const hc = t.getContext();
+          const g = hc.createRadialGradient(64, 64, 0, 64, 64, 64);
+          g.addColorStop(0, worldColorCss(halo.color, 1));
+          g.addColorStop(0.42, worldColorCss(halo.color, 0.9));
+          g.addColorStop(0.7, worldColorCss(halo.color, 0.35));
+          g.addColorStop(1, worldColorCss(halo.color, 0));
+          hc.fillStyle = g;
+          hc.fillRect(0, 0, 128, 128);
+          t.refresh();
+          this.keys.push(haloKey);
+        }
+      }
+      for (const anchor of level.anchors) {
+        const size = m(anchor.radius) * 2 * (1 + halo.radius);
+        this.halos.push(
+          scene.add
+            .image(m(anchor.position.x), m(anchor.position.y), haloKey)
+            .setDisplaySize(size, size)
+            .setAlpha(halo.alpha)
+            .setDepth(0.9),
+        );
+      }
+    }
     for (const anchor of level.anchors) {
       const scale = m(anchor.radius) / radius;
       this.rings.push(
@@ -233,11 +267,13 @@ export class LevelKit {
 
   moveAnchor(index: number, x: number, y: number): void {
     this.rings[index]?.setPosition(x, y);
+    this.halos[index]?.setPosition(x, y);
   }
 
   /** Reach cue (GMR-56): out-of-reach rings fade to pencil. */
   setAnchorAlpha(index: number, alpha: number): void {
     this.rings[index]?.setAlpha(alpha);
+    this.halos[index]?.setAlpha(alpha * (this.style.anchorHalo?.alpha ?? 1));
   }
 
   stats(): { tiles: number; surfacePixels: number; kitId: '0016' | '0017'; usedParts: string[] } {
@@ -278,10 +314,13 @@ export class LevelKit {
         // Empty negative space stays the shared paper quad, not a transparent GPU allocation.
         if (visible.length === 0 && !nearExit) continue;
         const key = `kit-0016-tile-${String(index++)}`;
+        // Graphite masses are dark, so tiles overlap by two identical pixels to hide the
+        // filtering seam that pale notebook paper never shows.
+        const overlap = this.style.terrainPainter === 'graphite' && pencilWorld() ? 2 : 0;
         const texture = this.scene.textures.createCanvas(
           key,
-          Math.ceil(Math.min(tile, m(b.maxX + 2) - x)),
-          Math.ceil(Math.min(tile, m(b.maxY + 2) - y)),
+          Math.ceil(Math.min(tile + overlap, m(b.maxX + 2) - x)),
+          Math.ceil(Math.min(tile + overlap, m(b.maxY + 2) - y)),
         );
         if (!texture) continue;
         this.keys.push(key);
@@ -289,41 +328,20 @@ export class LevelKit {
         const c = texture.getContext();
         c.translate(-x, -y);
         const solids = visible.filter((s) => s.kind === 'solid');
-        // Living Notebook depth: a soft pencil shadow under every block, drawn first and cut
-        // out of the blocks so only the offset rim shows below and to the right.
-        paintPencilShadows(c, solids);
-        // Connected rock mass and its world-locked hatch remain the base layer in both kits.
-        // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
-        this.paintMass(
-          c,
-          // Floating slabs are made of the same hatched mass as the ground, so they read as
-          // overhangs rather than planks; small islands keep 07B's fading paper interior.
-          solids.filter((s) => !this.floating(s) || this.slab(s)),
-          {
-            x,
-            y,
-            w: texture.width,
-            h: texture.height,
-          },
-          this.kitId === '0017' ? 0.7 : 1,
-        );
-        if (this.kitId === '0017') {
-          for (const solid of solids) {
-            paintKit17Terrain(
-              c,
-              this.level,
-              solid,
-              this.usedParts,
-              this.edges.get(solid),
-              this.allExposedEdges,
-              this.style,
-            );
-            if (this.slab(solid)) this.paintSlabUnderside(c, solid);
-            this.paintCeilingDrips(c, solid, this.edges.get(solid) ?? []);
-          }
+        const pencil = this.style.terrainPainter === 'graphite' ? pencilWorld() : null;
+        if (pencil) {
+          // Chapter 1 pencil world: graphite masses replace the notebook kit stamps.
+          pencil.paintGraphiteTerrain(
+            c,
+            solids,
+            (solid) => this.edges.get(solid) ?? [],
+            { x, y, w: texture.width, h: texture.height },
+            this.style.hatchDensity,
+            m(b.maxY),
+          );
+          this.usedParts.add('graphite');
         } else {
-          for (const solid of solids) this.paintSolid(c, solid);
-          this.paintCorners(c);
+          this.paintKitTerrain(c, solids, { x, y, w: texture.width, h: texture.height });
         }
         const hazards = visible.filter((s) => s.kind === 'hazard');
         for (const solid of hazards)
@@ -346,6 +364,41 @@ export class LevelKit {
           }
         }
       }
+    }
+  }
+
+  /** The notebook kit terrain: pencil shadow, world-locked hatch mass, then the kit stamps. */
+  private paintKitTerrain(c: CanvasRenderingContext2D, solids: SolidDef[], tile: Box): void {
+    // Living Notebook depth: a soft pencil shadow under every block, drawn first and cut
+    // out of the blocks so only the offset rim shows below and to the right.
+    paintPencilShadows(c, solids);
+    // Connected rock mass and its world-locked hatch remain the base layer in both kits.
+    // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
+    this.paintMass(
+      c,
+      // Floating slabs are made of the same hatched mass as the ground, so they read as
+      // overhangs rather than planks; small islands keep 07B's fading paper interior.
+      solids.filter((s) => !this.floating(s) || this.slab(s)),
+      tile,
+      this.kitId === '0017' ? 0.7 : 1,
+    );
+    if (this.kitId === '0017') {
+      for (const solid of solids) {
+        paintKit17Terrain(
+          c,
+          this.level,
+          solid,
+          this.usedParts,
+          this.edges.get(solid),
+          this.allExposedEdges,
+          this.style,
+        );
+        if (this.slab(solid)) this.paintSlabUnderside(c, solid);
+        this.paintCeilingDrips(c, solid, this.edges.get(solid) ?? []);
+      }
+    } else {
+      for (const solid of solids) this.paintSolid(c, solid);
+      this.paintCorners(c);
     }
   }
 

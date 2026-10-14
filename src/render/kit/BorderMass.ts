@@ -22,6 +22,11 @@ function ensureHatchTexture(scene: Phaser.Scene, style: WorldStyle): boolean {
   if (!texture) return false;
   const context = texture.getContext();
   context.clearRect(0, 0, HATCH_SIZE, HATCH_SIZE);
+  // Graphite worlds: the outside mass is the same dark graphite as their terrain.
+  if (style.terrainPainter === 'graphite') {
+    context.fillStyle = '#34373d';
+    context.fillRect(0, 0, HATCH_SIZE, HATCH_SIZE);
+  }
   context.lineCap = 'round';
   context.strokeStyle = worldColorCss(style.terrainBorderInk);
 

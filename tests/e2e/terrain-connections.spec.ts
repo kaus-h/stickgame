@@ -30,7 +30,13 @@ interface WorldRect {
 
 function gameUrl(levelId: string, overview = false): string {
   // Flat light: these specs classify paper and ink by colour, which the lamplight shades.
-  const query = new URLSearchParams({ level: levelId, renderer: 'canvas', lamp: '0' });
+  // These specs pin the notebook kit; chapter levels default to the pencil world.
+  const query = new URLSearchParams({
+    level: levelId,
+    renderer: 'canvas',
+    lamp: '0',
+    world: 'notebook',
+  });
   if (overview) query.set('overview', '1');
   return `/?${query.toString()}`;
 }

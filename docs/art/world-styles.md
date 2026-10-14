@@ -9,7 +9,7 @@ The debug overlay displays `world <family>/<subTheme or ->`.
 
 ## Registry contract
 
-`src/render/world/WorldStyle.ts` registers only `notebook`. To add a family,
+`src/render/world/WorldStyle.ts` registers `notebook` and `pencil`. To add a family,
 register a `WorldStyle` under its family name. To add a sub-theme, register it
 under `family/subTheme`, with its own unique style id. `resolveWorldStyle(level)`
 tries that sub-theme key, then its family, then notebook. Unknown metadata therefore
@@ -43,6 +43,24 @@ previous override if the next style does not specify one. Notebook leaves the id
 unset, preserving all existing section music and synthesis. New bank ids also
 need a corresponding bank in the audio engine.
 
-Art is pending the owner's concept picks. Notebook, cut paper, painterly, neon
-ink and digital are possible world directions, not approved assets or registered
-families. This task introduces metadata and token plumbing only.
+## Pencil (chapter 1, The Mark)
+
+`pencil` is registered (2026-10-14) from concept `0018-worlds/pencil.jpg` (qualities
+only, see worlds.md). Levels 1-1, 1-2 and 1-3 author `{ "family": "pencil", "subTheme":
+"margin-wilds" }` and 2-1 authors `"construction-lines"`; both sub-themes fall back to
+the `pencil` family style until they get their own tokens. Optional style switches it
+uses, all absent (notebook behaviour) on `notebook`:
+
+- `page`: `sketchbook` paper (toothy cool blue-grey, no ruling), no margin line, no binding.
+- `terrainPainter: 'graphite'`: `src/render/world/pencil/graphiteTerrain.ts` replaces the
+  kit stamps with cross-hatched graphite masses, a pale crusted lip whose top edge is the
+  collision line, root-hung undersides and ragged sides (sides and undersides only wander).
+- `backgroundKey: 'pencil-vista'`: `PencilVista` bakes four parallax layers per level (sky,
+  colossal landmark, pinnacles, cliffs), light shafts (screen blend) and a dark foreground
+  strip (parallax 1.35) into canvas textures, then only repositions them. Off under high
+  contrast; parallax holds still under reduced motion.
+- `light: 'graphite-shafts'`: a graphite multiply vignette, heavier toward the edges and bottom.
+- `anchorHalo`: a pale halo behind every anchor ring. `doodles: false` drops margin doodles.
+
+Dev A/B: `?world=notebook` or `?world=pencil` overrides any level's world (registered
+families only). Cut paper, painterly, neon and digital remain unregistered directions.
