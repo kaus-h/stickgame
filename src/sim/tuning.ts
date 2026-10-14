@@ -49,6 +49,10 @@ export interface RopeTuning {
   readonly maxLength: number;
   /** Aim selection radius around an anchor, m (selection tolerance, separate from impact point). */
   readonly selectRadius: number;
+  /** Highlight switches only with this distance advantage, m (default 0.5). */
+  readonly stickinessDistance?: number;
+  /** Pointing highlight switches only with this angular advantage, degrees (default 12). */
+  readonly stickinessAngleDegrees?: number;
   /** Small horizontal steering while swinging, m/s² (no unlimited pumping, doc 09 B3). */
   readonly steerAccel: number;
   /**

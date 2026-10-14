@@ -1,5 +1,6 @@
 import type { RuntimeTuning } from '../../content';
 import type { LevelDef } from '../../sim';
+import type { CameraFair } from './camera-fair';
 import { DistanceField, goalReached, inside, type ChamberSpec } from './goals';
 import { PlanSource, type PlanStep } from './plan';
 import { runPlan, type World } from './world';
@@ -10,7 +11,7 @@ export interface SearchOptions {
   readonly waits: readonly number[];
   /** Jump hold lengths in ticks: a short hop and a full jump. */
   readonly jumpHolds: readonly number[];
-  /** Impact offsets tried on each anchor disc (indices into ROPE_OFFSETS). */
+  /** Aim offsets tried on each anchor disc (indices into ROPE_OFFSETS). Attachment is at centre. */
   readonly offsets: readonly number[];
   /** Simulated ticks the search may spend on one chamber before giving up. */
   readonly maxSimTicks: number;
@@ -25,12 +26,16 @@ export interface SearchOptions {
   readonly expansionsPerCell: number;
   /** Cost in ticks added per jump/rope/release input: prefers routes with fewer inputs. */
   readonly inputCost: number;
+  /** Veto for rope presses the real camera would not have shown in time (GMR-118). */
+  readonly fair?: CameraFair;
 }
 
 export const DEFAULT_SEARCH: SearchOptions = {
   waits: [4, 8, 12, 16, 24, 32, 48],
   jumpHolds: [4, 25],
-  offsets: [0, 1, 2, 3, 4],
+  // GMR-118: all valid shots attach at centre; sample the centre once rather than five equivalent
+  // impact points. Keep the option/plan field for old authoring plans and replay compatibility.
+  offsets: [0],
   maxSimTicks: 6_000_000,
   maxChamberTicks: 2_400,
   heuristicWeight: 2,
@@ -78,7 +83,7 @@ const REJECTED_EXIT_PENALTY = 10;
 
 /**
  * Best-first search over coarse input decisions. A node is a simulation state; its children set
- * the move axis and optionally press jump, press rope (anchor × impact offset) or release the
+ * the move axis and optionally press jump, press rope (anchor × aim offset) or release the
  * rope, then hold that for one of `waits` ticks. Children are ordered by elapsed ticks plus the
  * weighted free-space distance to the goal, deduplicated on a quantised state key, and stored
  * lazily (re-simulated from their parent when expanded). Branches that die are pruned.
@@ -275,6 +280,8 @@ export function searchChamber(
           }
           if (verb.kind === 'rope' && k === 1 && !events.some((e) => e.type === 'ropeAttach'))
             break; // invalid press (blocked, too far, too close): nothing to explore
+          if (verb.kind === 'rope' && k === 1 && opts.fair && !opts.fair(steps, w.tick, true))
+            break; // the camera would not have shown this anchor long enough
           if (goalReached(spec.goal, w, events)) {
             return { solved: true, steps, endTick: w.tick, expansions, simTicks, deaths, closest };
           }

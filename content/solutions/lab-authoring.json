@@ -64,7 +64,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 3, "simTicks": 2095, "deathsEncountered": 15 }
+      "search": { "expansions": 3, "simTicks": 1136, "deathsEncountered": 7 }
     }
   ],
   "notes": [

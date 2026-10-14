@@ -17,6 +17,8 @@ import type { LevelRecord } from '../../src/platform';
 const known = new Set(readdirSync('content/levels').map((f) => f.replace(/.json$/, '')));
 const chapter = parseChapter(chapterJson, known);
 const cleared: LevelRecord = {
+  bestInputDevice: 'mouse',
+  lastInputDevice: 'mouse',
   cleared: true,
   bestTicks: 600,
   fewestDeaths: 0,

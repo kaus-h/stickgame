@@ -138,6 +138,11 @@ export class DesktopInputMapper {
     this.emitAim(false);
   }
 
+  /** Returning from another device must restore mouse targeting even if the camera did not move. */
+  resetAim(): void {
+    this.lastAim = null;
+  }
+
   private syncRope(): void {
     const held = this.mouseHeld || (this.pointer !== null && this.anyHeld(this.bindings.rope));
     if (held === this.ropeHeld) return;

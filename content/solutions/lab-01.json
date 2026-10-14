@@ -18,12 +18,11 @@
         { "t": 0, "action": "move", "axis": 1 },
         { "t": 0, "action": "jump", "hold": 49 },
         { "t": 18, "action": "rope", "anchor": 0, "offset": 0, "release": 71 },
-        { "t": 74, "action": "rope", "anchor": 0, "offset": 0, "release": 112 },
-        { "t": 143, "action": "rope", "anchor": 1, "offset": 1, "release": 179 },
-        { "t": 227, "action": "rope", "anchor": 3, "offset": 0, "release": 312 },
-        { "t": 316, "action": "rope", "anchor": 3, "offset": 1, "release": 340 },
-        { "t": 350, "action": "rope", "anchor": 3, "offset": 1, "release": 376 },
-        { "t": 420, "action": "jump", "hold": 32 }
+        { "t": 73, "action": "rope", "anchor": 0, "offset": 0, "release": 109 },
+        { "t": 140, "action": "rope", "anchor": 1, "offset": 0, "release": 171 },
+        { "t": 221, "action": "rope", "anchor": 3, "offset": 0, "release": 333 },
+        { "t": 344, "action": "rope", "anchor": 3, "offset": 0, "release": 375 },
+        { "t": 416, "action": "jump", "hold": 32 }
       ],
       "windows": [
         {
@@ -75,9 +74,9 @@
           "action": "rope",
           "event": "release",
           "tick": 71,
-          "earliest": -8,
-          "latest": 3,
-          "size": 12,
+          "earliest": -10,
+          "latest": 2,
+          "size": 13,
           "capped": false,
           "startClipped": false
         },
@@ -85,10 +84,10 @@
           "step": 3,
           "action": "rope",
           "event": "press",
-          "tick": 74,
-          "earliest": -3,
+          "tick": 73,
+          "earliest": -2,
           "latest": 2,
-          "size": 6,
+          "size": 5,
           "capped": false,
           "startClipped": false
         },
@@ -96,10 +95,10 @@
           "step": 3,
           "action": "rope",
           "event": "release",
-          "tick": 112,
+          "tick": 109,
           "earliest": -3,
-          "latest": 18,
-          "size": 22,
+          "latest": 6,
+          "size": 10,
           "capped": false,
           "startClipped": false
         },
@@ -107,7 +106,51 @@
           "step": 4,
           "action": "rope",
           "event": "press",
-          "tick": 143,
+          "tick": 140,
+          "earliest": -2,
+          "latest": 3,
+          "size": 6,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 4,
+          "action": "rope",
+          "event": "release",
+          "tick": 171,
+          "earliest": -14,
+          "latest": 17,
+          "size": 32,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "press",
+          "tick": 221,
+          "earliest": -13,
+          "latest": 14,
+          "size": 28,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 5,
+          "action": "rope",
+          "event": "release",
+          "tick": 333,
+          "earliest": -3,
+          "latest": 4,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 344,
           "earliest": -3,
           "latest": 3,
           "size": 7,
@@ -115,87 +158,21 @@
           "startClipped": false
         },
         {
-          "step": 4,
-          "action": "rope",
-          "event": "release",
-          "tick": 179,
-          "earliest": -15,
-          "latest": 17,
-          "size": 33,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 5,
-          "action": "rope",
-          "event": "press",
-          "tick": 227,
-          "earliest": -11,
-          "latest": 12,
-          "size": 24,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 5,
-          "action": "rope",
-          "event": "release",
-          "tick": 312,
-          "earliest": -4,
-          "latest": 4,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 6,
-          "action": "rope",
-          "event": "press",
-          "tick": 316,
-          "earliest": -4,
-          "latest": 4,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        },
-        {
           "step": 6,
           "action": "rope",
           "event": "release",
-          "tick": 340,
-          "earliest": -3,
-          "latest": 5,
-          "size": 9,
+          "tick": 375,
+          "earliest": -17,
+          "latest": 19,
+          "size": 37,
           "capped": false,
           "startClipped": false
         },
         {
           "step": 7,
-          "action": "rope",
-          "event": "press",
-          "tick": 350,
-          "earliest": -4,
-          "latest": 4,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 7,
-          "action": "rope",
-          "event": "release",
-          "tick": 376,
-          "earliest": -18,
-          "latest": 20,
-          "size": 39,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 8,
           "action": "jump",
           "event": "press",
-          "tick": 420,
+          "tick": 416,
           "earliest": -22,
           "latest": 31,
           "size": 54,
@@ -203,10 +180,10 @@
           "startClipped": false
         },
         {
-          "step": 8,
+          "step": 7,
           "action": "jump",
           "event": "release",
-          "tick": 452,
+          "tick": 448,
           "earliest": -31,
           "latest": 40,
           "size": 72,
@@ -225,9 +202,9 @@
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 2898, "simTicks": 1447884, "deathsEncountered": 11375 }
+      "search": { "expansions": 3315, "simTicks": 492265, "deathsEncountered": 9853 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-01\",\"s\":0,\"n\":435,\"i\":[[0,[\"m\",1],\"j\"],[18,[\"a\",13.5,2],\"r\"],[49,\"J\"],[71,\"R\"],[74,[\"a\",13.5,2],\"r\"],[112,\"R\"],[143,[\"a\",21.28,-1.5],\"r\"],[179,\"R\"],[227,[\"a\",37.2294340356313,1],\"r\"],[312,\"R\"],[316,[\"a\",42.906946572303205,1],\"r\"],[340,\"R\"],[350,[\"a\",45.143703305156265,1],\"r\"],[376,\"R\"],[420,\"j\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-01\",\"s\":0,\"n\":435,\"i\":[[0,[\"m\",1],\"j\"],[18,[\"a\",13.5,2],\"r\"],[49,\"J\"],[71,\"R\"],[73,[\"a\",13.5,2],\"r\"],[109,\"R\"],[140,[\"a\",21,-1.5],\"r\"],[171,\"R\"],[221,[\"a\",37.484731549352134,1],\"r\"],[333,\"R\"],[344,[\"a\",44.654181830570394,1],\"r\"],[375,\"R\"],[416,\"j\"]]}"
 }

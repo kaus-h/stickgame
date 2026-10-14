@@ -16,8 +16,14 @@ import type { ScreenToWorld } from './DesktopInputMapper';
  *   plain hold-to-tether: touch-down presses at the reticle, lift releases. Dragging the
  *   rope-button touch also moves the reticle, so the next shot can be lined up mid-swing.
  */
-export type TouchScheme = 'direct-touch' | 'drag-aim' | 'reticle-offset';
-export const TOUCH_SCHEMES: readonly TouchScheme[] = ['direct-touch', 'drag-aim', 'reticle-offset'];
+export type TouchScheme = 'button' | 'tap' | 'direct-touch' | 'drag-aim' | 'reticle-offset';
+export const TOUCH_SCHEMES: readonly TouchScheme[] = [
+  'button',
+  'tap',
+  'direct-touch',
+  'drag-aim',
+  'reticle-offset',
+];
 
 /** Digital: two left/right zones (axis -1/+1). Analog: a stick (axis in [-1, 1]). */
 export type MoveStyle = 'digital' | 'analog';
@@ -46,7 +52,7 @@ export interface TouchOptions {
 }
 
 export const DEFAULT_TOUCH_OPTIONS: TouchOptions = {
-  scheme: 'direct-touch',
+  scheme: 'button',
   moveStyle: 'digital',
   scale: 1,
   reticleOffset: 64,
@@ -157,7 +163,16 @@ export class TouchInputMapper {
   }
 
   activate(): void {
+    if (!this.activeFlag && (this.opts.scheme === 'button' || this.opts.scheme === 'tap'))
+      this.emit({ type: 'ropeNeutral' });
     this.activeFlag = true;
+  }
+
+  /** Restore this adapter's targeting when returning from mouse or gamepad. */
+  restoreTargeting(): void {
+    this.lastAim = null;
+    if (this.opts.scheme === 'button' || this.opts.scheme === 'tap')
+      this.emit({ type: 'ropeNeutral' });
   }
 
   /** Viewport size and safe-area insets, CSS px. Re-lays out the controls. */
@@ -177,6 +192,8 @@ export class TouchInputMapper {
     this.releaseAll();
     this.opts = { ...this.opts, scheme };
     this.cachedLayout = null;
+    if (this.activeFlag && (scheme === 'button' || scheme === 'tap'))
+      this.emit({ type: 'ropeNeutral' });
   }
 
   setMoveStyle(moveStyle: MoveStyle): void {
@@ -199,7 +216,7 @@ export class TouchInputMapper {
   }
 
   pointerDown(id: number, x: number, y: number): void {
-    this.activeFlag = true;
+    this.activate();
     if (this.pointers.has(id)) this.pointerUp(id); // a lost up event: never leave a role stuck
     const role = this.classify(x, y);
     const p: Pointer = { role, x, y };
@@ -213,7 +230,8 @@ export class TouchInputMapper {
         break;
       case 'rope':
         this.ropeHeld = true;
-        this.emitAim(true);
+        if (this.opts.scheme === 'tap') this.emitTouch(x, y);
+        else if (this.opts.scheme !== 'button') this.emitAim(true);
         this.emit({ type: 'ropePress' });
         break;
       case 'pause':
@@ -226,6 +244,8 @@ export class TouchInputMapper {
         this.emit({ type: 'respawn' });
         break;
       case 'aim':
+        if (this.opts.scheme === 'button') this.emitTouch(x, y);
+        break;
       case 'ignored':
         break;
     }
@@ -282,6 +302,8 @@ export class TouchInputMapper {
   /** Once per simulation tick: the aim follows a held finger (or the cursor) under a moving camera. */
   beforeTick(): void {
     if (!this.activeFlag) return;
+    // Point taps select a sim-owned anchor once; moving camera/fingers cannot retarget it.
+    if (this.opts.scheme === 'button' || this.opts.scheme === 'tap') return;
     this.emitAim(false);
   }
 
@@ -295,7 +317,8 @@ export class TouchInputMapper {
       if (p.role === 'pause') pressed.add('pause');
       if (p.role === 'restart') pressed.add('restart');
       if (p.role === 'respawn') pressed.add('respawn');
-      if (p.role === 'rope' && this.opts.scheme === 'drag-aim') pressed.add('rope');
+      if (p.role === 'rope' && (this.opts.scheme === 'drag-aim' || this.opts.scheme === 'button'))
+        pressed.add('rope');
     }
     if (this.axis < 0) pressed.add('left');
     if (this.axis > 0) pressed.add('right');
@@ -368,7 +391,7 @@ export class TouchInputMapper {
     }
     const z = layout.moveZone;
     if (x >= z.x0 && x <= z.x1 && y >= z.y0 && y <= z.y1) return 'move';
-    if (this.opts.scheme === 'drag-aim') return 'aim';
+    if (this.opts.scheme === 'drag-aim' || this.opts.scheme === 'button') return 'aim';
     // direct-touch / reticle-offset: one rope finger at a time; extra play-area touches do nothing.
     return this.countRole('rope') > 0 ? 'ignored' : 'rope';
   }
@@ -423,6 +446,10 @@ export class TouchInputMapper {
       return;
     this.lastAim = target;
     this.emit({ type: 'ropeAim', target });
+  }
+
+  private emitTouch(x: number, y: number): void {
+    this.emit({ type: 'ropeTouch', target: this.screenToWorld(x, y) });
   }
 
   private moveCursor(dx: number, dy: number): void {
@@ -494,7 +521,7 @@ export function computeLayout(
   }
   const jump = { id: 'jump' as const, x: right - u, y: bottom, r: u, hit: u * 1.25 };
   controls.push(jump);
-  if (opts.scheme === 'drag-aim') {
+  if (opts.scheme === 'drag-aim' || opts.scheme === 'button') {
     controls.push({ id: 'rope', x: jump.x - u * 2.2, y: jump.y - u * 0.9, r: u, hit: u * 1.2 });
   }
   const small = u * 0.42;

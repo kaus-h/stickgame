@@ -1,5 +1,6 @@
 import type { Vec2 } from '../core';
 import type { LevelDef, SolidDef } from '../sim';
+import runtimeTuning from '../../content/tuning/runtime.json';
 import { parseLevel } from './level';
 
 export interface LevelValidationIssue {
@@ -121,7 +122,10 @@ function records(raw: unknown): Record<string, unknown>[] {
  * advisory because a geometric gap may deliberately be an impassable crevice, not a passage.
  * Exit checks establish geometric feasibility only, never prove a traversable gameplay route.
  */
-export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
+export function validateLevelAuthoring(
+  json: unknown,
+  selectRadius = runtimeTuning.sim.rope.selectRadius,
+): LevelValidationIssue[] {
   const issues: LevelValidationIssue[] = [];
   let level: LevelDef;
   try {
@@ -359,6 +363,22 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
   }
 
   const rawAnchors = records(raw.anchors);
+  for (let i = 0; i < level.anchors.length; i++) {
+    const first = level.anchors[i];
+    if (!first) continue;
+    for (let j = i + 1; j < level.anchors.length; j++) {
+      const second = level.anchors[j];
+      if (!second) continue;
+      const separation = distance(first.position, second.position);
+      const combinedRadius = first.radius + second.radius + 2 * selectRadius;
+      if (separation < combinedRadius - EPS)
+        issue(
+          `level.anchors[${String(j)}].position`,
+          `PC snap zone overlaps ${first.id}: centres are ${separation.toFixed(3)} m apart; radius + rope.selectRadius (${selectRadius.toFixed(3)} m) needs >=${combinedRadius.toFixed(3)} m separation; review targeting ambiguity`,
+          true,
+        );
+    }
+  }
   level.anchors.forEach((anchor, i) => {
     const takeoff = point(rawAnchors[i]?.requiredFrom);
     if (!takeoff) return;
@@ -374,11 +394,17 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
         }))
       : [anchor.position];
     for (const position of positions) {
-      const range = distance(takeoff, position) - anchor.radius;
-      if (range > 11 + EPS || distance(takeoff, position) + anchor.radius < 0.8 - EPS)
+      const range = distance(takeoff, position);
+      if (range - anchor.radius > 11 + EPS || range + anchor.radius < 0.8 - EPS)
         issue(
           path,
           'required anchor impact must be within 0.8–11 m rope range throughout its path',
+        );
+      else if (range > 11 + EPS || range < 0.8 - EPS)
+        issue(
+          path,
+          'required anchor centre is outside 0.8–11 m rope range despite legacy disc-edge reach; migrate requiredFrom for centre attachment',
+          true,
         );
       if (takeoff.y - position.y > 7 + EPS)
         issue(path, 'required anchor exceeds 7 m above take-off; reframe the route');
@@ -395,21 +421,25 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
           'required anchor needs 1 m camera bounds clearance on every side to avoid clamped-camera visibility loss',
         );
       }
-      const centerDistance = distance(takeoff, position);
-      const scale =
-        centerDistance > EPS ? Math.max(0, centerDistance - anchor.radius) / centerDistance : 0;
-      const impact = {
+      const scale = range > EPS ? Math.max(0, range - anchor.radius) / range : 0;
+      const legacyImpact = {
         x: takeoff.x + (position.x - takeoff.x) * scale,
         y: takeoff.y + (position.y - takeoff.y) * scale,
       };
-      if (
+      const blocked = (impact: Vec2): boolean =>
         level.solids.some(
           (solid) =>
             inside(impact, solid.points) ||
             edges(solid.points).some((edge) => intersects(takeoff, impact, edge)),
-        )
-      ) {
+        );
+      if (blocked(legacyImpact)) {
         issue(path, 'required anchor has blocked line of sight from take-off');
+      } else if (blocked(position)) {
+        issue(
+          path,
+          'required anchor centre has blocked line of sight despite legacy disc-edge visibility; migrate requiredFrom for centre attachment',
+          true,
+        );
       }
     }
   });

@@ -1,5 +1,5 @@
 import { parseAssistMode, type AssistMode } from './assist';
-import type { Intent, IntentSource } from './intents';
+import { parseInputDevice, type InputDevice, type Intent, type IntentSource } from './intents';
 import { vec2 } from './vec2';
 
 /** Current replay payload version. Bump on any incompatible change to the shape below. */
@@ -27,6 +27,8 @@ export interface Replay {
    * the same tier, since assists change which anchor a press selects.
    */
   readonly assist?: AssistMode;
+  /** Input device active when the run finished; absent on older v1 recordings. */
+  readonly inputDevice?: InputDevice;
   /** Simulation ticks the run lasted, counted from tick 0. */
   readonly ticks: number;
   /** Ascending by tick, one entry per tick that had intents. */
@@ -69,6 +71,7 @@ export function encodeReplay(replay: Replay): string {
     l: replay.level,
     s: replay.seed,
     ...(replay.assist && replay.assist !== 'standard' ? { as: replay.assist } : {}),
+    ...(replay.inputDevice ? { d: replay.inputDevice } : {}),
     n: replay.ticks,
     i: replay.inputs.map((input) => [input.tick, ...input.intents.map(encodeIntent)]),
   });
@@ -96,6 +99,8 @@ export function decodeReplay(text: string, currentBuild: string): DecodedReplay 
     if (!assist) throw new ReplayError('as', `unknown assist ${JSON.stringify(root.as)}`);
   }
   const ticks = int(root.n, 'n');
+  const inputDevice = root.d === undefined ? null : parseInputDevice(root.d);
+  if (root.d !== undefined && !inputDevice) throw new ReplayError('d', 'unknown input device');
   const list = arr(root.i, 'i');
   const inputs: ReplayInput[] = [];
   let previous = -1;
@@ -117,6 +122,7 @@ export function decodeReplay(text: string, currentBuild: string): DecodedReplay 
       level,
       seed,
       ...(assist && assist !== 'standard' ? { assist } : {}),
+      ...(inputDevice ? { inputDevice } : {}),
       ticks,
       inputs,
     },
@@ -159,15 +165,18 @@ export class RecordingIntentSource implements IntentSource {
     seed: number;
     ticks: number;
     assist?: AssistMode;
+    inputDevice?: InputDevice;
   }): Replay {
     return { version: REPLAY_VERSION, ...meta, inputs: this.inputs.slice() };
   }
 }
 
 function cloneIntent(intent: Intent): Intent {
-  return intent.type === 'ropeAim'
-    ? { type: 'ropeAim', target: vec2(intent.target.x, intent.target.y) }
-    : { ...intent };
+  if (intent.type === 'ropeAim' || intent.type === 'ropeTouch')
+    return { type: intent.type, target: vec2(intent.target.x, intent.target.y) };
+  if (intent.type === 'ropePoint')
+    return { type: 'ropePoint', direction: vec2(intent.direction.x, intent.direction.y) };
+  return { ...intent };
 }
 
 // Short wire codes keep payloads small. `move` and `ropeAim` carry values.
@@ -176,6 +185,7 @@ const CODES = {
   jumpRelease: 'J',
   ropePress: 'r',
   ropeRelease: 'R',
+  ropeNeutral: 'N',
   restart: 'x',
   respawn: 'k',
   pause: 'p',
@@ -194,6 +204,10 @@ function encodeIntent(intent: Intent): unknown {
       return ['m', intent.axis];
     case 'ropeAim':
       return ['a', intent.target.x, intent.target.y];
+    case 'ropeTouch':
+      return ['t', intent.target.x, intent.target.y];
+    case 'ropePoint':
+      return ['q', intent.direction.x, intent.direction.y];
     default:
       return CODES[intent.type];
   }
@@ -212,11 +226,19 @@ function decodeIntent(value: unknown, path: string): Intent {
     if (axis < -1 || axis > 1) throw new ReplayError(`${path}.axis`, 'must be within [-1, 1]');
     return { type: 'move', axis };
   }
-  if (row[0] === 'a') {
-    if (row.length !== 3) throw new ReplayError(path, 'ropeAim takes x and y');
+  if (row[0] === 'a' || row[0] === 't') {
+    const type = row[0] === 'a' ? 'ropeAim' : 'ropeTouch';
+    if (row.length !== 3) throw new ReplayError(path, `${type} takes x and y`);
     return {
-      type: 'ropeAim',
+      type,
       target: vec2(num(row[1], `${path}.target.x`), num(row[2], `${path}.target.y`)),
+    };
+  }
+  if (row[0] === 'q') {
+    if (row.length !== 3) throw new ReplayError(path, 'ropePoint takes x and y');
+    return {
+      type: 'ropePoint',
+      direction: vec2(num(row[1], `${path}.direction.x`), num(row[2], `${path}.direction.y`)),
     };
   }
   throw new ReplayError(path, 'unknown intent');

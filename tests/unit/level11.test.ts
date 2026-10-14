@@ -57,8 +57,8 @@ function standingOn(world: World, minX: number, maxX: number): boolean {
 
 /** C4 taught route: jump off C3's ledge, connect to a4 near the apex, release onto C4's ledge. */
 const C4_TAUGHT: PlanStep[] = [
-  { t: 404, action: 'jump', hold: 20 },
-  { t: 422, action: 'rope', anchor: A4, offset: 2, release: 470 },
+  { t: 400, action: 'jump', hold: 20 },
+  { t: 418, action: 'rope', anchor: A4, offset: 0, release: 462 },
 ];
 
 describe('1-1 rope-length lessons (GMR-114)', () => {
@@ -80,7 +80,7 @@ describe('1-1 rope-length lessons (GMR-114)', () => {
   it('C5: running off the edge locks a short rope that never reaches the far ledge', () => {
     for (let release = 560; release <= 640; release += 4) {
       const r = run(
-        [...C4_TAUGHT, { t: 512, action: 'rope', anchor: A5, offset: 0, release }],
+        [...C4_TAUGHT, { t: 487, action: 'rope', anchor: A5, offset: 0, release }],
         330,
       );
       expect(r.died, `run-off release ${String(release)}`).toBe(true);
@@ -89,12 +89,12 @@ describe('1-1 rope-length lessons (GMR-114)', () => {
   });
 
   it('C5: jumping early locks a long rope that carries to the far ledge in one swing', () => {
-    for (const release of [606, 615, 625, 635]) {
+    for (const release of [585, 594, 606, 618]) {
       const r = run(
         [
           ...C4_TAUGHT,
-          { t: 512, action: 'rope', anchor: A5, offset: 0, release },
-          { t: 528, action: 'jump', hold: 14 },
+          { t: 487, action: 'rope', anchor: A5, offset: 0, release },
+          { t: 493, action: 'jump', hold: 14 },
         ],
         330,
         (w) => standingOn(w, 90, 98),

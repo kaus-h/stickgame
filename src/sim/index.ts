@@ -4,7 +4,13 @@ export { levelSegments } from './level';
 export { sweepPatroller, patrollerState } from './enemies';
 export type { EnemySnapshot, EnemyContact } from './enemies';
 export type { PatrollerDef } from './level';
-export { resolveTarget, STANDARD_ASSIST } from './targeting';
+export {
+  resolveTarget,
+  resolveAnchor,
+  resolvePointTarget,
+  neutralCandidates,
+  STANDARD_ASSIST,
+} from './targeting';
 export type { TargetAnchor, TargetAssist, TargetResolution } from './targeting';
 export type {
   AnchorDef,

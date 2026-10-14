@@ -234,8 +234,8 @@ describe('rope targeting in the simulation', () => {
     run(sim, 10);
     sim.step([{ type: 'ropeAim', target: vec2(4.1, 3.2) }]);
     const s = sim.snapshot();
-    expect(s.target).toMatchObject({ valid: true, anchor: 0, impact: vec2(4.1, 3.2) });
-    const d = Math.hypot(4.1 - s.player.position.x, 3.2 - s.player.position.y);
+    expect(s.target).toMatchObject({ valid: true, anchor: 0, impact: vec2(4, 3) });
+    const d = Math.hypot(4 - s.player.position.x, 3 - s.player.position.y);
     expect(s.target?.distance).toBeCloseTo(d, 12);
   });
 
@@ -462,7 +462,7 @@ describe('tether', () => {
     expect(early - late).toBeGreaterThan(0.5);
   });
 
-  it('different impact points on one anchor give different radii', () => {
+  it('different aims on one anchor give the same centre radius', () => {
     const lengths = [vec2(9, 1.7), vec2(9, 2.3)].map((aim) => {
       const sim = make(pit);
       sim.step([{ type: 'ropeAim', target: aim }]);
@@ -470,7 +470,8 @@ describe('tether', () => {
       sim.step([{ type: 'ropePress' }]);
       return sim.snapshot().rope?.length ?? 0;
     });
-    expect(Math.abs((lengths[0] ?? 0) - (lengths[1] ?? 0))).toBeGreaterThan(0.2);
+    expect(lengths[0]).toBeGreaterThan(0);
+    expect(lengths[0]).toBe(lengths[1]);
   });
 
   it('stays on the rope circle through the swing', () => {
@@ -582,7 +583,7 @@ describe('tether', () => {
     const anchorMove = (later.anchors[0]?.x ?? 0) - (first.anchors[0]?.x ?? 0);
     expect(anchorMove).toBeGreaterThan(0.5);
     const offset = (first.rope?.point.x ?? 0) - (first.anchors[0]?.x ?? 0);
-    expect(offset).toBeCloseTo(0.2, 2);
+    expect(offset).toBe(0);
     expect((later.rope?.point.x ?? 0) - (later.anchors[0]?.x ?? 0)).toBeCloseTo(offset, 12);
   });
 });

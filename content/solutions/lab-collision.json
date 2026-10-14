@@ -17,7 +17,7 @@
       "plan": [],
       "windows": [],
       "tightestWindow": null,
-      "search": { "expansions": 11250, "simTicks": 6000291, "deathsEncountered": 2762 }
+      "search": { "expansions": 21453, "simTicks": 6000048, "deathsEncountered": 9708 }
     }
   ],
   "notes": ["Chamber level: no route found within 6000000 simulated ticks."],

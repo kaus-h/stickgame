@@ -1,4 +1,5 @@
 import type { SaveData, Settings } from '../../../platform';
+import type { InputDevice } from '../../../core';
 import { ControlsPanel } from './ControlsPanel';
 import { startTitleDoodle } from './titleDoodle';
 import { DELTA_COLOURS, formatDelta } from '../../../render/race';
@@ -32,6 +33,7 @@ export interface FlowActions {
 }
 
 export interface ResultsInfo {
+  readonly inputDevice?: InputDevice;
   readonly levelId: string;
   readonly ticks: number;
   readonly deaths: number;
@@ -289,6 +291,11 @@ export class GameFlowUi {
           ])
         : null,
       r.newBest ? h('p', { class: 'best' }, [this.s('results.newBest')]) : null,
+      r.inputDevice
+        ? h('p', { class: 'tag', 'data-stat': 'input-device' }, [
+            this.s('results.inputDevice', { device: this.s(`inputDevice.${r.inputDevice}`) }),
+          ])
+        : null,
       this.splitsTable(r.splits),
       row(
         next
@@ -397,6 +404,25 @@ export class GameFlowUi {
           this.actions.settings({ assist: v });
         },
       ),
+      select(
+        this.s('settings.touchScheme'),
+        'settings.touchScheme',
+        ['button', 'tap'] as const,
+        s.touchScheme === 'tap' ? 'tap' : 'button',
+        (v) => {
+          this.actions.settings({ touchScheme: v });
+        },
+      ),
+      select(
+        this.s('settings.gamepadRope'),
+        'settings.gamepadRope',
+        ['7', '5', '6', '4', '2', '1'] as const,
+        String(s.gamepadRopeButton) as '7' | '5' | '6' | '4' | '2' | '1',
+        (v) => {
+          this.actions.settings({ gamepadRopeButton: Number(v) });
+        },
+      ),
+      h('p', { class: 'tag' }, [this.s('settings.targetingHelp')]),
       controlsHost,
       row(
         button(

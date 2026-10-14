@@ -1,0 +1,10 @@
+{
+  "format": 1,
+  "level": "lab-goon-contact",
+  "solved": false,
+  "start": "spawn",
+  "totalTicks": null,
+  "chambers": [],
+  "notes": ["Skipped: the level has no chambers and no exit, so there is no goal to prove."],
+  "replay": null
+}

@@ -17,6 +17,28 @@ validates everything and throws `ReplayError` with a `path` (for example `inputs
 `RecordingIntentSource` wraps any `IntentSource` and records non-empty ticks; `ReplayIntentSource`
 plays one back. Poll ticks are the simulation tick before the step, the same as `GameRuntime`.
 
+GMR-118 adds `["q",x,y]` (`ropePoint`, gamepad world direction), `["t",x,y]` (`ropeTouch`,
+one world tap selection), and `"N"` (`ropeNeutral`, touch button initialization). The zero point
+direction selects the neutral forward candidate. Touch selection belongs to the simulation and
+persists after the finger lifts; camera movement never emits another tap. Mouse `"a"` retains its
+old meaning. These are additive v1 codes: every old tuple is unchanged; build identity still
+guards gameplay compatibility. Recording clones both target and direction vectors.
+
+Optional compact field `d` stores run provenance: `mouse`, `pad`, `touch`, or `unknown`.
+Older v1 recordings omit it and retain exactly their old encoding. Save version 4 adds device
+tags to PBs and level run records; old saves decode as `unknown`, never an inferred device.
+The browser's active adapter supplies the tag at completion. Device tags are metadata and
+never affect replay playback or simulation. Equal or slower clears preserve the fastest run's
+device tag; each completed run updates its own last-run tag.
+
+Runtime touch defaults to `button`: a world tap selects without firing, and holding the existing
+Rope control fires at the selection. The opt-in `tap` scheme selects and fires on world touch-down,
+and releases on lift. Settings persist either scheme; `?scheme=button|tap` overrides it for a
+session. Legacy GMR-27 lab schemes remain selectable by query. Standard-mapping gamepads use
+left stick/D-pad to move, A/Cross to jump, right stick to select, and RT/R2 to rope by default.
+The Rope button can be remapped in Settings; Start pauses. Disconnect/focus loss release held
+pad inputs. Idle pads and inactive adapters' camera updates cannot take over targeting.
+
 ## Build mismatch policy
 
 `decodeReplay` returns `{ replay, buildMatches }` and never decides. Policy

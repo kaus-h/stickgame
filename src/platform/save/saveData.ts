@@ -4,9 +4,14 @@
  * blocks play; the store also keeps the previous good copy as a backup.
  */
 
-export const SAVE_VERSION = 3;
+import { parseInputDevice, type InputDevice } from '../../core';
+
+export const SAVE_VERSION = 4;
 
 export interface LevelRecord {
+  /** Provenance of the fastest clear and most recently completed run. Legacy records are unknown. */
+  readonly bestInputDevice: InputDevice;
+  readonly lastInputDevice: InputDevice;
   readonly cleared: boolean;
   /** Fastest clear in simulation ticks (60 Hz), or null if never cleared. */
   readonly bestTicks: number | null;
@@ -31,6 +36,7 @@ export interface LevelRecord {
  * build it was recorded on; anything else is discarded by the app, never drawn wrong.
  */
 export interface PersonalBest {
+  readonly inputDevice?: InputDevice;
   /** Run time in simulation ticks. */
   readonly ticks: number;
   /** Run time at each checkpoint, by checkpoint index; null where the run skipped it. */
@@ -78,6 +84,8 @@ export interface Settings {
   readonly reducedMotion: ReducedMotion;
   /** Mobile control scheme id (GMR-27), or null for the platform default. */
   readonly touchScheme: string | null;
+  /** Standard gamepad Rope button id; RT (7) by default. */
+  readonly gamepadRopeButton: number;
   /** Opt-in aim assist tier (GMR-27); 'standard' means none. */
   readonly assist: 'standard' | 'wide-select' | 'snap';
   /** Show the personal-best ghost (GMR-103); G toggles it. */
@@ -107,6 +115,7 @@ export const DEFAULT_SETTINGS: Settings = {
   muted: false,
   reducedMotion: 'system',
   touchScheme: null,
+  gamepadRopeButton: 7,
   assist: 'standard',
   ghost: true,
   bodies: true,
@@ -120,6 +129,8 @@ export function emptySave(): SaveData {
 }
 
 export const EMPTY_LEVEL: LevelRecord = {
+  bestInputDevice: 'unknown',
+  lastInputDevice: 'unknown',
   cleared: false,
   bestTicks: null,
   fewestDeaths: null,
@@ -152,6 +163,8 @@ export const MIGRATIONS: Readonly<Record<number, Migration>> = {
     version: 3,
     settings: { ...(isRecord(d.settings) ? d.settings : {}), keyBindings: {} },
   }),
+  // GMR-118: provenance is additive; absent historical tags remain unknown, never inferred.
+  3: (d) => ({ ...d, version: 4 }),
 };
 
 export class SaveVersionError extends Error {}
@@ -192,6 +205,8 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     for (const [id, r] of Object.entries(data.levels)) {
       if (!isRecord(r) || id.length === 0 || id.length > 64) continue;
       levels[id] = {
+        bestInputDevice: parseInputDevice(r.bestInputDevice) ?? 'unknown',
+        lastInputDevice: parseInputDevice(r.lastInputDevice) ?? 'unknown',
         cleared: r.cleared === true,
         bestTicks: intOrNull(r.bestTicks),
         fewestDeaths: intOrNull(r.fewestDeaths),
@@ -227,6 +242,9 @@ export function sanitize(data: Record<string, unknown>): SaveData {
     reducedMotion:
       s.reducedMotion === 'on' || s.reducedMotion === 'off' ? s.reducedMotion : 'system',
     touchScheme: typeof s.touchScheme === 'string' ? s.touchScheme : null,
+    gamepadRopeButton: [7, 5, 6, 4, 2, 1].includes(s.gamepadRopeButton as number)
+      ? (s.gamepadRopeButton as number)
+      : 7,
     assist: s.assist === 'wide-select' || s.assist === 'snap' ? s.assist : 'standard',
     ghost: s.ghost !== false,
     bodies: s.bodies !== false,
@@ -255,7 +273,13 @@ function sanitizePb(pb: unknown): PersonalBest | null {
   if (typeof pb.levelVersion !== 'string' || !Array.isArray(pb.splits) || pb.splits.length > 64)
     return null;
   const splits = pb.splits.map((v) => intOrNull(v));
-  return { ticks, splits, replay: pb.replay, levelVersion: pb.levelVersion };
+  return {
+    ticks,
+    splits,
+    replay: pb.replay,
+    levelVersion: pb.levelVersion,
+    inputDevice: parseInputDevice(pb.inputDevice) ?? 'unknown',
+  };
 }
 
 /** Parse, migrate and repair. Returns null when the text is not a usable save at all. */
@@ -280,6 +304,7 @@ export function encodeSave(data: SaveData): string {
 }
 
 export interface RunResult {
+  readonly inputDevice?: InputDevice;
   readonly cleared: boolean;
   readonly ticks: number;
   readonly deaths: number;
@@ -291,10 +316,20 @@ export interface RunResult {
 export function recordRun(prev: LevelRecord | undefined, run: RunResult): LevelRecord {
   const r = prev ?? EMPTY_LEVEL;
   const playTicks = r.playTicks + (run.playTicks ?? 0);
-  if (!run.cleared) return { ...r, totalDeaths: r.totalDeaths + run.deaths, playTicks };
+  const inputDevice = run.inputDevice ?? 'unknown';
+  if (!run.cleared)
+    return {
+      ...r,
+      totalDeaths: r.totalDeaths + run.deaths,
+      playTicks,
+      lastInputDevice: inputDevice,
+    };
   return {
     ...r,
     cleared: true,
+    lastInputDevice: inputDevice,
+    bestInputDevice:
+      r.bestTicks === null || run.ticks < r.bestTicks ? inputDevice : r.bestInputDevice,
     playTicks,
     // Recorded once, at the first clear, and never overwritten.
     firstClearTicks: r.cleared ? r.firstClearTicks : playTicks,

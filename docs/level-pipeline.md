@@ -70,8 +70,13 @@ Theme-only edits still redraw through the existing authoring hot-reload path. Se
 ## What validation can establish
 
 The moving-anchor envelope stays at 8 m/s peak speed and 12 m/s² acceleration. Required shots
-tagged with `requiredFrom` must fit the current rope impact range and camera envelope, with clear
-line of sight. Untagged anchors can be optional or staged later; the validator does not guess.
+tagged with `requiredFrom` are checked against the current player-to-anchor-centre rope range
+and line of sight. A shot that only passes the old disc-edge check receives an advisory migration
+warning; the original gross reach/blocked-shot errors remain fatal. Review these warnings before
+using the tag as proof of a centre-attachment route. PC snap zones use each anchor's radius plus
+the content `rope.selectRadius` (1.1 m); overlapping authored zones produce advisory warnings
+for review, not validation errors. Moving paths still need targeting playtests. Untagged anchors
+can be optional or staged later; the validator does not guess. See [targeting.md](targeting.md).
 Hazard silhouettes must fit their collision. Spawn support uses the 0.35 m player radius.
 Declared tunnels make intentional passages distinguishable from solid crevices; geometric
 warnings prompt review of incidental narrow gaps. Exit checks are geometric bounding checks,

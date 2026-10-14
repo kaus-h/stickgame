@@ -26,23 +26,22 @@ function resolve(aim: Vec2, anchors: TargetAnchor[], ray = noHit, from = player)
 }
 
 describe('resolveTarget', () => {
-  it('uses the exact aim point as impact when the aim is on the anchor disc', () => {
+  it('uses the centre as impact for every aim on the anchor disc', () => {
     const anchors = [anchor(5, -3)];
     const a = resolve(vec2(5.2, -3.1), anchors);
     const b = resolve(vec2(4.85, -2.8), anchors);
     expect(a.valid && b.valid).toBe(true);
-    expect(a.impact).toEqual(vec2(5.2, -3.1));
-    expect(b.impact).toEqual(vec2(4.85, -2.8));
-    // Different regions of the same anchor give different rope lengths: no fixed centre grapple.
-    expect(a.distance).not.toBeCloseTo(b.distance ?? 0, 3);
+    expect(a.impact).toEqual(vec2(5, -3));
+    expect(b.impact).toEqual(vec2(5, -3));
+    expect(a.distance).toBe(b.distance);
   });
 
-  it('projects aims in the selection margin onto the nearest rim point', () => {
+  it('attaches selection-margin aims to the centre', () => {
     const r = resolve(vec2(6, -3), [anchor(5, -3)]);
     expect(r.valid).toBe(true);
-    expect(r.impact?.x).toBeCloseTo(5.4, 12);
+    expect(r.impact?.x).toBeCloseTo(5, 12);
     expect(r.impact?.y).toBeCloseTo(-3, 12);
-    if (r.valid) expect(r.offset).toEqual(vec2(0.4, 0));
+    if (r.valid) expect(r.offset).toEqual(vec2(0, 0));
   });
 
   it('accepts aims at the edge of the selection region and rejects just outside it', () => {
@@ -136,8 +135,8 @@ describe('resolveTarget assist tiers (GMR-27)', () => {
     expect(run(at(0.5), snap)).toMatchObject({ valid: true, snapped: false });
     const s = run(at(2.2), snap);
     expect(s).toMatchObject({ valid: true, anchor: 0, snapped: true });
-    // The impact point is still on the rim nearest the aim: the snap chooses the anchor only.
-    expect(s.impact?.x).toBeCloseTo(5.4, 12);
+    // Assists change selection tolerance; attachment is always at the centre.
+    expect(s.impact?.x).toBeCloseTo(5, 12);
     expect(run(at(2.61), snap)).toMatchObject({
       valid: false,
       reason: 'no-anchor',
