@@ -12,7 +12,7 @@ export type PlanStep =
   /** Press jump on tick `t`, release on tick `t + hold` (variable jump height). */
   | { readonly t: number; readonly action: 'jump'; readonly hold: number }
   /**
-   * Aim at `anchor` (impact point `offset` on its disc, see ROPE_OFFSETS) and press on tick `t`;
+   * Aim at `anchor` (aim point `offset` on its disc, see ROPE_OFFSETS) and press on tick `t`;
    * release on tick `release` (null: still held when the goal was reached).
    */
   | {
@@ -24,8 +24,9 @@ export type PlanStep =
     };
 
 /**
- * Impact points on an anchor disc, as fractions of its radius: the centre, then the rim side
- * toward +x, -x, -y (up) and +y (down). Aim inside the disc is the exact impact point (doc 04).
+ * Aim points on an anchor disc, as fractions of its radius: the centre, then the rim side
+ * toward +x, -x, -y (up) and +y (down). GMR-118 attaches at centre for every valid aim;
+ * retain these indices so previously authored hand plans still express their original aim.
  */
 export const ROPE_OFFSETS: readonly Vec2[] = [
   vec2(0, 0),

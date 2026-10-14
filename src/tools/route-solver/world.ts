@@ -1,6 +1,6 @@
 import type { Intent, Vec2 } from '../../core';
 import type { RuntimeTuning } from '../../content';
-import type { BodyState, PhysicsAdapter } from '../../physics';
+import type { BodyState, PhysicsAdapter, RayHit } from '../../physics';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { SegmentGrid } from '../../physics/backends/kinematic/SegmentGrid';
 import { Simulation, type LevelDef, type SimEvent, type SimSnapshot } from '../../sim';
@@ -55,6 +55,11 @@ export class World {
   /** Player body state, read without building a full snapshot (snapshots raycast the aim). */
   body(): BodyState {
     return this.physics().bodyState(Reflect.get(this.sim, 'body') as number);
+  }
+
+  /** Use the same collision LOS query as gameplay for route-authoring diagnostics. */
+  raycast(from: Vec2, to: Vec2): RayHit | null {
+    return this.physics().raycast(from, to);
   }
 
   /** Development start: put the player at rest at a point (single-chamber solving only). */

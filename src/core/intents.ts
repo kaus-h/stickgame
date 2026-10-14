@@ -9,6 +9,12 @@ export type Intent =
   | { readonly type: 'jumpPress' }
   | { readonly type: 'jumpRelease' }
   | { readonly type: 'ropeAim'; readonly target: Vec2 }
+  /** Point-select with a world-space direction; zero selects the neutral forward candidate. */
+  | { readonly type: 'ropePoint'; readonly direction: Vec2 }
+  /** Select the visible anchor nearest this world tap; the sim persists the selected anchor. */
+  | { readonly type: 'ropeTouch'; readonly target: Vec2 }
+  /** Switch to neutral targeting without an explicit pointer selection (touch button mode). */
+  | { readonly type: 'ropeNeutral' }
   | { readonly type: 'ropePress' }
   | { readonly type: 'ropeRelease' }
   | { readonly type: 'restart' }
@@ -28,4 +34,13 @@ export type Intent =
 /** Supplies the intents that apply to a given simulation tick. */
 export interface IntentSource {
   poll(tick: number): readonly Intent[];
+}
+
+/** Run provenance only; never changes simulation behavior. Legacy runs have unknown provenance. */
+export type InputDevice = 'mouse' | 'pad' | 'touch' | 'unknown';
+
+export function parseInputDevice(value: unknown): InputDevice | null {
+  return value === 'mouse' || value === 'pad' || value === 'touch' || value === 'unknown'
+    ? value
+    : null;
 }

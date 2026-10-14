@@ -47,6 +47,7 @@ function snap(patch: Partial<SimSnapshot> = {}): SimSnapshot {
     anchorVelocities: [{ x: 0, y: 0 }],
     anchorStates: [],
     aim: null,
+    selection: { mode: 'mouse', direction: { x: 0, y: 0 }, anchor: null },
     contacts: [],
     lastDeath: null,
     runTick: 0,

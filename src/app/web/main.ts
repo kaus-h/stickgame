@@ -13,6 +13,7 @@ import {
   SIM_DT,
   vec2,
   type Intent,
+  type InputDevice,
   type ReplayInput,
   type Vec2,
 } from '../../core';
@@ -20,6 +21,7 @@ import {
   bindDom,
   bindTouchDom,
   DesktopInputMapper,
+  GamepadInputMapper,
   IntentQueue,
   resolveBindings,
   TOUCH_SCHEMES,
@@ -96,6 +98,7 @@ async function start(): Promise<void> {
       }
     : null;
   let scene: GameScene | null = null;
+  let activeDevice: InputDevice = 'mouse';
   // Dev-only scripted input for e2e (GMR-103): intents keyed by ticks after the script starts.
   let devScript: { start: number; byTick: Map<number, readonly Intent[]> } | null = null;
   // The pause intent (Esc, P, touch pause) opens the menu; it never reaches the simulation.
@@ -130,11 +133,11 @@ async function start(): Promise<void> {
     resolveBindings(saved.settings.keyBindings), // GMR-50 remap
   );
   // Touch controls (GMR-27): same intents, same simulation. Shown on the first touch or ?touch=1.
-  // ?scheme=direct-touch|drag-aim|reticle-offset, ?move=digital|analog, ?touchScale=1.2.
+  // ?scheme=button|tap (legacy lab schemes also supported), ?move=digital|analog.
   const scheme =
     TOUCH_SCHEMES.find((k) => k === params.get('scheme')) ??
     TOUCH_SCHEMES.find((k) => k === saved.settings.touchScheme) ??
-    'direct-touch';
+    'button';
   const touch = new TouchInputMapper(
     pushIntent,
     (x, y) => scene?.screenToWorld(x, y) ?? vec2(0, 0),
@@ -144,7 +147,20 @@ async function start(): Promise<void> {
       scale: Number(params.get('touchScale')) || 1,
     },
   );
-  if (params.get('touch') === '1') touch.activate();
+  const setActiveDevice = (device: InputDevice): void => {
+    if (activeDevice === device) return;
+    activeDevice = device;
+    if (device === 'mouse') mapper.resetAim();
+    if (device === 'touch') touch.restoreTargeting();
+  };
+  const pad = new GamepadInputMapper(pushIntent, saved.settings.gamepadRopeButton, () => {
+    setActiveDevice('pad');
+    unlockAudio();
+  });
+  if (params.get('touch') === '1') {
+    activeDevice = 'touch';
+    touch.activate();
+  }
   const layoutTouch = (): void => {
     touch.setViewport(window.innerWidth, window.innerHeight, readSafeArea());
   };
@@ -180,6 +196,7 @@ async function start(): Promise<void> {
     physics: new KinematicPhysicsAdapter(),
     build: BUILD_HASH,
     assist: tuning.assist,
+    inputDevice: () => activeDevice,
   });
   timing.setGhostVisible(saved.settings.ghost);
   /** Load the saved PB for `lvl`; a replay that no longer fits the level or build is discarded. */
@@ -209,7 +226,13 @@ async function start(): Promise<void> {
   const flushDeaths = (): void => {
     const playTicks = timing.takePlayTicks(runtime.sim);
     if (runDeaths === 0 && playTicks === 0) return;
-    save.recordRun(level.id, { cleared: false, ticks: 0, deaths: runDeaths, playTicks });
+    save.recordRun(level.id, {
+      cleared: false,
+      ticks: 0,
+      deaths: runDeaths,
+      playTicks,
+      inputDevice: activeDevice,
+    });
     runDeaths = 0;
   };
   const resultsSplits = (r: RunSummary): ResultSplit[] => [
@@ -232,8 +255,8 @@ async function start(): Promise<void> {
     platform,
     now: () => performance.now(),
     beforeTick: () => {
-      mapper.beforeTick();
-      touch.beforeTick();
+      if (activeDevice === 'mouse') mapper.beforeTick();
+      if (activeDevice === 'touch') touch.beforeTick();
       const state = runtime.sim.snapshot();
       if (devScript) {
         for (const intent of devScript.byTick.get(state.tick - devScript.start) ?? [])
@@ -278,7 +301,13 @@ async function start(): Promise<void> {
         const firstClear = before?.cleared !== true;
         const deaths = runDeaths;
         const playTicks = timing.takePlayTicks(runtime.sim);
-        save.recordRun(level.id, { cleared: true, ticks: e.runTicks, deaths, playTicks });
+        save.recordRun(level.id, {
+          cleared: true,
+          ticks: e.runTicks,
+          deaths,
+          playTicks,
+          inputDevice: activeDevice,
+        });
         runDeaths = 0;
         const run = timing.takeResult();
         if (run?.isPb && run.replay) {
@@ -288,6 +317,7 @@ async function start(): Promise<void> {
             splits: pb.splits,
             replay: encodeReplay(pb.replay),
             levelVersion: levelFingerprint(level),
+            inputDevice: run.inputDevice,
           });
           timing.setPb(pb);
         }
@@ -297,6 +327,7 @@ async function start(): Promise<void> {
           runtime.pause('sweep', false);
           if (!flowMode || !flow) return;
           flow.showResults({
+            inputDevice: run?.inputDevice ?? activeDevice,
             levelId: level.id,
             ticks: e.runTicks,
             deaths: run?.deaths ?? deaths,
@@ -400,6 +431,9 @@ async function start(): Promise<void> {
       timing.setGhostVisible(st.ghost);
       gameScene.setBodiesVisible(st.bodies);
       if (patch.keyBindings) mapper.setBindings(resolveBindings(st.keyBindings));
+      if (patch.gamepadRopeButton !== undefined) pad.setRopeButton(st.gamepadRopeButton);
+      if (patch.touchScheme && TOUCH_SCHEMES.some((id) => id === patch.touchScheme))
+        touch.setScheme(patch.touchScheme as TouchScheme);
     },
     clearBodies: () => {
       gameScene.clearBodies();
@@ -435,8 +469,34 @@ async function start(): Promise<void> {
     scene: [scene],
   });
   game.events.once('ready', () => {
+    // Hardware activity owns aim; passive camera reprojection cannot steal another device's target.
+    const pointerActivity = (event: PointerEvent): void => {
+      setActiveDevice(event.pointerType === 'touch' ? 'touch' : 'mouse');
+    };
+    game.canvas.addEventListener('pointerdown', pointerActivity, { capture: true });
+    game.canvas.addEventListener(
+      'pointermove',
+      (event) => {
+        if (event.pointerType !== 'touch') setActiveDevice('mouse');
+      },
+      { capture: true },
+    );
+    window.addEventListener(
+      'keydown',
+      (event) => {
+        if (mapper.isBound(event.code)) setActiveDevice('mouse');
+      },
+      { capture: true },
+    );
     bindDom(game.canvas, mapper);
     bindTouchDom(game.canvas, touch);
+    game.events.on('prestep', () => {
+      if (document.visibilityState === 'visible') pad.poll(navigator.getGamepads?.() ?? []);
+    });
+    window.addEventListener('blur', () => pad.release());
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState !== 'visible') pad.release();
+    });
     game.canvas.style.cursor = 'none';
   });
 

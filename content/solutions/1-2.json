@@ -3,7 +3,7 @@
   "level": "1-2",
   "solved": true,
   "start": "spawn",
-  "totalTicks": 1294,
+  "totalTicks": 1252,
   "chambers": [
     {
       "id": "1-2-c1",
@@ -87,7 +87,7 @@
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 4, "simTicks": 1752, "deathsEncountered": 13 }
+      "search": { "expansions": 4, "simTicks": 1280, "deathsEncountered": 9 }
     },
     {
       "id": "1-2-c2",
@@ -134,7 +134,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 7, "simTicks": 2756, "deathsEncountered": 27 }
+      "search": { "expansions": 7, "simTicks": 1604, "deathsEncountered": 27 }
     },
     {
       "id": "1-2-c3",
@@ -143,381 +143,26 @@
       "goal": { "kind": "checkpoint", "index": 0, "id": "1-2-cpA" },
       "startTick": 358,
       "solved": true,
-      "endTick": 553,
-      "ticks": 195,
-      "plan": [{ "t": 393, "action": "rope", "anchor": 2, "offset": 2, "release": 457 }],
+      "endTick": 550,
+      "ticks": 192,
+      "plan": [{ "t": 395, "action": "rope", "anchor": 2, "offset": 0, "release": 459 }],
       "windows": [
         {
           "step": 4,
           "action": "rope",
           "event": "press",
-          "tick": 393,
+          "tick": 395,
           "earliest": -33,
-          "latest": 33,
-          "size": 67,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 4,
-          "action": "rope",
-          "event": "release",
-          "tick": 457,
-          "earliest": -4,
-          "latest": 4,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        }
-      ],
-      "tightestWindow": {
-        "step": 4,
-        "action": "rope",
-        "event": "release",
-        "tick": 457,
-        "earliest": -4,
-        "latest": 4,
-        "size": 9,
-        "capped": false,
-        "startClipped": false
-      },
-      "search": { "expansions": 4, "simTicks": 1526, "deathsEncountered": 16 }
-    },
-    {
-      "id": "1-2-c4",
-      "problem": "Chain three anchors across a long red pit: each release sets up the next connection.",
-      "challengeFamily": "multi-anchor",
-      "goal": { "kind": "region", "min": { "x": 116, "y": -6 }, "max": { "x": 137, "y": 11.4 } },
-      "startTick": 553,
-      "solved": true,
-      "endTick": 812,
-      "ticks": 259,
-      "plan": [
-        { "t": 578, "action": "rope", "anchor": 3, "offset": 1, "release": 649 },
-        { "t": 681, "action": "move", "axis": -1 },
-        { "t": 673, "action": "rope", "anchor": 4, "offset": 2, "release": 695 },
-        { "t": 693, "action": "move", "axis": 1 },
-        { "t": 718, "action": "rope", "anchor": 5, "offset": 0, "release": 779 }
-      ],
-      "windows": [
-        {
-          "step": 5,
-          "action": "rope",
-          "event": "press",
-          "tick": 578,
-          "earliest": -25,
-          "latest": 15,
-          "size": 41,
-          "capped": false,
-          "startClipped": true
-        },
-        {
-          "step": 5,
-          "action": "rope",
-          "event": "release",
-          "tick": 649,
-          "earliest": -11,
-          "latest": 9,
-          "size": 21,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 6,
-          "action": "move",
-          "event": "press",
-          "tick": 681,
-          "earliest": -9,
-          "latest": 12,
-          "size": 22,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 7,
-          "action": "rope",
-          "event": "press",
-          "tick": 673,
-          "earliest": -11,
-          "latest": 9,
-          "size": 21,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 7,
-          "action": "rope",
-          "event": "release",
-          "tick": 695,
-          "earliest": -4,
-          "latest": 5,
-          "size": 10,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 8,
-          "action": "move",
-          "event": "press",
-          "tick": 693,
-          "earliest": -12,
-          "latest": 14,
-          "size": 27,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 9,
-          "action": "rope",
-          "event": "press",
-          "tick": 718,
-          "earliest": -13,
-          "latest": 13,
-          "size": 27,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 9,
-          "action": "rope",
-          "event": "release",
-          "tick": 779,
-          "earliest": -30,
-          "latest": 35,
+          "latest": 32,
           "size": 66,
           "capped": false,
           "startClipped": false
-        }
-      ],
-      "tightestWindow": {
-        "step": 7,
-        "action": "rope",
-        "event": "release",
-        "tick": 695,
-        "earliest": -4,
-        "latest": 5,
-        "size": 10,
-        "capped": false,
-        "startClipped": false
-      },
-      "search": { "expansions": 129, "simTicks": 29583, "deathsEncountered": 1132 }
-    },
-    {
-      "id": "1-2-c5",
-      "problem": "A big anchor disc over spikes: aim at its near edge for a rope short enough to clear them.",
-      "challengeFamily": "impact-point",
-      "goal": { "kind": "checkpoint", "index": 1, "id": "1-2-cpB" },
-      "startTick": 812,
-      "solved": true,
-      "endTick": 989,
-      "ticks": 177,
-      "plan": [{ "t": 866, "action": "rope", "anchor": 7, "offset": 2, "release": 929 }],
-      "windows": [
-        {
-          "step": 10,
-          "action": "rope",
-          "event": "press",
-          "tick": 866,
-          "earliest": -11,
-          "latest": 12,
-          "size": 24,
-          "capped": false,
-          "startClipped": false
         },
         {
-          "step": 10,
+          "step": 4,
           "action": "rope",
           "event": "release",
-          "tick": 929,
-          "earliest": -13,
-          "latest": 13,
-          "size": 27,
-          "capped": false,
-          "startClipped": false
-        }
-      ],
-      "tightestWindow": {
-        "step": 10,
-        "action": "rope",
-        "event": "press",
-        "tick": 866,
-        "earliest": -11,
-        "latest": 12,
-        "size": 24,
-        "capped": false,
-        "startClipped": false
-      },
-      "search": { "expansions": 5, "simTicks": 2779, "deathsEncountered": 13 }
-    },
-    {
-      "id": "1-2-c6",
-      "problem": "Two ropes between a spiked ceiling and spiked stalagmites: swing low enough, release high enough.",
-      "challengeFamily": "multi-anchor",
-      "goal": { "kind": "region", "min": { "x": 165, "y": -6 }, "max": { "x": 186, "y": 11.4 } },
-      "startTick": 989,
-      "solved": true,
-      "endTick": 1172,
-      "ticks": 183,
-      "plan": [
-        { "t": 993, "action": "jump", "hold": 49 },
-        { "t": 1037, "action": "move", "axis": -1 },
-        { "t": 1037, "action": "rope", "anchor": 8, "offset": 1, "release": 1071 },
-        { "t": 1069, "action": "move", "axis": 1 },
-        { "t": 1116, "action": "rope", "anchor": 9, "offset": 1, "release": 1150 },
-        { "t": 1136, "action": "rope", "anchor": 9, "offset": 1, "release": 1167 }
-      ],
-      "windows": [
-        {
-          "step": 11,
-          "action": "jump",
-          "event": "press",
-          "tick": 993,
-          "earliest": -3,
-          "latest": 2,
-          "size": 6,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 11,
-          "action": "jump",
-          "event": "release",
-          "tick": 1042,
-          "earliest": -29,
-          "latest": 29,
-          "size": 59,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 12,
-          "action": "move",
-          "event": "press",
-          "tick": 1037,
-          "earliest": -3,
-          "latest": 5,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 13,
-          "action": "rope",
-          "event": "press",
-          "tick": 1037,
-          "earliest": -3,
-          "latest": 4,
-          "size": 8,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 13,
-          "action": "rope",
-          "event": "release",
-          "tick": 1071,
-          "earliest": -2,
-          "latest": 2,
-          "size": 5,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 14,
-          "action": "move",
-          "event": "press",
-          "tick": 1069,
-          "earliest": -8,
-          "latest": 6,
-          "size": 15,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 15,
-          "action": "rope",
-          "event": "press",
-          "tick": 1116,
-          "earliest": -1,
-          "latest": 1,
-          "size": 3,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 15,
-          "action": "rope",
-          "event": "release",
-          "tick": 1150,
-          "earliest": -31,
-          "latest": 40,
-          "size": 72,
-          "capped": true,
-          "startClipped": false
-        },
-        {
-          "step": 16,
-          "action": "rope",
-          "event": "press",
-          "tick": 1136,
-          "earliest": -21,
-          "latest": 30,
-          "size": 52,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 16,
-          "action": "rope",
-          "event": "release",
-          "tick": 1167,
-          "earliest": -30,
-          "latest": 40,
-          "size": 71,
-          "capped": true,
-          "startClipped": false
-        }
-      ],
-      "tightestWindow": {
-        "step": 15,
-        "action": "rope",
-        "event": "press",
-        "tick": 1116,
-        "earliest": -1,
-        "latest": 1,
-        "size": 3,
-        "capped": false,
-        "startClipped": false
-      },
-      "search": { "expansions": 80, "simTicks": 39484, "deathsEncountered": 828 }
-    },
-    {
-      "id": "1-2-c7",
-      "problem": "Release onto the short runway, then run straight into the slot.",
-      "challengeFamily": "exit",
-      "goal": { "kind": "exit" },
-      "startTick": 1172,
-      "solved": true,
-      "endTick": 1294,
-      "ticks": 122,
-      "plan": [{ "t": 1192, "action": "rope", "anchor": 10, "offset": 3, "release": 1236 }],
-      "windows": [
-        {
-          "step": 17,
-          "action": "rope",
-          "event": "press",
-          "tick": 1192,
-          "earliest": -20,
-          "latest": 28,
-          "size": 49,
-          "capped": false,
-          "startClipped": true
-        },
-        {
-          "step": 17,
-          "action": "rope",
-          "event": "release",
-          "tick": 1236,
+          "tick": 459,
           "earliest": -5,
           "latest": 5,
           "size": 11,
@@ -526,19 +171,328 @@
         }
       ],
       "tightestWindow": {
-        "step": 17,
+        "step": 4,
         "action": "rope",
         "event": "release",
-        "tick": 1236,
+        "tick": 459,
         "earliest": -5,
         "latest": 5,
         "size": 11,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 3, "simTicks": 1954, "deathsEncountered": 6 }
+      "search": { "expansions": 4, "simTicks": 954, "deathsEncountered": 17 }
+    },
+    {
+      "id": "1-2-c4",
+      "problem": "Chain three anchors across a long red pit: each release sets up the next connection.",
+      "challengeFamily": "multi-anchor",
+      "goal": { "kind": "region", "min": { "x": 116, "y": -6 }, "max": { "x": 137, "y": 11.4 } },
+      "startTick": 550,
+      "solved": true,
+      "endTick": 766,
+      "ticks": 216,
+      "plan": [
+        { "t": 550, "action": "jump", "hold": 46 },
+        { "t": 599, "action": "rope", "anchor": 3, "offset": 0, "release": 622 },
+        { "t": 667, "action": "rope", "anchor": 6, "offset": 0, "release": 708 }
+      ],
+      "windows": [
+        {
+          "step": 5,
+          "action": "jump",
+          "event": "press",
+          "tick": 550,
+          "earliest": 0,
+          "latest": 1,
+          "size": 2,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 5,
+          "action": "jump",
+          "event": "release",
+          "tick": 596,
+          "earliest": -24,
+          "latest": 26,
+          "size": 51,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 599,
+          "earliest": -1,
+          "latest": 1,
+          "size": 3,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "release",
+          "tick": 622,
+          "earliest": -1,
+          "latest": 0,
+          "size": 2,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "press",
+          "tick": 667,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "release",
+          "tick": 708,
+          "earliest": -30,
+          "latest": 29,
+          "size": 60,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 5,
+        "action": "jump",
+        "event": "press",
+        "tick": 550,
+        "earliest": 0,
+        "latest": 1,
+        "size": 2,
+        "capped": false,
+        "startClipped": true
+      },
+      "search": { "expansions": 6, "simTicks": 1683, "deathsEncountered": 16 }
+    },
+    {
+      "id": "1-2-c5",
+      "problem": "A big anchor disc over spikes: aim at its near edge for a rope short enough to clear them.",
+      "challengeFamily": "impact-point",
+      "goal": { "kind": "checkpoint", "index": 1, "id": "1-2-cpB" },
+      "startTick": 766,
+      "solved": true,
+      "endTick": 939,
+      "ticks": 173,
+      "plan": [
+        { "t": 815, "action": "jump", "hold": 22 },
+        { "t": 829, "action": "rope", "anchor": 7, "offset": 0, "release": 889 }
+      ],
+      "windows": [
+        {
+          "step": 8,
+          "action": "jump",
+          "event": "press",
+          "tick": 815,
+          "earliest": -5,
+          "latest": 12,
+          "size": 18,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "jump",
+          "event": "release",
+          "tick": 837,
+          "earliest": -21,
+          "latest": 40,
+          "size": 62,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "press",
+          "tick": 829,
+          "earliest": -8,
+          "latest": 8,
+          "size": 17,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "release",
+          "tick": 889,
+          "earliest": -26,
+          "latest": 26,
+          "size": 53,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 9,
+        "action": "rope",
+        "event": "press",
+        "tick": 829,
+        "earliest": -8,
+        "latest": 8,
+        "size": 17,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 5, "simTicks": 1640, "deathsEncountered": 10 }
+    },
+    {
+      "id": "1-2-c6",
+      "problem": "Two ropes between a spiked ceiling and spiked stalagmites: swing low enough, release high enough.",
+      "challengeFamily": "multi-anchor",
+      "goal": { "kind": "region", "min": { "x": 165, "y": -6 }, "max": { "x": 186, "y": 11.4 } },
+      "startTick": 939,
+      "solved": true,
+      "endTick": 1129,
+      "ticks": 190,
+      "plan": [
+        { "t": 985, "action": "rope", "anchor": 8, "offset": 0, "release": 1029 },
+        { "t": 1067, "action": "rope", "anchor": 9, "offset": 0, "release": 1096 },
+        { "t": 1085, "action": "rope", "anchor": 9, "offset": 0, "release": 1116 }
+      ],
+      "windows": [
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "press",
+          "tick": 985,
+          "earliest": -6,
+          "latest": 1,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 10,
+          "action": "rope",
+          "event": "release",
+          "tick": 1029,
+          "earliest": -6,
+          "latest": 5,
+          "size": 12,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "press",
+          "tick": 1067,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "release",
+          "tick": 1096,
+          "earliest": -10,
+          "latest": 17,
+          "size": 28,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "rope",
+          "event": "press",
+          "tick": 1085,
+          "earliest": -22,
+          "latest": 10,
+          "size": 33,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "rope",
+          "event": "release",
+          "tick": 1116,
+          "earliest": -30,
+          "latest": 40,
+          "size": 71,
+          "capped": true,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 10,
+        "action": "rope",
+        "event": "press",
+        "tick": 985,
+        "earliest": -6,
+        "latest": 1,
+        "size": 8,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 25, "simTicks": 5435, "deathsEncountered": 111 }
+    },
+    {
+      "id": "1-2-c7",
+      "problem": "Release onto the short runway, then run straight into the slot.",
+      "challengeFamily": "exit",
+      "goal": { "kind": "exit" },
+      "startTick": 1129,
+      "solved": true,
+      "endTick": 1252,
+      "ticks": 123,
+      "plan": [{ "t": 1153, "action": "rope", "anchor": 10, "offset": 0, "release": 1192 }],
+      "windows": [
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "press",
+          "tick": 1153,
+          "earliest": -24,
+          "latest": 24,
+          "size": 49,
+          "capped": false,
+          "startClipped": true
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "release",
+          "tick": 1192,
+          "earliest": -4,
+          "latest": 3,
+          "size": 8,
+          "capped": false,
+          "startClipped": false
+        }
+      ],
+      "tightestWindow": {
+        "step": 13,
+        "action": "rope",
+        "event": "release",
+        "tick": 1192,
+        "earliest": -4,
+        "latest": 3,
+        "size": 8,
+        "capped": false,
+        "startClipped": false
+      },
+      "search": { "expansions": 85, "simTicks": 11678, "deathsEncountered": 407 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-2\",\"s\":0,\"n\":1294,\"i\":[[0,[\"m\",1]],[9,\"j\"],[36,\"J\"],[72,[\"a\",16,2.5],\"r\"],[143,\"R\"],[202,[\"a\",35,1.5],\"r\"],[283,\"R\"],[393,[\"a\",61.22,5.6],\"r\"],[457,\"R\"],[578,[\"a\",85.28,3],\"r\"],[649,\"R\"],[673,[\"a\",95.72,3],\"r\"],[681,[\"m\",-1]],[693,[\"m\",1]],[695,\"R\"],[718,[\"a\",107,3],\"r\"],[779,\"R\"],[866,[\"a\",127.02,2.5],\"r\"],[929,\"R\"],[993,\"j\"],[1037,[\"m\",-1],[\"a\",148.28,3.4],\"r\"],[1042,\"J\"],[1069,[\"m\",1]],[1071,\"R\"],[1116,[\"a\",157.28,3.4],\"r\"],[1136,[\"a\",157.28,3.4],\"r\"],[1150,\"R\"],[1167,\"R\"],[1192,[\"a\",169.5,3.22],\"r\"],[1236,\"R\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-2\",\"s\":0,\"n\":1252,\"i\":[[0,[\"m\",1]],[9,\"j\"],[36,\"J\"],[72,[\"a\",16,2.5],\"r\"],[143,\"R\"],[202,[\"a\",35,1.5],\"r\"],[283,\"R\"],[395,[\"a\",61.5,5.6],\"r\"],[459,\"R\"],[550,\"j\"],[596,\"J\"],[599,[\"a\",85,3],\"r\"],[622,\"R\"],[667,[\"a\",100,-3],\"r\"],[708,\"R\"],[815,\"j\"],[829,[\"a\",128,2.5],\"r\"],[837,\"J\"],[889,\"R\"],[985,[\"a\",148,3.4],\"r\"],[1029,\"R\"],[1067,[\"a\",157,3.4],\"r\"],[1085,[\"a\",157,3.4],\"r\"],[1096,\"R\"],[1116,\"R\"],[1153,[\"a\",169.5,3.5],\"r\"],[1192,\"R\"]]}"
 }

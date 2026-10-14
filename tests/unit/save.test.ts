@@ -55,6 +55,8 @@ describe('save schema (GMR-48)', () => {
     );
     expect(out?.levels).toEqual({
       ok: {
+        bestInputDevice: 'unknown',
+        lastInputDevice: 'unknown',
         cleared: true,
         bestTicks: null,
         fewestDeaths: null,
@@ -164,7 +166,7 @@ describe('personal bests (GMR-103)', () => {
     await a.flush();
     const b = new SaveStore(storage);
     const data = await b.load();
-    expect(data.pbs['1-1']).toEqual(pb);
+    expect(data.pbs['1-1']).toEqual({ ...pb, inputDevice: 'unknown' });
     expect(data.settings.ghost).toBe(false);
     b.clearPersonalBest('1-1');
     expect(b.current.pbs).toEqual({});
@@ -178,7 +180,7 @@ describe('personal bests (GMR-103)', () => {
       ghosts: { '1-1': '{"v":1}' },
     };
     const out = decodeSave(JSON.stringify(v1));
-    expect(out?.version).toBe(3);
+    expect(out?.version).toBe(SAVE_VERSION);
     expect(out?.pbs).toEqual({});
     expect(out && 'ghosts' in out).toBe(false);
     expect(out?.levels['1-1']).toMatchObject({
@@ -210,7 +212,7 @@ describe('personal bests (GMR-103)', () => {
 });
 
 describe('keyboard bindings save migration (GMR-50)', () => {
-  it('migrates a v2 save into v3 and retains the existing settings', () => {
+  it('migrates a v2 save into the current version and retains the existing settings', () => {
     const old = {
       version: 2,
       levels: {},
@@ -218,7 +220,7 @@ describe('keyboard bindings save migration (GMR-50)', () => {
       pbs: {},
     };
     const out = decodeSave(JSON.stringify(old));
-    expect(out?.version).toBe(3);
+    expect(out?.version).toBe(SAVE_VERSION);
     expect(out?.settings).toMatchObject({
       masterVolume: 0.2,
       reducedMotion: 'on',

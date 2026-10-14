@@ -4,10 +4,12 @@ import {
   encodeReplay,
   REPLAY_VERSION,
   ReplayIntentSource,
+  SIM_DT,
   type ReplayInput,
 } from '../../core';
 import { parseLevel, parseRuntimeTuning, type RuntimeTuning } from '../../content';
-import type { LevelDef } from '../../sim';
+import { anchorPathState, type LevelDef } from '../../sim';
+import { neutralAmbiguityNote } from './diagnostics';
 import { chamberSpecs, goalReached, inside, type ChamberGoal, type ChamberSpec } from './goals';
 import { PlanSource, type PlanStep } from './plan';
 import { DEFAULT_SEARCH, searchChamber, type SearchOptions } from './search';
@@ -227,7 +229,7 @@ export function solveLevel(
   let totalTicks: number | null = null;
   if (solved && start === 'spawn') {
     totalTicks = world.tick;
-    replay = recordReplay(level, tuning, steps, totalTicks, todo);
+    replay = recordReplay(level, tuning, steps, totalTicks, todo, notes);
   }
   return {
     format: SOLVER_VERSION,
@@ -260,6 +262,7 @@ function recordReplay(
   steps: readonly PlanStep[],
   ticks: number,
   specs: readonly ChamberSpec[],
+  notes: string[],
 ): string {
   const world = World.create(level, tuning);
   const plan = new PlanSource(steps, level);
@@ -267,6 +270,30 @@ function recordReplay(
   const recorder = {
     intents: (tick: number, before: Parameters<PlanSource['intents']>[1]) => {
       const intents = plan.intents(tick, before);
+      if (intents.some((intent) => intent.type === 'ropePress')) {
+        const snap = before();
+        const move = intents.find((intent) => intent.type === 'move');
+        const facing =
+          move?.type === 'move' && move.axis !== 0
+            ? move.axis > 0
+              ? 1
+              : -1
+            : snap.player.facing;
+        const note = neutralAmbiguityNote(
+          tick,
+          snap.player.position,
+          facing,
+          level.anchors.map((anchor, i) => ({
+            position: anchorPathState(anchor, snap.attemptTick * SIM_DT).position,
+            radius: anchor.radius,
+            usable: snap.anchorStates[i]?.active !== false && snap.anchorStates[i]?.spent !== true,
+          })),
+          level.anchors.map((anchor) => anchor.id),
+          tuning.sim.rope,
+          (from, to) => world.raycast(from, to),
+        );
+        if (note) notes.push(note);
+      }
       if (intents.length > 0) inputs.push({ tick, intents });
       return intents;
     },

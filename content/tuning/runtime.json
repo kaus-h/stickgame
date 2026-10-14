@@ -24,6 +24,8 @@
       "minLength": 0.8,
       "maxLength": 11,
       "selectRadius": 1.1,
+      "stickinessDistance": 0.5,
+      "stickinessAngleDegrees": 12,
       "steerAccel": 6,
       "steerEnergyHeight": 0.6,
       "catchRetention": 1

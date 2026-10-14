@@ -120,7 +120,7 @@ export class DebugOverlay {
     }
 
     // Target: aim to impact, with the selection result.
-    if (s.target?.impact && s.aim) {
+    if (s.target?.impact) {
       g.lineStyle(1, s.target.valid ? GREEN : RED, 0.8);
       g.lineBetween(p.x, p.y, m(s.target.impact.x), m(s.target.impact.y));
     }

@@ -7,6 +7,8 @@ import { patrollerState, sweepPatroller, type EnemySnapshot, type EnemyContact }
 import { levelSegments, type LevelDef, type PatrollerDef } from './level';
 import {
   resolveTarget,
+  resolveAnchor,
+  resolvePointTarget,
   STANDARD_ASSIST,
   type RopeInvalidReason,
   type TargetAssist,
@@ -67,6 +69,8 @@ export interface SimSnapshot {
   readonly anchorStates: readonly AnchorStateSnapshot[];
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
+  /** Controller selection state, shared by all platforms and visible in debug tools. */
+  readonly selection: { readonly mode: 'mouse' | 'point' | 'touch'; readonly direction: Vec2; readonly anchor: number | null };
   /** Contacts that began during the last step (debug and feedback; never gameplay input). */
   readonly contacts: readonly ContactSnapshot[];
   /** The most recent death (survives the reset it caused). */
@@ -261,6 +265,11 @@ export class Simulation {
   private jumpHeld = false;
   private wasGrounded = false;
   private aim: Vec2 | null = null;
+  private selectionMode: 'mouse' | 'point' | 'touch' = 'mouse';
+  private pointDirection: Vec2 = vec2(0, 0);
+  private highlightedAnchor: number | null = null;
+  private touchAnchor: number | null = null;
+  private touchPickPending = false;
   private rope: {
     id: number;
     anchor: number;
@@ -321,6 +330,7 @@ export class Simulation {
     this.jumpHeld = false;
     this.wasGrounded = false;
     this.aim = null;
+    this.clearSelection();
     this.rope = null;
     this.ropeActions = [];
     this.createLevelBodies();
@@ -354,6 +364,7 @@ export class Simulation {
     else if (intents.some((i) => i.type === 'respawn')) this.respawnAtCheckpoint();
 
     this.moveAnchors();
+    this.updateHighlight();
     this.applyRopeActions();
     this.control();
     const beforePhysics = this.physics.bodyState(this.body);
@@ -370,6 +381,7 @@ export class Simulation {
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
     // After the tick advances, so a snapshot never shows an off anchor still holding the rope.
     this.expireTimedRope();
+    this.updateHighlight();
   }
 
   /** Back to the authored initial state inside the same physics world. */
@@ -401,7 +413,11 @@ export class Simulation {
       { type: 'move', axis: this.axis },
       this.jumpHeld ? { type: 'jumpPress' } : { type: 'jumpRelease' },
     ];
-    if (this.aim) out.push({ type: 'ropeAim', target: this.aim });
+    if (this.selectionMode === 'point') out.push({ type: 'ropePoint', direction: this.pointDirection });
+    else if (this.selectionMode === 'touch') {
+      const position = this.touchAnchor === null ? this.aim : this.physics.anchorPosition(this.anchorIds[this.touchAnchor]!);
+      if (position) out.push({ type: 'ropeTouch', target: position });
+    } else if (this.aim) out.push({ type: 'ropeAim', target: this.aim });
     return out;
   }
 
@@ -414,6 +430,7 @@ export class Simulation {
     this.facing = 1;
     this.jumpHeld = false;
     this.aim = null;
+    this.clearSelection();
   }
 
   /** The restart intent: the life ends (unless already finished at the exit), a new run starts. */
@@ -481,6 +498,7 @@ export class Simulation {
     this.rope = null; // resetBodies already removed the physics rope
     this.ropeActions = [];
     this.spent = this.level.anchors.map(() => false);
+    this.highlightedAnchor = null;
     this.events.push({ type: 'reset', tick: this.tickCount });
   }
 
@@ -510,6 +528,7 @@ export class Simulation {
         spent: this.spent[i] === true,
       })),
       aim: this.aim,
+      selection: { mode: this.selectionMode, direction: this.pointDirection, anchor: this.highlightedAnchor },
       lastDeath: this.lastDeath,
       runTick: this.runTicks,
       lifeTick: this.attemptTicks,
@@ -548,19 +567,39 @@ export class Simulation {
   }
 
   private target(player: Vec2, anchors: readonly Vec2[]): TargetResolution | null {
-    if (!this.aim) return null;
-    return resolveTarget(
-      player,
-      this.aim,
-      anchors.map((position, i) => ({
+    const list = anchors.map((position, i) => ({
         position,
         radius: (this.level.anchors[i] as LevelDef['anchors'][number]).radius,
         usable: this.usable(i),
-      })),
-      this.tuning.rope,
-      (from, to) => this.physics.raycast(from, to),
-      this.assist,
-    );
+      }));
+    const raycast = (from: Vec2, to: Vec2) => this.physics.raycast(from, to);
+    if (this.selectionMode === 'point') return resolvePointTarget(player, this.pointDirection,
+      this.facing, list, this.tuning.rope, raycast, this.highlightedAnchor);
+    if (this.selectionMode === 'touch') {
+      if (this.touchPickPending && this.aim) return resolveTarget(player, this.aim, list,
+        { ...this.tuning.rope, selectRadius: this.assist.wideSelectRadius || 1.8 }, raycast);
+      return resolveAnchor(player, this.touchAnchor ?? -1, list, this.tuning.rope, raycast);
+    }
+    if (!this.aim) return null;
+    return resolveTarget(player, this.aim, list, this.tuning.rope, raycast, this.assist, this.highlightedAnchor);
+  }
+
+  private clearSelection(): void {
+    this.selectionMode = 'mouse';
+    this.pointDirection = vec2(0, 0);
+    this.highlightedAnchor = null;
+    this.touchAnchor = null;
+    this.touchPickPending = false;
+  }
+
+  private updateHighlight(): void {
+    const target = this.target(this.physics.bodyState(this.body).position,
+      this.anchorIds.map(id => this.physics.anchorPosition(id)));
+    if (this.touchPickPending) {
+      this.touchAnchor = target?.anchor ?? null;
+      this.touchPickPending = false;
+    }
+    this.highlightedAnchor = target?.valid ? target.anchor : null;
   }
 
   // --- intents and control ---------------------------------------------------------------------
@@ -580,7 +619,27 @@ export class Simulation {
         this.cutJump();
         break;
       case 'ropeAim':
+        if (this.selectionMode !== 'mouse') this.highlightedAnchor = null;
+        this.selectionMode = 'mouse';
         this.aim = intent.target;
+        break;
+      case 'ropePoint':
+        if (this.selectionMode !== 'point') this.highlightedAnchor = null;
+        this.selectionMode = 'point';
+        this.pointDirection = intent.direction;
+        this.aim = null;
+        break;
+      case 'ropeNeutral':
+        if (this.selectionMode !== 'point') this.highlightedAnchor = null;
+        this.selectionMode = 'point';
+        this.pointDirection = vec2(0, 0);
+        this.aim = null;
+        break;
+      case 'ropeTouch':
+        this.selectionMode = 'touch';
+        this.aim = intent.target;
+        this.highlightedAnchor = null;
+        this.touchPickPending = true;
         break;
       case 'ropePress':
         this.ropeActions.push('press');

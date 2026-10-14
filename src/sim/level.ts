@@ -11,14 +11,13 @@ export interface SolidDef {
 }
 
 /**
- * A rope anchor: a ring whose disc is the impact geometry. Where the aim lands on the disc is the
- * mechanical impact point (doc 04: selection tolerance is separate from the impact point).
+ * A rope anchor: a ring selected using its radius, always attached at its current centre.
  * With `path`, it moves back and forth between `position` and `path.to` (see anchorPath.ts).
  */
 export interface AnchorDef {
   readonly id: string;
   readonly position: Vec2;
-  /** Impact disc radius, m. */
+  /** Visible ring and selection disc radius, m. */
   readonly radius: number;
   readonly path?: AnchorPathDef;
   /** Tagged required shot's take-off point, used by authoring reach/visibility checks. */

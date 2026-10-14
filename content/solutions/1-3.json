@@ -3,7 +3,7 @@
   "level": "1-3",
   "solved": true,
   "start": "spawn",
-  "totalTicks": 1308,
+  "totalTicks": 1361,
   "chambers": [
     {
       "id": "1-3-c1",
@@ -17,9 +17,9 @@
       "plan": [
         { "t": 0, "action": "move", "axis": 1 },
         { "t": 48, "action": "jump", "hold": 24 },
-        { "t": 72, "action": "move", "axis": -1 },
-        { "t": 76, "action": "move", "axis": 0 },
-        { "t": 108, "action": "move", "axis": 1 }
+        { "t": 80, "action": "move", "axis": -1 },
+        { "t": 84, "action": "move", "axis": 0 },
+        { "t": 116, "action": "move", "axis": 1 }
       ],
       "windows": [
         {
@@ -28,8 +28,8 @@
           "event": "press",
           "tick": 0,
           "earliest": 0,
-          "latest": 6,
-          "size": 7,
+          "latest": 12,
+          "size": 13,
           "capped": false,
           "startClipped": true
         },
@@ -59,10 +59,10 @@
           "step": 2,
           "action": "move",
           "event": "press",
-          "tick": 72,
+          "tick": 80,
           "earliest": -3,
-          "latest": 0,
-          "size": 4,
+          "latest": 2,
+          "size": 6,
           "capped": false,
           "startClipped": false
         },
@@ -70,10 +70,10 @@
           "step": 3,
           "action": "move",
           "event": "press",
-          "tick": 76,
-          "earliest": -1,
+          "tick": 84,
+          "earliest": -2,
           "latest": 4,
-          "size": 6,
+          "size": 7,
           "capped": false,
           "startClipped": false
         },
@@ -81,10 +81,10 @@
           "step": 4,
           "action": "move",
           "event": "press",
-          "tick": 108,
-          "earliest": -25,
+          "tick": 116,
+          "earliest": -32,
           "latest": 40,
-          "size": 66,
+          "size": 73,
           "capped": true,
           "startClipped": false
         }
@@ -100,7 +100,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 19, "simTicks": 2636, "deathsEncountered": 28 }
+      "search": { "expansions": 7, "simTicks": 1517, "deathsEncountered": 5 }
     },
     {
       "id": "1-3-c2",
@@ -109,21 +109,21 @@
       "goal": { "kind": "region", "min": { "x": 56, "y": -8 }, "max": { "x": 80, "y": 16 } },
       "startTick": 184,
       "solved": true,
-      "endTick": 455,
-      "ticks": 271,
+      "endTick": 456,
+      "ticks": 272,
       "plan": [
-        { "t": 245, "action": "jump", "hold": 42 },
-        { "t": 272, "action": "rope", "anchor": 0, "offset": 1, "release": 310 }
+        { "t": 248, "action": "jump", "hold": 33 },
+        { "t": 269, "action": "rope", "anchor": 0, "offset": 0, "release": 311 }
       ],
       "windows": [
         {
           "step": 5,
           "action": "jump",
           "event": "press",
-          "tick": 245,
-          "earliest": -3,
-          "latest": 20,
-          "size": 24,
+          "tick": 248,
+          "earliest": -13,
+          "latest": 11,
+          "size": 25,
           "capped": false,
           "startClipped": false
         },
@@ -131,10 +131,10 @@
           "step": 5,
           "action": "jump",
           "event": "release",
-          "tick": 287,
-          "earliest": -22,
+          "tick": 281,
+          "earliest": -30,
           "latest": 40,
-          "size": 63,
+          "size": 71,
           "capped": true,
           "startClipped": false
         },
@@ -142,10 +142,10 @@
           "step": 6,
           "action": "rope",
           "event": "press",
-          "tick": 272,
-          "earliest": -3,
-          "latest": 4,
-          "size": 8,
+          "tick": 269,
+          "earliest": -4,
+          "latest": 13,
+          "size": 18,
           "capped": false,
           "startClipped": false
         },
@@ -153,10 +153,10 @@
           "step": 6,
           "action": "rope",
           "event": "release",
-          "tick": 310,
-          "earliest": -9,
-          "latest": 9,
-          "size": 19,
+          "tick": 311,
+          "earliest": -11,
+          "latest": 12,
+          "size": 24,
           "capped": false,
           "startClipped": false
         }
@@ -165,34 +165,34 @@
         "step": 6,
         "action": "rope",
         "event": "press",
-        "tick": 272,
-        "earliest": -3,
-        "latest": 4,
-        "size": 8,
+        "tick": 269,
+        "earliest": -4,
+        "latest": 13,
+        "size": 18,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 11, "simTicks": 5350, "deathsEncountered": 24 }
+      "search": { "expansions": 6, "simTicks": 1990, "deathsEncountered": 8 }
     },
     {
       "id": "1-3-c3",
-      "problem": "The first moving anchor: wait for it, catch it and ride it across.",
+      "problem": "The first moving anchor: jump to catch it and ride it across.",
       "challengeFamily": "moving-anchor",
       "goal": { "kind": "checkpoint", "index": 0, "id": "1-3-cpA" },
-      "startTick": 455,
+      "startTick": 456,
       "solved": true,
       "endTick": 638,
-      "ticks": 183,
+      "ticks": 182,
       "plan": [
-        { "t": 458, "action": "jump", "hold": 42 },
-        { "t": 491, "action": "rope", "anchor": 1, "offset": 0, "release": 540 }
+        { "t": 459, "action": "jump", "hold": 42 },
+        { "t": 492, "action": "rope", "anchor": 1, "offset": 0, "release": 540 }
       ],
       "windows": [
         {
           "step": 7,
           "action": "jump",
           "event": "press",
-          "tick": 458,
+          "tick": 459,
           "earliest": -3,
           "latest": 3,
           "size": 7,
@@ -203,7 +203,7 @@
           "step": 7,
           "action": "jump",
           "event": "release",
-          "tick": 500,
+          "tick": 501,
           "earliest": -40,
           "latest": 40,
           "size": 81,
@@ -214,7 +214,7 @@
           "step": 8,
           "action": "rope",
           "event": "press",
-          "tick": 491,
+          "tick": 492,
           "earliest": -21,
           "latest": 22,
           "size": 44,
@@ -237,14 +237,14 @@
         "step": 7,
         "action": "jump",
         "event": "press",
-        "tick": 458,
+        "tick": 459,
         "earliest": -3,
         "latest": 3,
         "size": 7,
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 5, "simTicks": 1898, "deathsEncountered": 6 }
+      "search": { "expansions": 4, "simTicks": 1002, "deathsEncountered": 6 }
     },
     {
       "id": "1-3-c4",
@@ -253,29 +253,29 @@
       "goal": { "kind": "region", "min": { "x": 104, "y": -8 }, "max": { "x": 126, "y": 16 } },
       "startTick": 638,
       "solved": true,
-      "endTick": 816,
-      "ticks": 178,
-      "plan": [{ "t": 670, "action": "rope", "anchor": 2, "offset": 1, "release": 718 }],
+      "endTick": 813,
+      "ticks": 175,
+      "plan": [{ "t": 689, "action": "rope", "anchor": 2, "offset": 0, "release": 715 }],
       "windows": [
         {
           "step": 9,
           "action": "rope",
           "event": "press",
-          "tick": 670,
-          "earliest": -32,
-          "latest": 22,
-          "size": 55,
+          "tick": 689,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
           "capped": false,
-          "startClipped": true
+          "startClipped": false
         },
         {
           "step": 9,
           "action": "rope",
           "event": "release",
-          "tick": 718,
-          "earliest": -5,
-          "latest": 5,
-          "size": 11,
+          "tick": 715,
+          "earliest": -10,
+          "latest": 10,
+          "size": 21,
           "capped": false,
           "startClipped": false
         }
@@ -283,32 +283,32 @@
       "tightestWindow": {
         "step": 9,
         "action": "rope",
-        "event": "release",
-        "tick": 718,
-        "earliest": -5,
-        "latest": 5,
-        "size": 11,
+        "event": "press",
+        "tick": 689,
+        "earliest": -4,
+        "latest": 4,
+        "size": 9,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 5, "simTicks": 3488, "deathsEncountered": 6 }
+      "search": { "expansions": 5, "simTicks": 1756, "deathsEncountered": 7 }
     },
     {
       "id": "1-3-c5",
       "problem": "Intercept a fast moving anchor that is only in reach for part of its run.",
       "challengeFamily": "moving-anchor-intercept",
       "goal": { "kind": "checkpoint", "index": 1, "id": "1-3-cpB" },
-      "startTick": 816,
+      "startTick": 813,
       "solved": true,
-      "endTick": 979,
-      "ticks": 163,
-      "plan": [{ "t": 820, "action": "rope", "anchor": 3, "offset": 1, "release": 927 }],
+      "endTick": 982,
+      "ticks": 169,
+      "plan": [{ "t": 817, "action": "rope", "anchor": 3, "offset": 0, "release": 925 }],
       "windows": [
         {
           "step": 10,
           "action": "rope",
           "event": "press",
-          "tick": 820,
+          "tick": 817,
           "earliest": -4,
           "latest": 5,
           "size": 10,
@@ -319,10 +319,10 @@
           "step": 10,
           "action": "rope",
           "event": "release",
-          "tick": 927,
-          "earliest": -18,
-          "latest": 18,
-          "size": 37,
+          "tick": 925,
+          "earliest": -12,
+          "latest": 13,
+          "size": 26,
           "capped": false,
           "startClipped": false
         }
@@ -331,31 +331,31 @@
         "step": 10,
         "action": "rope",
         "event": "press",
-        "tick": 820,
+        "tick": 817,
         "earliest": -4,
         "latest": 5,
         "size": 10,
         "capped": false,
         "startClipped": true
       },
-      "search": { "expansions": 4, "simTicks": 1401, "deathsEncountered": 8 }
+      "search": { "expansions": 5, "simTicks": 1331, "deathsEncountered": 13 }
     },
     {
       "id": "1-3-c6",
       "problem": "Time the release to fly into a low pocket between spikes.",
       "challengeFamily": "release",
       "goal": { "kind": "region", "min": { "x": 150, "y": -8 }, "max": { "x": 180, "y": 16 } },
-      "startTick": 979,
+      "startTick": 982,
       "solved": true,
-      "endTick": 1123,
-      "ticks": 144,
-      "plan": [{ "t": 992, "action": "rope", "anchor": 4, "offset": 0, "release": 1058 }],
+      "endTick": 1127,
+      "ticks": 145,
+      "plan": [{ "t": 995, "action": "rope", "anchor": 4, "offset": 0, "release": 1062 }],
       "windows": [
         {
           "step": 11,
           "action": "rope",
           "event": "press",
-          "tick": 992,
+          "tick": 995,
           "earliest": -13,
           "latest": 14,
           "size": 28,
@@ -366,10 +366,10 @@
           "step": 11,
           "action": "rope",
           "event": "release",
-          "tick": 1058,
-          "earliest": -2,
+          "tick": 1062,
+          "earliest": -3,
           "latest": 2,
-          "size": 5,
+          "size": 6,
           "capped": false,
           "startClipped": false
         }
@@ -378,34 +378,48 @@
         "step": 11,
         "action": "rope",
         "event": "release",
-        "tick": 1058,
-        "earliest": -2,
+        "tick": 1062,
+        "earliest": -3,
         "latest": 2,
-        "size": 5,
+        "size": 6,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 4, "simTicks": 1472, "deathsEncountered": 6 }
+      "search": { "expansions": 4, "simTicks": 1177, "deathsEncountered": 6 }
     },
     {
       "id": "1-3-c7",
       "problem": "Stomp the goon for height, catch the moving anchor and drop straight into the shaft.",
       "challengeFamily": "exit",
       "goal": { "kind": "exit" },
-      "startTick": 1123,
+      "startTick": 1127,
       "solved": true,
-      "endTick": 1308,
-      "ticks": 185,
+      "endTick": 1361,
+      "ticks": 234,
       "plan": [
-        { "t": 1130, "action": "jump", "hold": 4 },
-        { "t": 1218, "action": "rope", "anchor": 5, "offset": 1, "release": 1276 }
+        { "t": 1187, "action": "rope", "anchor": 5, "offset": 0, "release": 1278 },
+        { "t": 1283, "action": "move", "axis": -1 },
+        { "t": 1283, "action": "rope", "anchor": 5, "offset": 0, "release": 1328 },
+        { "t": 1319, "action": "move", "axis": 1 },
+        { "t": 1327, "action": "move", "axis": -1 }
       ],
       "windows": [
         {
           "step": 12,
-          "action": "jump",
+          "action": "rope",
           "event": "press",
-          "tick": 1130,
+          "tick": 1187,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "rope",
+          "event": "release",
+          "tick": 1278,
           "earliest": -3,
           "latest": 3,
           "size": 7,
@@ -413,32 +427,54 @@
           "startClipped": false
         },
         {
-          "step": 12,
-          "action": "jump",
-          "event": "release",
-          "tick": 1134,
-          "earliest": -3,
-          "latest": 2,
+          "step": 13,
+          "action": "move",
+          "event": "press",
+          "tick": 1283,
+          "earliest": -1,
+          "latest": 4,
           "size": 6,
           "capped": false,
           "startClipped": false
         },
         {
-          "step": 13,
+          "step": 14,
           "action": "rope",
           "event": "press",
-          "tick": 1218,
-          "earliest": -15,
-          "latest": 15,
-          "size": 31,
+          "tick": 1283,
+          "earliest": 0,
+          "latest": 0,
+          "size": 1,
           "capped": false,
           "startClipped": false
         },
         {
-          "step": 13,
+          "step": 14,
           "action": "rope",
           "event": "release",
-          "tick": 1276,
+          "tick": 1328,
+          "earliest": -14,
+          "latest": 14,
+          "size": 29,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 15,
+          "action": "move",
+          "event": "press",
+          "tick": 1319,
+          "earliest": -4,
+          "latest": 4,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 16,
+          "action": "move",
+          "event": "press",
+          "tick": 1327,
           "earliest": -1,
           "latest": 2,
           "size": 4,
@@ -447,19 +483,19 @@
         }
       ],
       "tightestWindow": {
-        "step": 13,
+        "step": 12,
         "action": "rope",
-        "event": "release",
-        "tick": 1276,
-        "earliest": -1,
-        "latest": 2,
-        "size": 4,
+        "event": "press",
+        "tick": 1187,
+        "earliest": 0,
+        "latest": 0,
+        "size": 1,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 10, "simTicks": 2043, "deathsEncountered": 31 }
+      "search": { "expansions": 1465, "simTicks": 227968, "deathsEncountered": 4991 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-3\",\"s\":0,\"n\":1308,\"i\":[[0,[\"m\",1]],[48,\"j\"],[72,[\"m\",-1],\"J\"],[76,[\"m\",0]],[108,[\"m\",1]],[245,\"j\"],[272,[\"a\",36.78,3],\"r\"],[287,\"J\"],[310,\"R\"],[458,\"j\"],[491,[\"a\",66.61368241596044,-3],\"r\"],[500,\"J\"],[540,\"R\"],[670,[\"a\",88.78,4],\"r\"],[718,\"R\"],[820,[\"a\",107.34973452628603,0],\"r\"],[927,\"R\"],[992,[\"a\",136,-1],\"r\"],[1058,\"R\"],[1130,\"j\"],[1134,\"J\"],[1218,[\"a\",166.4906705423352,-1],\"r\"],[1276,\"R\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-3\",\"s\":0,\"n\":1361,\"i\":[[0,[\"m\",1]],[48,\"j\"],[72,\"J\"],[80,[\"m\",-1]],[84,[\"m\",0]],[116,[\"m\",1]],[248,\"j\"],[269,[\"a\",36.5,3],\"r\"],[281,\"J\"],[311,\"R\"],[459,\"j\"],[492,[\"a\",66.54969595899476,-3],\"r\"],[501,\"J\"],[540,\"R\"],[689,[\"a\",88.5,4],\"r\"],[715,\"R\"],[817,[\"a\",106.85925360644313,0],\"r\"],[925,\"R\"],[995,[\"a\",136,-1],\"r\"],[1062,\"R\"],[1187,[\"a\",166.11051229960702,-1],\"r\"],[1278,\"R\"],[1283,[\"m\",-1],[\"a\",169.5003062401483,-1],\"r\"],[1319,[\"m\",1]],[1327,[\"m\",-1]],[1328,\"R\"]]}"
 }

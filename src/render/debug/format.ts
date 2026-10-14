@@ -59,6 +59,7 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
     t
       ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}${t.snapped ? ' SNAPPED' : ''}  assist ${s.assist}`
       : `target —  assist ${s.assist}`,
+    `selection ${s.selection.mode}  point ${v2(s.selection.direction)}  highlight ${s.selection.anchor ?? '—'}`,
     anchorLine(s),
     s.enemies.length
       ? `enemies ${s.enemies.map((e) => `${e.id} ${e.alive ? 'alive' : 'defeated'} at ${v2(e.position)} size ${v2(e.size)} v ${v2(e.velocity)} facing ${String(e.facing)}`).join(' | ')}`

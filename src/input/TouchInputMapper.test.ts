@@ -14,7 +14,7 @@ function setup(options: Partial<TouchOptions> = {}, width = 844, height = 390) {
   const mapper = new TouchInputMapper(
     (i) => out.push(i),
     (x, y) => vec2(x / 50 + camera.x, y / 50 + camera.y),
-    options,
+    { scheme: 'direct-touch', ...options }, // legacy GMR-27 cases remain explicit
   );
   mapper.setViewport(width, height);
   const at = (id: TouchControlId) => {
@@ -28,6 +28,76 @@ function setup(options: Partial<TouchOptions> = {}, width = 844, height = 390) {
 }
 
 const PLAY = { x: 520, y: 90 }; // upper middle: not a control, not the move zone
+
+describe('TouchInputMapper: targeting v2', () => {
+  it('button mode initializes neutral, picks on world touch, then fires only from Rope', () => {
+    const { mapper, take, at, camera } = setup({ scheme: 'button' });
+    mapper.pointerDown(1, PLAY.x, PLAY.y);
+    expect(take()).toEqual([
+      { type: 'ropeNeutral' },
+      { type: 'ropeTouch', target: vec2(PLAY.x / 50, PLAY.y / 50) },
+    ]);
+    mapper.pointerMove(1, PLAY.x + 100, PLAY.y + 100);
+    mapper.pointerUp(1);
+    camera.x = 10;
+    mapper.beforeTick();
+    expect(take()).toEqual([]);
+    const rope = at('rope');
+    mapper.pointerDown(2, rope.x, rope.y);
+    expect(take()).toEqual([{ type: 'ropePress' }]);
+    mapper.pointerCancel(2);
+    expect(take()).toEqual([{ type: 'ropeRelease' }]);
+  });
+
+  it('tap mode selects and fires at down, never re-aims while holding, releases on lift', () => {
+    const { mapper, take, camera } = setup({ scheme: 'tap' });
+    mapper.pointerDown(1, PLAY.x, PLAY.y);
+    expect(take()).toEqual([
+      { type: 'ropeNeutral' },
+      { type: 'ropeTouch', target: vec2(PLAY.x / 50, PLAY.y / 50) },
+      { type: 'ropePress' },
+    ]);
+    mapper.pointerMove(1, 600, 150);
+    camera.x = 3;
+    mapper.beforeTick();
+    expect(take()).toEqual([]);
+    mapper.pointerUp(1);
+    expect(take()).toEqual([{ type: 'ropeRelease' }]);
+  });
+
+  it('button mode supports independent move, jump and rope holds; switching releases them', () => {
+    const { mapper, take, at } = setup({ scheme: 'button' });
+    mapper.activate();
+    take();
+    for (const [id, control] of [
+      [1, 'right'],
+      [2, 'jump'],
+      [3, 'rope'],
+    ] as const) {
+      const c = at(control);
+      mapper.pointerDown(id, c.x, c.y);
+    }
+    expect(take()).toEqual([
+      { type: 'move', axis: 1 },
+      { type: 'jumpPress' },
+      { type: 'ropePress' },
+    ]);
+    mapper.setScheme('tap');
+    expect(take()).toEqual([
+      { type: 'jumpRelease' },
+      { type: 'ropeRelease' },
+      { type: 'move', axis: 0 },
+      { type: 'ropeNeutral' },
+    ]);
+  });
+
+  it('new adapters default to button mode with a visible Rope control', () => {
+    const mapper = new TouchInputMapper(() => undefined, vec2);
+    mapper.setViewport(844, 390);
+    expect(mapper.options.scheme).toBe('button');
+    expect(mapper.layout().controls.some((c) => c.id === 'rope')).toBe(true);
+  });
+});
 
 describe('TouchInputMapper: direct-touch', () => {
   it('overlapping move, jump and rope on three fingers produce independent intents', () => {

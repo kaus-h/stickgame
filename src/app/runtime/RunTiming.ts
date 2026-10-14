@@ -4,6 +4,7 @@ import {
   ReplayError,
   type AssistMode,
   type Intent,
+  type InputDevice,
   type Replay,
   type ReplayInput,
 } from '../../core';
@@ -30,6 +31,7 @@ export interface ValidPb {
 
 /** Everything the results screen and the save need about a finished run (GMR-103). */
 export interface RunSummary {
+  readonly inputDevice: InputDevice;
   readonly runTicks: number;
   /** Deaths in this run (since the last restart). */
   readonly deaths: number;
@@ -49,6 +51,8 @@ export interface RunSummary {
 }
 
 export interface RunTimingDeps {
+  /** Runtime's active hardware adapter; tags runs without affecting playback. */
+  readonly inputDevice?: () => InputDevice;
   readonly tuning: SimTuning;
   readonly level: LevelDef;
   /** A physics world of the ghost's own; the live simulation's world is never shared. */
@@ -301,6 +305,7 @@ export class RunTiming {
           build: this.deps.build,
           level: this.level.id,
           seed: 0,
+          inputDevice: this.deps.inputDevice?.() ?? 'unknown',
           ...(this.assist !== 'standard' ? { assist: this.assist } : {}),
           ticks: runTicks,
           inputs: this.inputs.slice(),
@@ -316,6 +321,7 @@ export class RunTiming {
     };
     const lives = this.lives.length > 0 ? this.lives : [sim.snapshot().lifeTick];
     this.result = {
+      inputDevice: this.deps.inputDevice?.() ?? 'unknown',
       runTicks,
       deaths: this.deaths,
       lives: lives.length,

@@ -6,8 +6,8 @@ const MODES = { grounded: 1, air: 2, tethered: 3 } as const;
 
 /**
  * Stable 32-bit FNV-1a hash of the state-relevant numbers in a snapshot, fed with exact IEEE-754
- * bits, so any single-ulp drift in position, velocity, rope or anchors changes the hash. Aim and
- * target are derived presentation state and are not hashed.
+ * bits, so any single-ulp drift in position, velocity, rope or anchors changes the hash.
+ * Selection hysteresis is controller state: the same current aim can select different anchors.
  */
 export function hashSnapshot(s: SimSnapshot): string {
   let h = 0x811c9dc5;
@@ -52,6 +52,13 @@ export function hashSnapshot(s: SimSnapshot): string {
   for (const a of s.anchors) {
     f64(a.x);
     f64(a.y);
+  }
+  if (s.selection.mode !== 'mouse' || s.selection.anchor !== null) {
+    int32(0x54415247);
+    int32(s.selection.mode === 'mouse' ? 0 : s.selection.mode === 'point' ? 1 : 2);
+    int32(s.selection.anchor ?? -1);
+    f64(s.selection.direction.x);
+    f64(s.selection.direction.y);
   }
   if (s.enemies.length) {
     int32(0x474f4f4e);

@@ -75,6 +75,8 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
         minLength: num(rope, 'minLength', R, 0),
         maxLength: num(rope, 'maxLength', R, 0),
         selectRadius: num(rope, 'selectRadius', R, 0),
+        stickinessDistance: rope.stickinessDistance === undefined ? 0.5 : num(rope, 'stickinessDistance', R, 0),
+        stickinessAngleDegrees: rope.stickinessAngleDegrees === undefined ? 12 : num(rope, 'stickinessAngleDegrees', R, 0),
         steerAccel: num(rope, 'steerAccel', R, 0),
         steerEnergyHeight: num(rope, 'steerEnergyHeight', R, 0),
         catchRetention: num(rope, 'catchRetention', R, 0),

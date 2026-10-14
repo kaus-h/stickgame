@@ -72,6 +72,75 @@ describe('level authoring validation', () => {
     expect(errors(level).join()).toContain('rope range');
   });
 
+  it('warns on legacy disc-edge reach that fails centre attachment without rejecting content', () => {
+    const level = fixture();
+    level.anchors = [{ id: 'far', position: [13.2, 7.65], requiredFrom: [2, 7.65] }];
+    const centreWarnings = () =>
+      validateLevelAuthoring(level).filter((issue) => issue.message.includes('legacy disc-edge'));
+    expect(centreWarnings()).toHaveLength(1);
+    expect(centreWarnings()[0]?.severity).toBe('warning');
+    expect(errors(level)).toEqual([]);
+    level.anchors = [{ id: 'near', position: [2.7, 7.65], requiredFrom: [2, 7.65] }];
+    expect(centreWarnings()).toHaveLength(1);
+    expect(centreWarnings()[0]?.severity).toBe('warning');
+    expect(errors(level)).toEqual([]);
+    level.anchors = [{ id: 'boundary', position: [13, 7.65], requiredFrom: [2, 7.65] }];
+    expect(centreWarnings()).toHaveLength(0);
+    expect(errors(level)).toEqual([]);
+  });
+
+  it('checks line of sight all the way to the centre instead of stopping at the disc edge', () => {
+    const level = fixture();
+    level.anchors = [{ id: 'anchor', position: [7, 7.65], requiredFrom: [2, 7.65] }];
+    level.solids = [
+      { id: 'floor', rect: { x: 0, y: 8, w: 30, h: 4 } },
+      { id: 'centre-blocker', rect: { x: 6.8, y: 7.45, w: 0.1, h: 0.3 } },
+    ];
+    expect(validateLevelAuthoring(level)).toContainEqual({
+      severity: 'warning',
+      path: 'level.anchors[0].requiredFrom',
+      message:
+        'required anchor centre has blocked line of sight despite legacy disc-edge visibility; migrate requiredFrom for centre attachment',
+    });
+    expect(errors(level)).toEqual([]);
+  });
+
+  it('warns on overlapping PC snap zones without rejecting the level', () => {
+    const level = fixture();
+    level.anchors = [
+      { id: 'first', position: [7, 2] },
+      { id: 'second', position: [9.9, 2] },
+    ];
+    const warnings = validateLevelAuthoring(level).filter((issue) =>
+      issue.message.includes('PC snap zone'),
+    );
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toMatchObject({
+      severity: 'warning',
+      path: 'level.anchors[1].position',
+    });
+    expect(warnings[0]?.message).toContain('overlaps first');
+    expect(warnings[0]?.message).toContain('1.100 m');
+    expect(errors(level)).toEqual([]);
+  });
+
+  it('uses authored radii and selection tuning, allowing tangent and separated snap zones', () => {
+    const level = fixture();
+    level.anchors = [
+      { id: 'first', position: [7, 2], radius: 0.6 },
+      { id: 'second', position: [10, 2], radius: 0.2 },
+    ];
+    const overlaps = (selectRadius: number) =>
+      validateLevelAuthoring(level, selectRadius).filter((issue) =>
+        issue.message.includes('PC snap zone'),
+      );
+    expect(overlaps(1.1)).toHaveLength(0);
+    expect(overlaps(1)).toHaveLength(0);
+    expect(overlaps(1.2)).toHaveLength(1);
+    level.version = 1;
+    expect(overlaps(1.2)[0]?.severity).toBe('warning');
+  });
+
   it('blocks collinear shots and samples moving-path interior occlusion', () => {
     const level = fixture();
     level.anchors = [{ id: 'anchor', position: [7, 7.65], requiredFrom: [2, 7.65] }];
