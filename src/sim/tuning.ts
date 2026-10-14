@@ -6,6 +6,16 @@ export interface SimTuning {
   readonly physicsSubsteps: number;
   readonly player: PlayerTuning;
   readonly rope: RopeTuning;
+  /** Optional for legacy direct simulation fixtures; runtime content always supplies it. */
+  readonly combat?: CombatTuning;
+}
+
+/** Swing-impact damage threshold and normal bounce response (GMR-119). */
+export interface CombatTuning {
+  /** Closing velocity toward the target required for damage, m/s. */
+  readonly minImpactSpeed: number;
+  /** Retained share of reflected normal velocity, in [0, 1]. */
+  readonly restitution: number;
 }
 
 /** Base controller (GMR-20). Every value is PROTOTYPE REQUIRED in doc 09 until the movement lab sets it. */

@@ -2,7 +2,7 @@ import * as Phaser from 'phaser';
 import sfxBank from '../../../content/audio/sfx.json';
 import runtimeTuning from '../../../content/tuning/runtime.json';
 import { AudioEngine, MusicDirector, MusicEngine, parseSfxBank, SfxDirector } from '../../audio';
-import { getLevelTheme, parseRuntimeTuning } from '../../content';
+import { getLevelTheme, getLevelWorld, parseRuntimeTuning } from '../../content';
 import { LevelRegistry } from '../../content/level-registry';
 import {
   BUILD_HASH,
@@ -32,7 +32,13 @@ import {
 import { levelFingerprint, type LevelDef, type SimEvent } from '../../sim';
 import { KinematicPhysicsAdapter } from '../../physics/backends/kinematic/KinematicPhysicsAdapter';
 import { createPlatformServices, SaveStore } from '../../platform';
-import { GameScene, loadHandFont, loadHeroHeads, loadLevelKit } from '../../render';
+import {
+  GameScene,
+  loadHandFont,
+  loadHeroHeads,
+  loadLevelKit,
+  resolveWorldStyle,
+} from '../../render';
 import { GameRuntime } from '../runtime/GameRuntime';
 import { RunTiming, validatePb, type RunSummary } from '../runtime/RunTiming';
 import { exitTelemetry } from '../../telemetry/exitTelemetry';
@@ -180,7 +186,7 @@ async function start(): Promise<void> {
   audio.setMuted(saved.settings.muted);
   // Music (GMR-42): one transport for the app's lifetime, started on the first unlock.
   const musicEngine = new MusicEngine(() => audio.musicOutput());
-  const music = new MusicDirector(musicEngine, level);
+  const music = new MusicDirector(musicEngine, level, resolveWorldStyle(level).musicBankId);
   const unlockAudio = (): void => {
     audio.unlock();
     musicEngine.start();
@@ -403,7 +409,7 @@ async function start(): Promise<void> {
       levelName = levelId;
       runtime.replaceLevel(next);
       level = next;
-      music.setLevel(next);
+      music.setLevel(next, resolveWorldStyle(next).musicBankId);
       loadPb(next);
       gameScene.replaceLevel(next);
     },
@@ -517,7 +523,8 @@ async function start(): Promise<void> {
         // A catalog edit can concern another open level. Preserve this attempt and its input.
         if (
           JSON.stringify(next) === JSON.stringify(level) &&
-          getLevelTheme(next) === getLevelTheme(level)
+          getLevelTheme(next) === getLevelTheme(level) &&
+          JSON.stringify(getLevelWorld(next)) === JSON.stringify(getLevelWorld(level))
         )
           return;
         mapper.blur();
@@ -527,7 +534,7 @@ async function start(): Promise<void> {
         runtime.pause('sweep', false);
         runtime.replaceLevel(next);
         level = next;
-        music.setLevel(next);
+        music.setLevel(next, resolveWorldStyle(next).musicBankId);
         loadPb(next);
         scene.replaceLevel(next);
         levelRevision++;

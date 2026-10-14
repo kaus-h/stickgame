@@ -1,6 +1,7 @@
 {
   "$schema": "../level.schema.json",
   "version": 2,
+  "world": { "family": "notebook" },
   "id": "2-1",
   "name": "Moving Pivots",
   "section": "section-2",

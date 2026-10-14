@@ -1,5 +1,13 @@
 import { vec2, type Vec2 } from '../core';
-import type { AnchorDef, AnchorTimerDef, LevelDef, PatrollerDef, SolidDef } from '../sim';
+import type {
+  AnchorDef,
+  AnchorPathDef,
+  AnchorTimerDef,
+  LevelDef,
+  PatrollerDef,
+  SolidDef,
+  TargetDef,
+} from '../sim';
 import schemaValidator from './level-validator.generated.js';
 
 /** Level JSON schema version understood by this build (doc 32). */
@@ -7,6 +15,9 @@ export const LEVEL_SCHEMA_VERSION = 2;
 
 /** Anchor impact radius when level data omits one, m. */
 export const DEFAULT_ANCHOR_RADIUS = 0.4;
+
+/** Placeholder impact target radius when level data omits one, m. */
+export const DEFAULT_TARGET_RADIUS = 0.6;
 
 /**
  * Moving-anchor envelope (GMR-26, docs/moving-anchors.md). A path's peak speed is half-span·ω and
@@ -21,8 +32,21 @@ export const MAX_ANCHOR_ACCEL = 12;
 /** Renderer-only background selection authored with a level. */
 export type LevelTheme = 'paper' | 'scenery';
 
+/** Presentation-only world identifiers; renderer support is resolved independently. */
+export interface LevelWorld {
+  readonly family: string;
+  readonly subTheme?: string;
+}
+
 // Presentation metadata stays outside LevelDef so it cannot affect simulation or replay hashes.
 const levelThemes = new WeakMap<LevelDef, LevelTheme>();
+const levelWorlds = new WeakMap<LevelDef, LevelWorld>();
+const DEFAULT_LEVEL_WORLD: LevelWorld = Object.freeze({ family: 'notebook' });
+
+/** Resolve authored world metadata, including the legacy notebook default. */
+export function getLevelWorld(level: LevelDef): LevelWorld {
+  return levelWorlds.get(level) ?? DEFAULT_LEVEL_WORLD;
+}
 
 /** Resolve the authored presentation theme without making it simulation state. */
 export function getLevelTheme(level: LevelDef): LevelTheme {
@@ -154,28 +178,61 @@ function anchor(v: unknown, path: string): AnchorDef {
     ...anchorExtras(v, path),
   };
   if (v.path === undefined) return base;
-  if (!isRecord(v.path)) fail(`${path}.path`, 'must be an object');
-  const period = num(v.path.period, `${path}.path.period`);
-  if (period <= 0) fail(`${path}.path.period`, 'must be positive');
-  const to = point(v.path.to, `${path}.path.to`);
-  const phase = v.path.phase === undefined ? undefined : num(v.path.phase, `${path}.path.phase`);
+  return { ...base, path: movingPath(v.path, base.position, `${path}.path`) };
+}
+
+/** Targets use the same ping-pong shape and validated motion envelope as anchors. */
+function movingPath(raw: unknown, position: Vec2, path: string): AnchorPathDef {
+  if (!isRecord(raw)) fail(path, 'must be an object');
+  const period = num(raw.period, `${path}.period`);
+  if (period <= 0) fail(`${path}.period`, 'must be positive');
+  const to = point(raw.to, `${path}.to`);
+  const phase = raw.phase === undefined ? undefined : num(raw.phase, `${path}.phase`);
   if (phase !== undefined && (phase < 0 || phase >= 1)) {
-    fail(`${path}.path.phase`, 'must be in [0, 1)');
+    fail(`${path}.phase`, 'must be in [0, 1)');
   }
-  const peaks = anchorPathPeaks(base.position, to, period);
+  const peaks = anchorPathPeaks(position, to, period);
   if (peaks.speed > MAX_ANCHOR_SPEED) {
     fail(
-      `${path}.path`,
+      path,
       `peak speed ${peaks.speed.toFixed(2)} m/s exceeds ${String(MAX_ANCHOR_SPEED)} m/s (shorten the span or lengthen the period)`,
     );
   }
   if (peaks.accel > MAX_ANCHOR_ACCEL) {
     fail(
-      `${path}.path`,
+      path,
       `peak acceleration ${peaks.accel.toFixed(2)} m/s² exceeds ${String(MAX_ANCHOR_ACCEL)} m/s² (lengthen the period)`,
     );
   }
-  return { ...base, path: { to, period, ...(phase === undefined ? {} : { phase }) } };
+  return { to, period, ...(phase === undefined ? {} : { phase }) };
+}
+
+function target(v: Record<string, unknown>, path: string): TargetDef {
+  const position = point(v.position, `${path}.position`);
+  const radius = v.radius === undefined ? DEFAULT_TARGET_RADIUS : num(v.radius, `${path}.radius`);
+  if (radius <= 0) fail(`${path}.radius`, 'must be positive');
+  const hp = v.hp === undefined ? 1 : num(v.hp, `${path}.hp`);
+  if (!Number.isSafeInteger(hp) || hp < 1) fail(`${path}.hp`, 'must be a positive safe integer');
+  const minSpeed = v.minSpeed === undefined ? undefined : num(v.minSpeed, `${path}.minSpeed`);
+  if (minSpeed !== undefined && minSpeed < 0) fail(`${path}.minSpeed`, 'must be nonnegative');
+  let approach: TargetDef['approach'];
+  if (v.approach !== undefined) {
+    if (!isRecord(v.approach)) fail(`${path}.approach`, 'must be an object');
+    const min = num(v.approach.min, `${path}.approach.min`);
+    const max = num(v.approach.max, `${path}.approach.max`);
+    if (Math.abs(max - min) > 360)
+      fail(`${path}.approach`, 'endpoint difference must be at most 360 degrees');
+    approach = { min, max };
+  }
+  return {
+    id: str(v.id, `${path}.id`),
+    position,
+    radius,
+    hp,
+    ...(minSpeed === undefined ? {} : { minSpeed }),
+    ...(approach === undefined ? {} : { approach }),
+    ...(v.path === undefined ? {} : { path: movingPath(v.path, position, `${path}.path`) }),
+  };
 }
 
 /** Timed and one-use anchors (GMR-60). Timed: on ≥ 1 s (room for the 0.5 s telegraph), off ≥ 0.25 s. */
@@ -226,6 +283,13 @@ export function compileLevel(source: unknown): LevelDef {
     killY: num(json.killY, 'level.killY'),
     solids: solids.map((s, i) => solid(s, `level.solids[${String(i)}]`)),
     anchors: anchors.map((a, i) => anchor(a, `level.anchors[${String(i)}]`)),
+    ...(json.targets === undefined
+      ? {}
+      : {
+          targets: entries(json.targets).map((raw, i) =>
+            target(raw, `level.targets[${String(i)}]`),
+          ),
+        }),
     ...(json.enemies === undefined
       ? {}
       : {
@@ -243,6 +307,7 @@ export function compileLevel(source: unknown): LevelDef {
   for (const item of [
     ...level.solids,
     ...level.anchors,
+    ...(level.targets ?? []),
     ...(level.enemies ?? []),
     ...(level.chambers ?? []),
     ...(level.checkpoints ?? []),
@@ -255,6 +320,17 @@ export function compileLevel(source: unknown): LevelDef {
   if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
     fail('level.exit.id', `duplicate id "${level.exit.id}"`);
   if (json.theme !== undefined) levelThemes.set(level, json.theme as LevelTheme);
+  if (isRecord(json.world)) {
+    levelWorlds.set(
+      level,
+      Object.freeze({
+        family: str(json.world.family, 'level.world.family'),
+        ...(json.world.subTheme === undefined
+          ? {}
+          : { subTheme: str(json.world.subTheme, 'level.world.subTheme') }),
+      }),
+    );
+  }
   return level;
 }
 

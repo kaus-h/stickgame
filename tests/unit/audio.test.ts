@@ -69,6 +69,25 @@ describe('SfxDirector', () => {
     return { calls, play: (name) => calls.push(name) };
   };
 
+  it('maps impact outcomes to existing cues, with a higher rate on hits', () => {
+    const calls: { name: string; rate?: number }[] = [];
+    const director = new SfxDirector({
+      play: (name, opts) => calls.push({ name, ...(opts?.rate ? { rate: opts.rate } : {}) }),
+    });
+    director.onEvents([
+      { type: 'targetHit', tick: 1, id: 'weak-point', speed: 12, hpLeft: 0 },
+      { type: 'targetBroken', tick: 1, id: 'weak-point' },
+      { type: 'targetBlocked', tick: 2, id: 'armour', speed: 3 },
+    ]);
+    expect(calls).toEqual([
+      { name: 'stomp', rate: 1.35 },
+      { name: 'stomp' },
+      { name: 'ropeRelease' },
+      { name: 'land' },
+    ]);
+    expect(calls.every(({ name }) => bank[name])).toBe(true);
+  });
+
   it('maps simulation events to sounds, never waiting on audio', () => {
     const sink = recorder();
     const d = new SfxDirector(sink);

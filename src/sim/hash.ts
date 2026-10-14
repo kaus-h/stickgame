@@ -8,6 +8,7 @@ const MODES = { grounded: 1, air: 2, tethered: 3 } as const;
  * Stable 32-bit FNV-1a hash of the state-relevant numbers in a snapshot, fed with exact IEEE-754
  * bits, so any single-ulp drift in position, velocity, rope or anchors changes the hash.
  * Selection hysteresis is controller state: the same current aim can select different anchors.
+ * Impact targets are hashed.
  */
 export function hashSnapshot(s: SimSnapshot): string {
   let h = 0x811c9dc5;
@@ -74,6 +75,22 @@ export function hashSnapshot(s: SimSnapshot): string {
       f64(enemy.velocity.y);
       int32(enemy.alive ? 1 : 0);
       int32(enemy.facing);
+    }
+  }
+  // No targets adds no bytes, preserving historical replay hashes and committed solutions.
+  if (s.targets.length) {
+    int32(0x54415247);
+    int32(s.targets.length);
+    for (const target of s.targets) {
+      int32(target.id.length);
+      for (let i = 0; i < target.id.length; i++) int32(target.id.charCodeAt(i));
+      f64(target.position.x);
+      f64(target.position.y);
+      f64(target.radius);
+      f64(target.hp);
+      f64(target.minSpeed);
+      int32(target.lastImpactSpeed === null ? 0 : 1);
+      if (target.lastImpactSpeed !== null) f64(target.lastImpactSpeed);
     }
   }
   // Checkpoint respawns (GMR-103): zero adds no bytes, preserving all historical replay hashes.

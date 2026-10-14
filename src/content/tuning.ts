@@ -1,4 +1,5 @@
 import type { SimTuning } from '../sim';
+import type { CombatTuning } from '../sim/tuning';
 
 /** Central runtime tuning (content/tuning/runtime.json). The step size itself is fixed at SIM_DT. */
 export interface RuntimeTuning {
@@ -18,6 +19,9 @@ export interface AssistTuning {
 
 /** Used when a tuning file predates the assist section. */
 export const DEFAULT_ASSIST_TUNING: AssistTuning = { wideSelectRadius: 1.8, snapRadius: 2.6 };
+
+/** Backward-compatible defaults for tuning files authored before momentum combat. */
+export const DEFAULT_COMBAT_TUNING: CombatTuning = { minImpactSpeed: 9, restitution: 0.5 };
 
 export class TuningError extends Error {}
 
@@ -48,6 +52,10 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
   const P = 'tuning.sim.player';
   const R = 'tuning.sim.rope';
   const assist = json.assist === undefined ? null : rec(json, 'assist', 'tuning');
+  const combat = json.combat === undefined ? null : rec(json, 'combat', 'tuning');
+  const restitution = combat ? num(combat, 'restitution', 'tuning.combat', 0) : 0.5;
+  if (restitution > 1)
+    throw new TuningError('tuning.combat.restitution must be a finite number in [0, 1]');
 
   return {
     clock: {
@@ -57,6 +65,12 @@ export function parseRuntimeTuning(json: unknown): RuntimeTuning {
     sim: {
       gravity: num(sim, 'gravity', 'tuning.sim', 0),
       physicsSubsteps: num(sim, 'physicsSubsteps', 'tuning.sim', 1),
+      combat: combat
+        ? {
+            minImpactSpeed: num(combat, 'minImpactSpeed', 'tuning.combat', 0),
+            restitution,
+          }
+        : DEFAULT_COMBAT_TUNING,
       player: {
         radius: num(player, 'radius', P, 0.05),
         runSpeed: num(player, 'runSpeed', P, 0),

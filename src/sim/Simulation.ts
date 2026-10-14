@@ -4,7 +4,13 @@ import { anchorPathState } from './anchorPath';
 import { anchorTimerState, type AnchorTimerState } from './anchorTimer';
 import { evaluateExitEntry, type ExitAttempt } from './exits';
 import { patrollerState, sweepPatroller, type EnemySnapshot, type EnemyContact } from './enemies';
-import { levelSegments, type LevelDef, type PatrollerDef } from './level';
+import { levelSegments, type LevelDef, type PatrollerDef, type TargetDef } from './level';
+import {
+  impactApproachAllowed,
+  impactContact,
+  impactTargetState,
+  type TargetSnapshot,
+} from './impactTargets';
 import {
   resolveTarget,
   resolveAnchor,
@@ -59,6 +65,7 @@ export interface SimSnapshot {
   readonly resets: number;
   readonly deaths: number;
   readonly enemies: readonly EnemySnapshot[];
+  readonly targets: readonly TargetSnapshot[];
   readonly player: PlayerSnapshot;
   readonly rope: RopeSnapshot | null;
   /** Current anchor positions (moving anchors move). */
@@ -153,6 +160,20 @@ export type DeathCause = 'hazard' | 'out-of-bounds' | 'enemy-contact';
 export type LifeEndReason = 'death' | 'respawn' | 'restart' | 'exit';
 
 export type SimEvent =
+  | {
+      readonly type: 'targetHit';
+      readonly tick: number;
+      readonly id: string;
+      readonly speed: number;
+      readonly hpLeft: number;
+    }
+  | {
+      readonly type: 'targetBlocked';
+      readonly tick: number;
+      readonly id: string;
+      readonly speed: number;
+    }
+  | { readonly type: 'targetBroken'; readonly tick: number; readonly id: string }
   | {
       readonly type: 'stomp';
       readonly tick: number;
@@ -260,6 +281,7 @@ export class Simulation {
   private lastExitAttempt: SimSnapshot['lastExitAttempt'] = null;
   private lastContacts: readonly ContactSnapshot[] = [];
   private enemies: EnemySnapshot[] = [];
+  private targets: TargetSnapshot[] = [];
 
   // Controller state (reset each attempt).
   private axis = 0;
@@ -343,6 +365,7 @@ export class Simulation {
   private createLevelBodies(): void {
     const { physics, level, tuning } = this;
     this.enemies = (level.enemies ?? []).map((def) => patrollerState(def, 0));
+    this.restoreTargets(false);
     physics.setGeometry(levelSegments(level));
     this.segmentSolid = level.solids.flatMap((solid) => solid.points.map(() => solid.id));
     this.body = physics.createBody({
@@ -382,6 +405,14 @@ export class Simulation {
         ? patrollerState((this.level.enemies ?? [])[i] as PatrollerDef, this.attemptTicks * SIM_DT)
         : enemy,
     );
+    this.targets = this.targets.map((target, i) => {
+      const def = (this.level.targets ?? [])[i] as TargetDef;
+      return {
+        ...target,
+        position: anchorPathState(def, this.attemptTicks * SIM_DT).position,
+        minSpeed: def.minSpeed ?? this.tuning.combat?.minImpactSpeed ?? 9,
+      };
+    });
     this.afterPhysics(beforePhysics.position, beforePhysics.velocity);
     // After the tick advances, so a snapshot never shows an off anchor still holding the rope.
     this.expireTimedRope();
@@ -403,6 +434,7 @@ export class Simulation {
     this.activeCheckpoint = -1;
     this.runTicks = 0;
     this.lifeCount = 1;
+    this.restoreTargets(false);
     this.resetAttempt();
   }
 
@@ -477,6 +509,7 @@ export class Simulation {
    * the player stands at the last reached checkpoint. The run clock keeps counting.
    */
   private respawn(voluntary = false): void {
+    this.restoreTargets(this.activeCheckpoint >= 0);
     this.resetAttempt();
     const cp = this.level.checkpoints?.[this.activeCheckpoint];
     if (cp) {
@@ -517,6 +550,7 @@ export class Simulation {
       resets: this.resetCount,
       deaths: this.deathCount,
       enemies: this.enemies,
+      targets: this.targets,
       player: {
         position: s.position,
         velocity: s.velocity,
@@ -565,7 +599,7 @@ export class Simulation {
       tick: this.tickCount,
       attemptTick: this.attemptTicks,
       resets: this.resetCount,
-      entities: 1 + this.anchorIds.length + this.enemies.length,
+      entities: 1 + this.anchorIds.length + this.enemies.length + this.targets.length,
       pendingEvents: this.events.length,
       physics: this.physics.stats(),
     };
@@ -970,7 +1004,7 @@ export class Simulation {
   }
 
   private afterPhysics(previousPosition: Vec2, previousVelocity: Vec2): void {
-    const s = this.physics.bodyState(this.body);
+    let s = this.physics.bodyState(this.body);
     const contacts = this.physics.drainContacts();
     this.lastContacts = contacts.map((c) => ({
       solid: this.segmentSolid[c.segment] ?? '?',
@@ -999,6 +1033,8 @@ export class Simulation {
       this.die('out-of-bounds', s.position, s.velocity, null);
       return;
     }
+    this.resolveImpactTargets();
+    s = this.physics.bodyState(this.body);
     this.updateCheckpoints(s.position);
 
     const exit = this.level.exit;
@@ -1059,6 +1095,52 @@ export class Simulation {
       });
       this.reset();
     }
+  }
+
+  private restoreTargets(keepBroken: boolean): void {
+    const minSpeed = this.tuning.combat?.minImpactSpeed ?? 9;
+    this.targets = (this.level.targets ?? []).map((def, i) => {
+      const state = impactTargetState(def, 0, minSpeed);
+      return keepBroken && this.targets[i]?.hp === 0 ? { ...state, hp: 0 } : state;
+    });
+  }
+
+  /** Stable authored order; gameplay impulses go only through the physics adapter. */
+  private resolveImpactTargets(): void {
+    const restitution = this.tuning.combat?.restitution ?? 0.5;
+    this.targets = this.targets.map((state, i) => {
+      const def = (this.level.targets ?? [])[i] as TargetDef;
+      if (state.hp === 0) return state;
+      const hero = this.physics.bodyState(this.body);
+      const contact = impactContact(hero.position, hero.velocity, this.tuning.player.radius, state);
+      if (!contact) return state;
+      const { normal, speed, separation } = contact;
+      const hit = speed >= state.minSpeed && impactApproachAllowed(hero.velocity, def.approach);
+      const hp = hit ? state.hp - 1 : state.hp;
+      this.events.push(
+        hit
+          ? { type: 'targetHit', tick: this.tickCount, id: state.id, speed, hpLeft: hp }
+          : { type: 'targetBlocked', tick: this.tickCount, id: state.id, speed },
+      );
+      if (hp === 0) this.events.push({ type: 'targetBroken', tick: this.tickCount, id: state.id });
+      if (!this.physics.setBodyPosition)
+        throw new Error('impact targets require PhysicsAdapter.setBodyPosition');
+      // Separate once so penetration cannot drain multi-hp on successive outgoing ticks.
+      this.physics.setBodyPosition(
+        this.body,
+        vec2(
+          state.position.x - normal.x * (separation + 1e-8),
+          state.position.y - normal.y * (separation + 1e-8),
+        ),
+      );
+      // Separating contacts keep moving away. Tangential speed and rope attachment survive.
+      const impulse = (1 + restitution) * Math.max(0, speed);
+      this.physics.setBodyVelocity(
+        this.body,
+        vec2(hero.velocity.x - impulse * normal.x, hero.velocity.y - impulse * normal.y),
+      );
+      return { ...state, hp, lastImpactSpeed: speed };
+    });
   }
 
   /** Death is instant: no delay or UI may sit between death and retry (doc 13). */

@@ -41,6 +41,7 @@ function snap(patch: Partial<SimSnapshot> = {}): SimSnapshot {
     resets: 0,
     deaths: 0,
     enemies: [],
+    targets: [],
     player: { position: { x: 1, y: 1 }, velocity: { x: 0, y: 0 }, mode: 'grounded', facing: 1 },
     rope: null,
     anchors: [{ x: 6, y: 2 }],
