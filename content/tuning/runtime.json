@@ -29,6 +29,10 @@
       "catchRetention": 1
     }
   },
+  "combat": {
+    "minImpactSpeed": 9,
+    "restitution": 0.5
+  },
   "assist": {
     "wideSelectRadius": 1.8,
     "snapRadius": 2.6

@@ -7,6 +7,7 @@ import {
   SECTION_1,
   SECTION_2,
   stingNotes,
+  UNPITCHED,
 } from '../../src/audio/music/score';
 import { Transport } from '../../src/audio/music/transport';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../src/sim';
@@ -14,7 +15,7 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../src/sim';
 describe('music score (GMR-42)', () => {
   it('is a pure function of the beat, and the pitched layers repeat every 8 bars', () => {
     const pitched = (beat: number) =>
-      notesForBeat(SECTION_1, beat).filter((n) => n.voice !== 'click');
+      notesForBeat(SECTION_1, beat).filter((n) => !UNPITCHED.has(n.voice));
     for (let beat = 0; beat < 64; beat++) {
       expect(notesForBeat(SECTION_1, beat)).toEqual(notesForBeat(SECTION_1, beat));
       expect(pitched(beat)).toEqual(pitched(beat + 32));
@@ -31,7 +32,7 @@ describe('music score (GMR-42)', () => {
     ] as const) {
       for (let beat = 0; beat < 32 * 4; beat++) {
         for (const n of notesForBeat(bank, beat)) {
-          if (n.voice === 'click') continue;
+          if (UNPITCHED.has(n.voice)) continue;
           // The tension layer's deliberate flattened-second rub is the one licensed exception.
           if (n.layer === 'tension' && n.velocity < 0.3) continue;
           expect(
@@ -161,7 +162,7 @@ describe('music director (GMR-42)', () => {
   };
   const snap = (x: number, speed: number): SimSnapshot =>
     ({ player: { position: vec2(x, 0), velocity: vec2(speed, 0) } }) as unknown as SimSnapshot;
-  const make = () => {
+  const make = (musicBankId?: string) => {
     const targets: MusicTargets[] = [];
     let stings = 0;
     const d = new MusicDirector(
@@ -172,9 +173,41 @@ describe('music director (GMR-42)', () => {
         },
       },
       level,
+      musicBankId,
     );
     return { d, targets, stings: () => stings };
   };
+
+  it('uses an explicit presentation bank instead of the section bank', () => {
+    const { d, targets } = make('world-bank');
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('world-bank');
+    d.restartRun();
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('world-bank');
+  });
+
+  it('replaces an override on level change and clears it when the next level omits it', () => {
+    const { d, targets } = make('previous-bank');
+    d.setLevel(level, 'next-bank');
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('next-bank');
+    d.setLevel(level);
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('section-2');
+  });
+
+  it('preserves the section-1 fallback for an unrecognized or missing section', () => {
+    const { d, targets } = make();
+    d.setLevel({ ...level, section: 'future-section' });
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('section-1');
+    const unsectioned = { ...level };
+    delete unsectioned.section;
+    d.setLevel(unsectioned);
+    d.onFrame(snap(2, 0), 1 / 60);
+    expect(targets.at(-1)?.bank).toBe('section-1');
+  });
 
   it('pulse follows movement energy: swells while moving, fades when standing to plan', () => {
     const { d, targets } = make();

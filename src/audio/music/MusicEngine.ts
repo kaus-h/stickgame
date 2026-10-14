@@ -29,6 +29,8 @@ export class MusicEngine implements MusicSink {
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly gains = new Map<Layer, GainNode>();
   private echo: AudioNode[] = [];
+  /** Shared dotted-8th "space" send for the plucks, arpeggio and clap (clean width, no mud). */
+  private space: GainNode | null = null;
   private noise: AudioBuffer | null = null;
   private bank: Bank = SECTION_1;
   private pendingBank: Bank | null = null;
@@ -72,7 +74,25 @@ export class MusicEngine implements MusicSink {
       tone.connect(wet).connect(bus);
       this.echo = [delay, tone, fb, wet];
     }
-    this.noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.06), ctx.sampleRate);
+    {
+      const send = ctx.createGain();
+      send.gain.value = 0.16;
+      const delay = ctx.createDelay(1);
+      delay.delayTime.value = SECONDS_PER_BEAT * 0.75;
+      const fb = ctx.createGain();
+      fb.gain.value = 0.28;
+      const hp = ctx.createBiquadFilter();
+      hp.type = 'highpass';
+      hp.frequency.value = 500;
+      const lp = ctx.createBiquadFilter();
+      lp.type = 'lowpass';
+      lp.frequency.value = 4200;
+      send.connect(delay).connect(hp).connect(lp).connect(fb).connect(delay);
+      lp.connect(bus);
+      this.space = send;
+      this.echo.push(send, delay, hp, lp, fb);
+    }
+    this.noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.25), ctx.sampleRate);
     const data = this.noise.getChannelData(0);
     // Fixed pseudo-random noise (no Math.random in the score path; any noise works, this is stable).
     let s = 0x1234567;
@@ -124,6 +144,7 @@ export class MusicEngine implements MusicSink {
     this.gains.clear();
     for (const n of this.echo) n.disconnect();
     this.echo = [];
+    this.space = null;
     this.transport = null;
   }
 
@@ -188,58 +209,77 @@ export class MusicEngine implements MusicSink {
         pan?.disconnect();
       });
     };
+    const toSpace = (): void => {
+      if (this.space) amp.connect(this.space);
+    };
     switch (n.voice) {
       case 'keys': {
+        // Glass pluck: two slightly detuned saws through a resonant low-pass that snaps shut.
         const f = midiToHz(n.note);
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.value = 3200;
+        lp.Q.value = 2.2;
+        lp.frequency.setValueAtTime(3400, t);
+        lp.frequency.exponentialRampToValueAtTime(700, t + 0.28);
         lp.connect(amp);
         const a = ctx.createOscillator();
-        a.type = 'triangle';
-        a.frequency.value = f;
+        a.type = 'sawtooth';
+        a.frequency.value = f * 0.998;
         const b = ctx.createOscillator();
-        b.type = 'sine';
-        b.frequency.value = f * 2.003;
-        const bg = ctx.createGain();
-        bg.gain.value = 0.4;
-        a.connect(lp);
-        b.connect(bg).connect(lp);
-        envelope(amp.gain, t, 0.012, 0.5 * n.velocity, 0.35, len, 0.5);
-        end(t + len + 0.6, a, b);
+        b.type = 'sawtooth';
+        b.frequency.value = f * 1.002;
+        const mix = ctx.createGain();
+        mix.gain.value = 0.32;
+        a.connect(mix);
+        b.connect(mix);
+        mix.connect(lp);
+        envelope(amp.gain, t, 0.004, 0.42 * n.velocity, 0.25, len, 0.35);
+        toSpace();
+        end(t + len + 0.5, a, b);
+        break;
+      }
+      case 'arp': {
+        // Bright square blip, quickly closed: the whimsy sparkle riding on top of movement.
+        const f = midiToHz(n.note);
+        const osc = ctx.createOscillator();
+        osc.type = 'square';
+        osc.frequency.value = f;
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.setValueAtTime(5200, t);
+        lp.frequency.exponentialRampToValueAtTime(1400, t + 0.12);
+        osc.connect(lp).connect(amp);
+        amp.gain.setValueAtTime(0, t);
+        amp.gain.linearRampToValueAtTime(0.16 * n.velocity, t + 0.003);
+        amp.gain.setTargetAtTime(0, t + 0.01, 0.05);
+        toSpace();
+        end(t + len + 0.3, osc);
         break;
       }
       case 'chime': {
-        // Glass-and-felt bell: sine body, a soft octave, a faint quick glint two octaves up.
-        // Rounded attack and a long free decay, so overlapping notes blur into one gesture.
+        // Digital bell: a sine carrier with a 2:1 FM modulator whose index falls away, so it
+        // opens bright and glassy and settles to a pure tone. Long free decay, legato overlaps.
         const f = midiToHz(n.note);
-        const lp = ctx.createBiquadFilter();
-        lp.type = 'lowpass';
-        lp.frequency.value = 2600;
-        lp.connect(amp);
         const a = ctx.createOscillator();
         a.type = 'sine';
         a.frequency.value = f;
-        const b = ctx.createOscillator();
-        b.type = 'triangle';
-        b.frequency.value = f * 2.001;
-        const bg = ctx.createGain();
-        bg.gain.value = 0.18;
-        const c = ctx.createOscillator();
-        c.type = 'sine';
-        c.frequency.value = f * 4.007;
-        const cg = ctx.createGain();
-        cg.gain.setValueAtTime(0.07, t);
-        cg.gain.setTargetAtTime(0, t, 0.08);
-        a.connect(lp);
-        b.connect(bg).connect(lp);
-        c.connect(cg).connect(lp);
-        const peak = 0.62 * n.velocity;
+        const m = ctx.createOscillator();
+        m.type = 'sine';
+        m.frequency.value = f * 2;
+        const idx = ctx.createGain();
+        idx.gain.setValueAtTime(f * 1.4, t);
+        idx.gain.setTargetAtTime(f * 0.08, t, 0.18);
+        m.connect(idx).connect(a.frequency);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 5000;
+        a.connect(lp).connect(amp);
+        const peak = 0.55 * n.velocity;
         amp.gain.setValueAtTime(0, t);
-        amp.gain.linearRampToValueAtTime(peak, t + 0.025);
-        amp.gain.setTargetAtTime(peak * 0.25, t + 0.025, 0.55);
+        amp.gain.linearRampToValueAtTime(peak, t + 0.01);
+        amp.gain.setTargetAtTime(peak * 0.25, t + 0.01, 0.5);
         amp.gain.setTargetAtTime(0, t + len, 0.35);
-        end(t + len + 1.6, a, b, c);
+        end(t + len + 1.6, a, m);
         break;
       }
       case 'pad': {
@@ -252,7 +292,7 @@ export class MusicEngine implements MusicSink {
         b.frequency.value = f * 1.002;
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.value = 1100;
+        lp.frequency.value = 1400;
         a.connect(lp);
         b.connect(lp);
         lp.connect(amp);
@@ -261,58 +301,79 @@ export class MusicEngine implements MusicSink {
         break;
       }
       case 'bass': {
+        // Round sub: a sine body plus a quiet saw for definition, its filter closing fast.
         const f = midiToHz(n.note);
-        const osc = ctx.createOscillator();
-        osc.type = 'sawtooth';
-        osc.frequency.value = f;
+        const sub = ctx.createOscillator();
+        sub.type = 'sine';
+        sub.frequency.value = f;
+        const saw = ctx.createOscillator();
+        saw.type = 'sawtooth';
+        saw.frequency.value = f;
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.Q.value = 0.8;
-        lp.frequency.setValueAtTime(950, t);
-        lp.frequency.exponentialRampToValueAtTime(220, t + 0.22);
-        osc.connect(lp).connect(amp);
-        envelope(amp.gain, t, 0.004, 1.2 * n.velocity, 0.2, len, 0.12);
-        end(t + len + 0.2, osc);
+        lp.Q.value = 1.4;
+        lp.frequency.setValueAtTime(900, t);
+        lp.frequency.exponentialRampToValueAtTime(260, t + 0.18);
+        const sawGain = ctx.createGain();
+        sawGain.gain.value = 0.35;
+        saw.connect(sawGain).connect(lp);
+        sub.connect(lp);
+        lp.connect(amp);
+        envelope(amp.gain, t, 0.005, 1.1 * n.velocity, 0.55, len, 0.12);
+        end(t + len + 0.2, sub, saw);
         break;
       }
-      case 'click': {
+      case 'kick': {
+        // Soft electronic kick: a sine that drops from a short click to a low thump.
+        const osc = ctx.createOscillator();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(150, t);
+        osc.frequency.exponentialRampToValueAtTime(48, t + 0.11);
+        osc.connect(amp);
+        amp.gain.setValueAtTime(0, t);
+        amp.gain.linearRampToValueAtTime(1.3 * n.velocity, t + 0.003);
+        amp.gain.exponentialRampToValueAtTime(0.0005, t + 0.32);
+        end(t + 0.34, osc);
+        break;
+      }
+      case 'clap':
+      case 'hat': {
         if (!this.noise) return;
         const src = ctx.createBufferSource();
         src.buffer = this.noise;
-        const bp = ctx.createBiquadFilter();
-        bp.type = 'bandpass';
-        bp.frequency.value = n.note >= 60 ? 3600 : 1300;
-        bp.Q.value = 5;
-        src.connect(bp).connect(amp);
+        const f = ctx.createBiquadFilter();
+        const clap = n.voice === 'clap';
+        f.type = clap ? 'bandpass' : 'highpass';
+        f.frequency.value = clap ? 1700 : n.note === 46 ? 7600 : 9500;
+        f.Q.value = clap ? 1.1 : 0.7;
+        src.connect(f).connect(amp);
+        const decay = clap ? 0.16 : n.note === 46 ? 0.07 : 0.03;
         amp.gain.setValueAtTime(0, t);
-        amp.gain.linearRampToValueAtTime(3.2 * n.velocity, t + 0.002);
-        amp.gain.exponentialRampToValueAtTime(0.0005, t + 0.045);
-        end(t + 0.06, src);
+        amp.gain.linearRampToValueAtTime((clap ? 1.6 : 1.1) * n.velocity, t + 0.002);
+        amp.gain.exponentialRampToValueAtTime(0.0005, t + decay);
+        if (clap) toSpace();
+        end(t + decay + 0.02, src);
         break;
       }
       case 'drone': {
+        // Airy pad: three detuned saws under a low-pass that slowly opens and closes again.
         const f = midiToHz(n.note);
-        const a = ctx.createOscillator();
-        a.type = 'sawtooth';
-        a.frequency.value = f;
-        const b = ctx.createOscillator();
-        b.type = 'sawtooth';
-        b.frequency.value = f * 1.004;
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.value = 1300;
-        const trem = ctx.createGain();
-        const lfo = ctx.createOscillator();
-        lfo.frequency.value = 5.2;
-        const depth = ctx.createGain();
-        depth.gain.value = 0.35;
-        lfo.connect(depth).connect(trem.gain);
-        trem.gain.value = 0.65;
-        a.connect(lp);
-        b.connect(lp);
-        lp.connect(trem).connect(amp);
-        envelope(amp.gain, t, 1.2, 0.3 * n.velocity, 1, len, 1.8);
-        end(t + len + 2, a, b, lfo);
+        lp.Q.value = 0.6;
+        lp.frequency.setValueAtTime(700, t);
+        lp.frequency.linearRampToValueAtTime(2200, t + len * 0.5);
+        lp.frequency.linearRampToValueAtTime(900, t + len);
+        const oscs = [0.996, 1, 1.004].map((d) => {
+          const o = ctx.createOscillator();
+          o.type = 'sawtooth';
+          o.frequency.value = f * d;
+          o.connect(lp);
+          return o;
+        });
+        lp.connect(amp);
+        envelope(amp.gain, t, 1.2, 0.22 * n.velocity, 1, len, 1.8);
+        end(t + len + 2, ...oscs);
         break;
       }
     }

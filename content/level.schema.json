@@ -46,6 +46,19 @@
     "theme": {
       "enum": ["paper", "scenery"]
     },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family"],
+      "properties": {
+        "family": {
+          "$ref": "#/definitions/text"
+        },
+        "subTheme": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
     "solids": {
       "type": "array",
       "items": {
@@ -62,6 +75,12 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/patroller"
+      }
+    },
+    "targets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/target"
       }
     },
     "exit": {
@@ -182,6 +201,51 @@
     }
   ],
   "definitions": {
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "position"],
+      "properties": {
+        "id": {
+          "$ref": "#/definitions/id"
+        },
+        "position": {
+          "$ref": "#/definitions/point"
+        },
+        "radius": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "default": 0.6
+        },
+        "hp": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 9007199254740991,
+          "default": 1
+        },
+        "minSpeed": {
+          "type": "number",
+          "minimum": 0
+        },
+        "approach": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["min", "max"],
+          "description": "Hero velocity direction in degrees: 0 = +x, +y down. Signed and wrapped windows are allowed; an absolute endpoint difference of 360 permits every direction.",
+          "properties": {
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          }
+        },
+        "path": {
+          "$ref": "#/definitions/path"
+        }
+      }
+    },
     "patroller": {
       "type": "object",
       "additionalProperties": false,

@@ -2,23 +2,28 @@ import * as Phaser from 'phaser';
 import { metersToPixels as m } from '../../core';
 import type { LevelDef } from '../../sim';
 import { hash, strokeInk, wobble, type Pt } from '../ink';
+import { NOTEBOOK_STYLE, type WorldStyle } from '../world/WorldStyle';
 
 /** Paper-and-ink palette (style bible §2). */
 export const PAGE = {
-  paper: 0xf3efe6,
-  fibre: 0xd8cfbd,
-  rule: 0x9ec2df,
-  margin: 0xe28a8a,
-  ink: 0x16161a,
-  pencil: 0x8a8a8a,
-  hole: 0xcfc7b6,
-  wire: 0x4a4a50,
+  paper: NOTEBOOK_STYLE.paper.base,
+  fibre: NOTEBOOK_STYLE.paper.fibre,
+  rule: NOTEBOOK_STYLE.paper.rule,
+  margin: NOTEBOOK_STYLE.paper.margin,
+  ink: NOTEBOOK_STYLE.ink,
+  pencil: NOTEBOOK_STYLE.pencil,
+  hole: NOTEBOOK_STYLE.paper.binding.hole,
+  wire: NOTEBOOK_STYLE.paper.binding.wire,
 } as const;
 
 /** College ruling every 0.5 world meters: world-anchored, so it doubles as a height ruler. */
 export const RULE_SPACING_M = 0.5;
 export const TILE = 256;
 export const PAPER_KEY = 'notebook-paper';
+
+export function paperTextureKey(style: WorldStyle = NOTEBOOK_STYLE): string {
+  return style.id === NOTEBOOK_STYLE.id ? PAPER_KEY : `${PAPER_KEY}:${style.id}`;
+}
 
 const css = (c: number, a = 1): string =>
   `rgba(${String((c >> 16) & 255)},${String((c >> 8) & 255)},${String(c & 255)},${String(a)})`;
@@ -27,12 +32,13 @@ const css = (c: number, a = 1): string =>
  * One 256×256 paper tile with fibre specks, faint blotches and the ruled lines baked in. The tile
  * height is a whole number of rule spacings, so a world-anchored TileSprite gives continuous ruling.
  */
-export function ensurePaperTexture(scene: Phaser.Scene): void {
-  if (scene.textures.exists(PAPER_KEY)) return;
-  const tex = scene.textures.createCanvas(PAPER_KEY, TILE, TILE);
+export function ensurePaperTexture(scene: Phaser.Scene, style: WorldStyle = NOTEBOOK_STYLE): void {
+  const key = paperTextureKey(style);
+  if (scene.textures.exists(key)) return;
+  const tex = scene.textures.createCanvas(key, TILE, TILE);
   if (!tex) return;
   const c = tex.getContext();
-  c.fillStyle = css(PAGE.paper);
+  c.fillStyle = css(style.paper.base);
   c.fillRect(0, 0, TILE, TILE);
   // Soft blotches: paper is never perfectly flat.
   for (let i = 0; i < 18; i++) {
@@ -40,8 +46,8 @@ export function ensurePaperTexture(scene: Phaser.Scene): void {
     const y = hash(i * 7.7 + 1) * TILE;
     const r = 18 + hash(i * 1.9 + 2) * 40;
     const g = c.createRadialGradient(x, y, 0, x, y, r);
-    g.addColorStop(0, css(PAGE.fibre, 0.08));
-    g.addColorStop(1, css(PAGE.fibre, 0));
+    g.addColorStop(0, css(style.paper.fibre, 0.08));
+    g.addColorStop(1, css(style.paper.fibre, 0));
     c.fillStyle = g;
     c.fillRect(x - r, y - r, r * 2, r * 2);
   }
@@ -52,7 +58,7 @@ export function ensurePaperTexture(scene: Phaser.Scene): void {
     const y = hash(i * 78.233 + 5) * TILE;
     const len = 1.5 + hash(i * 4.1) * 5;
     const ang = (hash(i * 9.3) - 0.5) * 0.9;
-    c.strokeStyle = css(PAGE.fibre, 0.18 + hash(i * 2.7) * 0.25);
+    c.strokeStyle = css(style.paper.fibre, 0.18 + hash(i * 2.7) * 0.25);
     c.lineWidth = 0.6 + hash(i * 5.3) * 0.6;
     c.beginPath();
     c.moveTo(x, y);
@@ -61,7 +67,7 @@ export function ensurePaperTexture(scene: Phaser.Scene): void {
   }
   // Ruled lines.
   const spacing = m(RULE_SPACING_M);
-  c.strokeStyle = css(PAGE.rule, 0.55);
+  c.strokeStyle = css(style.paper.rule, 0.55);
   c.lineWidth = 1.2;
   for (let y = 0; y < TILE; y += spacing) {
     c.beginPath();
@@ -77,15 +83,19 @@ export function addPaper(
   scene: Phaser.Scene,
   level: LevelDef,
   pad = 30,
+  style: WorldStyle = NOTEBOOK_STYLE,
 ): Phaser.GameObjects.TileSprite {
-  ensurePaperTexture(scene);
+  ensurePaperTexture(scene, style);
   const b = level.bounds;
   // Snap the origin to the tile grid so texture coordinates equal world pixels.
   const x0 = Math.floor(m(b.minX - pad) / TILE) * TILE;
   const y0 = Math.floor(m(b.minY - pad) / TILE) * TILE;
   const w = Math.ceil(m(b.maxX + pad) - x0);
   const h = Math.ceil(m(b.maxY + pad) - y0);
-  const paper = scene.add.tileSprite(x0, y0, w, h, PAPER_KEY).setOrigin(0, 0).setDepth(-100);
+  const paper = scene.add
+    .tileSprite(x0, y0, w, h, paperTextureKey(style))
+    .setOrigin(0, 0)
+    .setDepth(-100);
   // Phaser's Canvas TileSprite releases its canvas on destroy but leaves its private
   // display texture registered. Remove only that instance's texture, never the shared tile.
   // The runtime member is omitted from Phaser 4's TileSprite declarations.
@@ -101,23 +111,27 @@ export function addPaper(
  * Screen-fixed page frame (GMR-98: paper and ruling are world-locked, margin and binding frame the
  * view): a spiral wire binding with punched holes down the left edge and the red margin line.
  */
-export function drawFrame(g: Phaser.GameObjects.Graphics, h: number): void {
+export function drawFrame(
+  g: Phaser.GameObjects.Graphics,
+  h: number,
+  style: WorldStyle = NOTEBOOK_STYLE,
+): void {
   g.clear();
   const holeX = 26;
   const marginX = 64;
   // Margin.
-  g.lineStyle(2, PAGE.margin, 0.75).lineBetween(marginX, 0, marginX, h);
+  g.lineStyle(2, style.paper.margin, 0.75).lineBetween(marginX, 0, marginX, h);
   // Punched holes and wire coils every ~34 px.
   for (let y = 14, k = 0; y < h; y += 34, k++) {
-    g.fillStyle(PAGE.hole, 1).fillCircle(holeX, y, 6.5);
-    g.lineStyle(1, PAGE.pencil, 0.6).strokeCircle(holeX, y, 6.5);
+    g.fillStyle(style.paper.binding.hole, 1).fillCircle(holeX, y, 6.5);
+    g.lineStyle(1, style.pencil, 0.6).strokeCircle(holeX, y, 6.5);
     // The coil loops from behind the page, through the hole, over the edge.
     const wob = (hash(k * 1.7) - 0.5) * 1.5;
-    g.lineStyle(3.2, PAGE.wire, 1);
+    g.lineStyle(3.2, style.paper.binding.wire, 1);
     g.beginPath();
     g.arc(holeX - 9 + wob, y - 2, 11, -0.35 * Math.PI, 0.55 * Math.PI, false);
     g.strokePath();
-    g.lineStyle(1.2, 0xb8b8c0, 0.9);
+    g.lineStyle(1.2, style.paper.binding.highlight, 0.9);
     g.beginPath();
     g.arc(holeX - 9 + wob, y - 3, 10, -0.3 * Math.PI, 0.1 * Math.PI, false);
     g.strokePath();
@@ -139,7 +153,11 @@ const overlaps = (a: Box, b: Box): boolean =>
  * birds. Deterministic per level, and kept clear of every solid, anchor, spawn and exit so they
  * never compete with gameplay (doc 07 §13 hierarchy).
  */
-export function drawDoodles(g: Phaser.GameObjects.Graphics, level: LevelDef): void {
+export function drawDoodles(
+  g: Phaser.GameObjects.Graphics,
+  level: LevelDef,
+  style: WorldStyle = NOTEBOOK_STYLE,
+): void {
   const keepOut: Box[] = [
     ...level.solids.map((s) => {
       const xs = s.points.map((p) => p.x);
@@ -177,7 +195,7 @@ export function drawDoodles(g: Phaser.GameObjects.Graphics, level: LevelDef): vo
     const w = 3 + hash(seed + i * 5) * 2.5;
     const box = { x0: x - w / 2, y0: y - 1, x1: x + w / 2, y1: y + 0.6 };
     if (keepOut.some((k) => overlaps(k, box))) continue;
-    cloud(g, x, y, w, seed + i);
+    cloud(g, x, y, w, seed + i, style);
   }
   // Birds: two or three pencil ticks.
   for (let i = 0; i < 6; i++) {
@@ -185,7 +203,7 @@ export function drawDoodles(g: Phaser.GameObjects.Graphics, level: LevelDef): vo
     const y = Math.max(b.minY + 1, b.maxY - 13) + hash(seed * 13 + i) * 4;
     const box = { x0: x - 0.4, y0: y - 0.3, x1: x + 0.4, y1: y + 0.3 };
     if (keepOut.some((k) => overlaps(k, box))) continue;
-    g.lineStyle(1.3, PAGE.pencil, 0.45);
+    g.lineStyle(1.3, style.pencil, 0.45);
     const s = 0.18 + hash(seed + i * 3) * 0.1;
     g.lineBetween(m(x - s), m(y - s * 0.4), m(x), m(y));
     g.lineBetween(m(x), m(y), m(x + s), m(y - s * 0.5));
@@ -198,6 +216,7 @@ function cloud(
   cy: number,
   w: number,
   seed: number,
+  style: WorldStyle,
 ): void {
   // A row of overlapping bumps over a flat base, drawn as a wobbly pencil line.
   const pts: Pt[] = [];
@@ -211,11 +230,11 @@ function cloud(
       pts.push({ x: m(bx + Math.cos(a) * r), y: m(cy + Math.sin(a) * r * 0.8) });
     }
   }
-  strokeInk(g, wobble(pts, seed, m(0.02), m(0.25)), 1.4, PAGE.pencil, 0.4, seed);
-  g.lineStyle(1.2, PAGE.pencil, 0.3).lineBetween(m(left - 0.3), m(cy), m(left + w + 0.3), m(cy));
+  strokeInk(g, wobble(pts, seed, m(0.02), m(0.25)), 1.4, style.pencil, 0.4, seed);
+  g.lineStyle(1.2, style.pencil, 0.3).lineBetween(m(left - 0.3), m(cy), m(left + w + 0.3), m(cy));
   // A little underside hatching.
-  g.lineStyle(1, PAGE.pencil, 0.22);
-  for (let x = left + 0.2; x < left + w - 0.2; x += 0.22)
+  g.lineStyle(1, style.pencil, 0.22);
+  for (let x = left + 0.2; x < left + w - 0.2; x += 0.22 / style.hatchDensity)
     g.lineBetween(m(x), m(cy - 0.05), m(x + 0.18), m(cy - 0.32));
 }
 
