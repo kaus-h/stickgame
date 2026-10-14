@@ -21,6 +21,8 @@ import { Transport } from './transport';
 const WAKE_MS = 25;
 const RAMP_TC = 0.25;
 const LAYERS: readonly Layer[] = ['base', 'pulse', 'tension', 'sting'];
+/** Clear-sting level, about -6 dB from #92 (owner 2026-10-14: "reduce levels a bit, subtle"). */
+const STING_GAIN = 0.5;
 
 export class MusicEngine implements MusicSink {
   private transport: Transport | null = null;
@@ -50,7 +52,7 @@ export class MusicEngine implements MusicSink {
     const { ctx, bus } = out;
     for (const layer of LAYERS) {
       const g = ctx.createGain();
-      g.gain.value = layer === 'sting' ? 1 : 0;
+      g.gain.value = layer === 'sting' ? STING_GAIN : 0;
       g.connect(bus);
       this.gains.set(layer, g);
     }
@@ -65,7 +67,7 @@ export class MusicEngine implements MusicSink {
       tone.type = 'lowpass';
       tone.frequency.value = 1900;
       const wet = ctx.createGain();
-      wet.gain.value = 0.3;
+      wet.gain.value = 0.22;
       sting.connect(delay).connect(tone).connect(fb).connect(delay);
       tone.connect(wet).connect(bus);
       this.echo = [delay, tone, fb, wet];

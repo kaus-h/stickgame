@@ -16,6 +16,9 @@ export const LAMP_CENTRE = { x: 0.56, y: 0.34 } as const;
  * Owner checkpoint 2026-10-13: "a bit" darker, a tunnel feel but "not much". The pool is a little
  * tighter and the corners a little deeper; the centre, where the hero and the next anchor sit,
  * keeps its white paper so ink contrast there is unchanged.
+ *
+ * Owner checkpoint 2026-10-14: the darkness is right, the colour "slightly less yellow". The same
+ * luminance at every stop, with about a third of the blue deficit taken out.
  */
 export function addPageVignette(
   scene: Phaser.Scene,
@@ -32,10 +35,10 @@ export function addPageVignette(
     const cx = W * LAMP_CENTRE.x,
       cy = H * LAMP_CENTRE.y;
     const pool = c.createRadialGradient(cx, cy, H * 0.12, cx, cy, W * 0.62);
-    pool.addColorStop(0, 'rgb(255, 255, 251)');
-    pool.addColorStop(0.26, 'rgb(252, 249, 242)');
-    pool.addColorStop(0.6, 'rgb(228, 217, 199)');
-    pool.addColorStop(1, 'rgb(174, 156, 132)');
+    pool.addColorStop(0, 'rgb(255, 255, 253)');
+    pool.addColorStop(0.26, 'rgb(251, 249, 245)');
+    pool.addColorStop(0.6, 'rgb(225, 218, 206)');
+    pool.addColorStop(1, 'rgb(168, 158, 144)');
     c.fillStyle = pool;
     c.fillRect(0, 0, W, H);
     // The page bends down into the binding: a soft cool shade along the spiral edge.
@@ -49,7 +52,7 @@ export function addPageVignette(
     // The lamp sits beyond the top edge: the bottom of the page is a touch further from it.
     const fall = c.createLinearGradient(0, H * 0.55, 0, H);
     fall.addColorStop(0, 'rgb(255, 255, 255)');
-    fall.addColorStop(1, 'rgb(236, 230, 220)');
+    fall.addColorStop(1, 'rgb(234, 231, 225)');
     c.fillStyle = fall;
     c.fillRect(0, H * 0.55, W, H * 0.45);
     c.globalCompositeOperation = 'source-over';
