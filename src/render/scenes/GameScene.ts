@@ -946,7 +946,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       vy: current.player.velocity.y,
       roped: !!current.rope,
     };
-    this.doodles?.update(dt, heroView, this.reducedMotion);
+    this.doodles?.update(dt, heroView, this.reducedMotion, this.titleCard !== null);
     this.doodles?.draw(this.cameras.main.worldView, heroView, this.reducedMotion);
     this.juice.draw(
       g,
