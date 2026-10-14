@@ -29,6 +29,17 @@ _Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The visio
 
 ## Next
 
+0. **Targeting v2 (CONFIRMED by the owner 2026-10-14; memory `rope-targeting-brainstorm`):**
+   - highlight-based picking is the standard on every platform;
+   - the rope attaches at the anchor's centre;
+   - PC snaps within about 1.1 m;
+   - console: the right stick points at the target, with a stick-neutral default (nearest ahead and up) and Rope on RT;
+   - mobile: playtest tap against a Rope button before locking;
+   - stickiness so the highlight never flickers; the validator flags near-ties;
+   - one board, with runs tagged by input;
+   - never a release-timing cue.
+     First update Linear docs 04, 08 and 12 (AGENTS.md is already updated). Then build it: the input mappers send "aim at anchor N's centre + press on tick T", so there is one simulation. Then re-solve every level and re-pin `level11.test.ts`.
+
 1. **Owner decisions (batch them):**
    - approve the screenshot upload for concept round 2 (add a 5th, digital, frame);
    - choose the order of the chapter worlds;
