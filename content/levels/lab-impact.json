@@ -1,0 +1,24 @@
+{
+  "$schema": "../level.schema.json",
+  "version": 2,
+  "id": "lab-impact",
+  "name": "Momentum Impact Lab",
+  "section": "authoring-labs",
+  "telemetry": { "levelId": "lab-impact" },
+  "spawn": [3, 7.65],
+  "bounds": { "minX": 0, "minY": 0, "maxX": 24, "maxY": 10 },
+  "killY": 11,
+  "solids": [{ "id": "run-up", "rect": { "x": 0, "y": 8, "w": 24, "h": 2 } }],
+  "anchors": [{ "id": "swing", "position": [8, 3] }],
+  "targets": [{ "id": "impact", "position": [10, 7.4] }],
+  "chambers": [
+    {
+      "id": "impact-lab",
+      "region": { "min": [0, 0], "max": [24, 8] },
+      "problem": "A flat run-up stays below the impact threshold; jump and swing to strike with momentum.",
+      "challengeFamily": "momentum-impact"
+    }
+  ],
+  "checkpoints": [{ "id": "run-up-start", "position": [4, 7.65] }],
+  "exit": { "min": [21, 6.5], "max": [23, 8] }
+}

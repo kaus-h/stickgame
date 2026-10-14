@@ -31,6 +31,7 @@ const schema6 = {
     solids: { type: 'array', items: { $ref: '#/definitions/solid' } },
     anchors: { type: 'array', items: { $ref: '#/definitions/anchor' } },
     enemies: { type: 'array', items: { $ref: '#/definitions/patroller' } },
+    targets: { type: 'array', items: { $ref: '#/definitions/target' } },
     exit: { oneOf: [{ $ref: '#/definitions/region' }, { $ref: '#/definitions/exit' }] },
     section: { $ref: '#/definitions/id' },
     telemetry: {
@@ -94,6 +95,27 @@ const schema6 = {
     },
   ],
   definitions: {
+    target: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['id', 'position'],
+      properties: {
+        id: { $ref: '#/definitions/id' },
+        position: { $ref: '#/definitions/point' },
+        radius: { type: 'number', exclusiveMinimum: 0, default: 0.6 },
+        hp: { type: 'integer', minimum: 1, maximum: 9007199254740991, default: 1 },
+        minSpeed: { type: 'number', minimum: 0 },
+        approach: {
+          type: 'object',
+          additionalProperties: false,
+          required: ['min', 'max'],
+          description:
+            'Hero velocity direction in degrees: 0 = +x, +y down. Signed and wrapped windows are allowed; an absolute endpoint difference of 360 permits every direction.',
+          properties: { min: { type: 'number' }, max: { type: 'number' } },
+        },
+        path: { $ref: '#/definitions/path' },
+      },
+    },
     patroller: {
       type: 'object',
       additionalProperties: false,
@@ -2075,6 +2097,366 @@ function validate45(
 const schema15 = {
   type: 'object',
   additionalProperties: false,
+  required: ['id', 'position'],
+  properties: {
+    id: { $ref: '#/definitions/id' },
+    position: { $ref: '#/definitions/point' },
+    radius: { type: 'number', exclusiveMinimum: 0, default: 0.6 },
+    hp: { type: 'integer', minimum: 1, maximum: 9007199254740991, default: 1 },
+    minSpeed: { type: 'number', minimum: 0 },
+    approach: {
+      type: 'object',
+      additionalProperties: false,
+      required: ['min', 'max'],
+      description:
+        'Hero velocity direction in degrees: 0 = +x, +y down. Signed and wrapped windows are allowed; an absolute endpoint difference of 360 permits every direction.',
+      properties: { min: { type: 'number' }, max: { type: 'number' } },
+    },
+    path: { $ref: '#/definitions/path' },
+  },
+};
+function validate51(
+  data,
+  { instancePath = '', parentData, parentDataProperty, rootData = data } = {},
+) {
+  let vErrors = null;
+  let errors = 0;
+  if (data && typeof data == 'object' && !Array.isArray(data)) {
+    if (data.id === undefined) {
+      const err0 = {
+        instancePath,
+        schemaPath: '#/required',
+        keyword: 'required',
+        params: { missingProperty: 'id' },
+        message: "must have required property '" + 'id' + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err0];
+      } else {
+        vErrors.push(err0);
+      }
+      errors++;
+    }
+    if (data.position === undefined) {
+      const err1 = {
+        instancePath,
+        schemaPath: '#/required',
+        keyword: 'required',
+        params: { missingProperty: 'position' },
+        message: "must have required property '" + 'position' + "'",
+      };
+      if (vErrors === null) {
+        vErrors = [err1];
+      } else {
+        vErrors.push(err1);
+      }
+      errors++;
+    }
+    for (const key0 in data) {
+      if (!(
+        key0 === 'id' ||
+        key0 === 'position' ||
+        key0 === 'radius' ||
+        key0 === 'hp' ||
+        key0 === 'minSpeed' ||
+        key0 === 'approach' ||
+        key0 === 'path'
+      )) {
+        const err2 = {
+          instancePath,
+          schemaPath: '#/additionalProperties',
+          keyword: 'additionalProperties',
+          params: { additionalProperty: key0 },
+          message: 'must NOT have additional properties',
+        };
+        if (vErrors === null) {
+          vErrors = [err2];
+        } else {
+          vErrors.push(err2);
+        }
+        errors++;
+      }
+    }
+    if (data.id !== undefined) {
+      if (
+        !validate27(data.id, {
+          instancePath: instancePath + '/id',
+          parentData: data,
+          parentDataProperty: 'id',
+          rootData,
+        })
+      ) {
+        vErrors = vErrors === null ? validate27.errors : vErrors.concat(validate27.errors);
+        errors = vErrors.length;
+      }
+    }
+    if (data.position !== undefined) {
+      if (
+        !validate23(data.position, {
+          instancePath: instancePath + '/position',
+          parentData: data,
+          parentDataProperty: 'position',
+          rootData,
+        })
+      ) {
+        vErrors = vErrors === null ? validate23.errors : vErrors.concat(validate23.errors);
+        errors = vErrors.length;
+      }
+    }
+    if (data.radius !== undefined) {
+      let data2 = data.radius;
+      if (typeof data2 == 'number' && isFinite(data2)) {
+        if (data2 <= 0 || isNaN(data2)) {
+          const err3 = {
+            instancePath: instancePath + '/radius',
+            schemaPath: '#/properties/radius/exclusiveMinimum',
+            keyword: 'exclusiveMinimum',
+            params: { comparison: '>', limit: 0 },
+            message: 'must be > 0',
+          };
+          if (vErrors === null) {
+            vErrors = [err3];
+          } else {
+            vErrors.push(err3);
+          }
+          errors++;
+        }
+      } else {
+        const err4 = {
+          instancePath: instancePath + '/radius',
+          schemaPath: '#/properties/radius/type',
+          keyword: 'type',
+          params: { type: 'number' },
+          message: 'must be number',
+        };
+        if (vErrors === null) {
+          vErrors = [err4];
+        } else {
+          vErrors.push(err4);
+        }
+        errors++;
+      }
+    }
+    if (data.hp !== undefined) {
+      let data3 = data.hp;
+      if (!(typeof data3 == 'number' && !(data3 % 1) && !isNaN(data3) && isFinite(data3))) {
+        const err5 = {
+          instancePath: instancePath + '/hp',
+          schemaPath: '#/properties/hp/type',
+          keyword: 'type',
+          params: { type: 'integer' },
+          message: 'must be integer',
+        };
+        if (vErrors === null) {
+          vErrors = [err5];
+        } else {
+          vErrors.push(err5);
+        }
+        errors++;
+      }
+      if (typeof data3 == 'number' && isFinite(data3)) {
+        if (data3 > 9007199254740991 || isNaN(data3)) {
+          const err6 = {
+            instancePath: instancePath + '/hp',
+            schemaPath: '#/properties/hp/maximum',
+            keyword: 'maximum',
+            params: { comparison: '<=', limit: 9007199254740991 },
+            message: 'must be <= 9007199254740991',
+          };
+          if (vErrors === null) {
+            vErrors = [err6];
+          } else {
+            vErrors.push(err6);
+          }
+          errors++;
+        }
+        if (data3 < 1 || isNaN(data3)) {
+          const err7 = {
+            instancePath: instancePath + '/hp',
+            schemaPath: '#/properties/hp/minimum',
+            keyword: 'minimum',
+            params: { comparison: '>=', limit: 1 },
+            message: 'must be >= 1',
+          };
+          if (vErrors === null) {
+            vErrors = [err7];
+          } else {
+            vErrors.push(err7);
+          }
+          errors++;
+        }
+      }
+    }
+    if (data.minSpeed !== undefined) {
+      let data4 = data.minSpeed;
+      if (typeof data4 == 'number' && isFinite(data4)) {
+        if (data4 < 0 || isNaN(data4)) {
+          const err8 = {
+            instancePath: instancePath + '/minSpeed',
+            schemaPath: '#/properties/minSpeed/minimum',
+            keyword: 'minimum',
+            params: { comparison: '>=', limit: 0 },
+            message: 'must be >= 0',
+          };
+          if (vErrors === null) {
+            vErrors = [err8];
+          } else {
+            vErrors.push(err8);
+          }
+          errors++;
+        }
+      } else {
+        const err9 = {
+          instancePath: instancePath + '/minSpeed',
+          schemaPath: '#/properties/minSpeed/type',
+          keyword: 'type',
+          params: { type: 'number' },
+          message: 'must be number',
+        };
+        if (vErrors === null) {
+          vErrors = [err9];
+        } else {
+          vErrors.push(err9);
+        }
+        errors++;
+      }
+    }
+    if (data.approach !== undefined) {
+      let data5 = data.approach;
+      if (data5 && typeof data5 == 'object' && !Array.isArray(data5)) {
+        if (data5.min === undefined) {
+          const err10 = {
+            instancePath: instancePath + '/approach',
+            schemaPath: '#/properties/approach/required',
+            keyword: 'required',
+            params: { missingProperty: 'min' },
+            message: "must have required property '" + 'min' + "'",
+          };
+          if (vErrors === null) {
+            vErrors = [err10];
+          } else {
+            vErrors.push(err10);
+          }
+          errors++;
+        }
+        if (data5.max === undefined) {
+          const err11 = {
+            instancePath: instancePath + '/approach',
+            schemaPath: '#/properties/approach/required',
+            keyword: 'required',
+            params: { missingProperty: 'max' },
+            message: "must have required property '" + 'max' + "'",
+          };
+          if (vErrors === null) {
+            vErrors = [err11];
+          } else {
+            vErrors.push(err11);
+          }
+          errors++;
+        }
+        for (const key1 in data5) {
+          if (!(key1 === 'min' || key1 === 'max')) {
+            const err12 = {
+              instancePath: instancePath + '/approach',
+              schemaPath: '#/properties/approach/additionalProperties',
+              keyword: 'additionalProperties',
+              params: { additionalProperty: key1 },
+              message: 'must NOT have additional properties',
+            };
+            if (vErrors === null) {
+              vErrors = [err12];
+            } else {
+              vErrors.push(err12);
+            }
+            errors++;
+          }
+        }
+        if (data5.min !== undefined) {
+          let data6 = data5.min;
+          if (!(typeof data6 == 'number' && isFinite(data6))) {
+            const err13 = {
+              instancePath: instancePath + '/approach/min',
+              schemaPath: '#/properties/approach/properties/min/type',
+              keyword: 'type',
+              params: { type: 'number' },
+              message: 'must be number',
+            };
+            if (vErrors === null) {
+              vErrors = [err13];
+            } else {
+              vErrors.push(err13);
+            }
+            errors++;
+          }
+        }
+        if (data5.max !== undefined) {
+          let data7 = data5.max;
+          if (!(typeof data7 == 'number' && isFinite(data7))) {
+            const err14 = {
+              instancePath: instancePath + '/approach/max',
+              schemaPath: '#/properties/approach/properties/max/type',
+              keyword: 'type',
+              params: { type: 'number' },
+              message: 'must be number',
+            };
+            if (vErrors === null) {
+              vErrors = [err14];
+            } else {
+              vErrors.push(err14);
+            }
+            errors++;
+          }
+        }
+      } else {
+        const err15 = {
+          instancePath: instancePath + '/approach',
+          schemaPath: '#/properties/approach/type',
+          keyword: 'type',
+          params: { type: 'object' },
+          message: 'must be object',
+        };
+        if (vErrors === null) {
+          vErrors = [err15];
+        } else {
+          vErrors.push(err15);
+        }
+        errors++;
+      }
+    }
+    if (data.path !== undefined) {
+      if (
+        !validate41(data.path, {
+          instancePath: instancePath + '/path',
+          parentData: data,
+          parentDataProperty: 'path',
+          rootData,
+        })
+      ) {
+        vErrors = vErrors === null ? validate41.errors : vErrors.concat(validate41.errors);
+        errors = vErrors.length;
+      }
+    }
+  } else {
+    const err16 = {
+      instancePath,
+      schemaPath: '#/type',
+      keyword: 'type',
+      params: { type: 'object' },
+      message: 'must be object',
+    };
+    if (vErrors === null) {
+      vErrors = [err16];
+    } else {
+      vErrors.push(err16);
+    }
+    errors++;
+  }
+  validate51.errors = vErrors;
+  return errors === 0;
+}
+const schema16 = {
+  type: 'object',
+  additionalProperties: false,
   required: ['id', 'family', 'min', 'max', 'entry'],
   allOf: [
     {
@@ -2104,7 +2486,7 @@ const schema15 = {
     },
   },
 };
-const schema16 = {
+const schema17 = {
   type: 'object',
   additionalProperties: false,
   required: ['min', 'max'],
@@ -2113,7 +2495,7 @@ const schema16 = {
     max: { type: 'number', minimum: 0, maximum: 90 },
   },
 };
-function validate56(
+function validate61(
   data,
   { instancePath = '', parentData, parentDataProperty, rootData = data } = {},
 ) {
@@ -2280,16 +2662,16 @@ function validate56(
     }
     errors++;
   }
-  validate56.errors = vErrors;
+  validate61.errors = vErrors;
   return errors === 0;
 }
-const schema17 = {
+const schema18 = {
   type: 'object',
   additionalProperties: false,
   required: ['min', 'max'],
   properties: { min: { type: 'number', minimum: 0 }, max: { type: 'number', exclusiveMinimum: 0 } },
 };
-function validate58(
+function validate63(
   data,
   { instancePath = '', parentData, parentDataProperty, rootData = data } = {},
 ) {
@@ -2426,10 +2808,10 @@ function validate58(
     }
     errors++;
   }
-  validate58.errors = vErrors;
+  validate63.errors = vErrors;
   return errors === 0;
 }
-const schema18 = {
+const schema19 = {
   type: 'object',
   additionalProperties: false,
   required: ['min', 'max'],
@@ -2438,7 +2820,7 @@ const schema18 = {
     max: { type: 'number', minimum: 0, maximum: 1 },
   },
 };
-function validate60(
+function validate65(
   data,
   { instancePath = '', parentData, parentDataProperty, rootData = data } = {},
 ) {
@@ -2605,10 +2987,10 @@ function validate60(
     }
     errors++;
   }
-  validate60.errors = vErrors;
+  validate65.errors = vErrors;
   return errors === 0;
 }
-function validate52(
+function validate57(
   data,
   { instancePath = '', parentData, parentDataProperty, rootData = data } = {},
 ) {
@@ -2653,7 +3035,7 @@ function validate52(
                 schemaPath: '#/allOf/0/then/properties/entry/properties/side/enum',
                 keyword: 'enum',
                 params: {
-                  allowedValues: schema15.allOf[0].then.properties.entry.properties.side.enum,
+                  allowedValues: schema16.allOf[0].then.properties.entry.properties.side.enum,
                 },
                 message: 'must be equal to one of the allowed values',
               };
@@ -2725,7 +3107,7 @@ function validate52(
                 schemaPath: '#/allOf/1/then/properties/entry/properties/side/enum',
                 keyword: 'enum',
                 params: {
-                  allowedValues: schema15.allOf[1].then.properties.entry.properties.side.enum,
+                  allowedValues: schema16.allOf[1].then.properties.entry.properties.side.enum,
                 },
                 message: 'must be equal to one of the allowed values',
               };
@@ -2877,7 +3259,7 @@ function validate52(
           instancePath: instancePath + '/family',
           schemaPath: '#/properties/family/enum',
           keyword: 'enum',
-          params: { allowedValues: schema15.properties.family.enum },
+          params: { allowedValues: schema16.properties.family.enum },
           message: 'must be equal to one of the allowed values',
         };
         if (vErrors === null) {
@@ -2991,7 +3373,7 @@ function validate52(
               instancePath: instancePath + '/entry/side',
               schemaPath: '#/properties/entry/properties/side/enum',
               keyword: 'enum',
-              params: { allowedValues: schema15.properties.entry.properties.side.enum },
+              params: { allowedValues: schema16.properties.entry.properties.side.enum },
               message: 'must be equal to one of the allowed values',
             };
             if (vErrors === null) {
@@ -3004,40 +3386,40 @@ function validate52(
         }
         if (data10.angle !== undefined) {
           if (
-            !validate56(data10.angle, {
+            !validate61(data10.angle, {
               instancePath: instancePath + '/entry/angle',
               parentData: data10,
               parentDataProperty: 'angle',
               rootData,
             })
           ) {
-            vErrors = vErrors === null ? validate56.errors : vErrors.concat(validate56.errors);
+            vErrors = vErrors === null ? validate61.errors : vErrors.concat(validate61.errors);
             errors = vErrors.length;
           }
         }
         if (data10.speed !== undefined) {
           if (
-            !validate58(data10.speed, {
+            !validate63(data10.speed, {
               instancePath: instancePath + '/entry/speed',
               parentData: data10,
               parentDataProperty: 'speed',
               rootData,
             })
           ) {
-            vErrors = vErrors === null ? validate58.errors : vErrors.concat(validate58.errors);
+            vErrors = vErrors === null ? validate63.errors : vErrors.concat(validate63.errors);
             errors = vErrors.length;
           }
         }
         if (data10.alignment !== undefined) {
           if (
-            !validate60(data10.alignment, {
+            !validate65(data10.alignment, {
               instancePath: instancePath + '/entry/alignment',
               parentData: data10,
               parentDataProperty: 'alignment',
               rootData,
             })
           ) {
-            vErrors = vErrors === null ? validate60.errors : vErrors.concat(validate60.errors);
+            vErrors = vErrors === null ? validate65.errors : vErrors.concat(validate65.errors);
             errors = vErrors.length;
           }
         }
@@ -3072,7 +3454,7 @@ function validate52(
     }
     errors++;
   }
-  validate52.errors = vErrors;
+  validate57.errors = vErrors;
   return errors === 0;
 }
 const func2 = Object.prototype.hasOwnProperty;
@@ -3672,14 +4054,47 @@ function validate21(
         errors++;
       }
     }
+    if (data.targets !== undefined) {
+      let data22 = data.targets;
+      if (Array.isArray(data22)) {
+        const len3 = data22.length;
+        for (let i3 = 0; i3 < len3; i3++) {
+          if (
+            !validate51(data22[i3], {
+              instancePath: instancePath + '/targets/' + i3,
+              parentData: data22,
+              parentDataProperty: i3,
+              rootData,
+            })
+          ) {
+            vErrors = vErrors === null ? validate51.errors : vErrors.concat(validate51.errors);
+            errors = vErrors.length;
+          }
+        }
+      } else {
+        const err29 = {
+          instancePath: instancePath + '/targets',
+          schemaPath: '#/properties/targets/type',
+          keyword: 'type',
+          params: { type: 'array' },
+          message: 'must be array',
+        };
+        if (vErrors === null) {
+          vErrors = [err29];
+        } else {
+          vErrors.push(err29);
+        }
+        errors++;
+      }
+    }
     if (data.exit !== undefined) {
-      let data22 = data.exit;
-      const _errs38 = errors;
-      let valid12 = false;
+      let data24 = data.exit;
+      const _errs41 = errors;
+      let valid14 = false;
       let passing0 = null;
-      const _errs39 = errors;
+      const _errs42 = errors;
       if (
-        !validate22(data22, {
+        !validate22(data24, {
           instancePath: instancePath + '/exit',
           parentData: data,
           parentDataProperty: 'exit',
@@ -3689,35 +4104,35 @@ function validate21(
         vErrors = vErrors === null ? validate22.errors : vErrors.concat(validate22.errors);
         errors = vErrors.length;
       }
-      var _valid1 = _errs39 === errors;
+      var _valid1 = _errs42 === errors;
       if (_valid1) {
-        valid12 = true;
+        valid14 = true;
         passing0 = 0;
       }
-      const _errs40 = errors;
+      const _errs43 = errors;
       if (
-        !validate52(data22, {
+        !validate57(data24, {
           instancePath: instancePath + '/exit',
           parentData: data,
           parentDataProperty: 'exit',
           rootData,
         })
       ) {
-        vErrors = vErrors === null ? validate52.errors : vErrors.concat(validate52.errors);
+        vErrors = vErrors === null ? validate57.errors : vErrors.concat(validate57.errors);
         errors = vErrors.length;
       }
-      var _valid1 = _errs40 === errors;
-      if (_valid1 && valid12) {
-        valid12 = false;
+      var _valid1 = _errs43 === errors;
+      if (_valid1 && valid14) {
+        valid14 = false;
         passing0 = [passing0, 1];
       } else {
         if (_valid1) {
-          valid12 = true;
+          valid14 = true;
           passing0 = 1;
         }
       }
-      if (!valid12) {
-        const err29 = {
+      if (!valid14) {
+        const err30 = {
           instancePath: instancePath + '/exit',
           schemaPath: '#/properties/exit/oneOf',
           keyword: 'oneOf',
@@ -3725,16 +4140,16 @@ function validate21(
           message: 'must match exactly one schema in oneOf',
         };
         if (vErrors === null) {
-          vErrors = [err29];
+          vErrors = [err30];
         } else {
-          vErrors.push(err29);
+          vErrors.push(err30);
         }
         errors++;
       } else {
-        errors = _errs38;
+        errors = _errs41;
         if (vErrors !== null) {
-          if (_errs38) {
-            vErrors.length = _errs38;
+          if (_errs41) {
+            vErrors.length = _errs41;
           } else {
             vErrors = null;
           }
@@ -3755,10 +4170,10 @@ function validate21(
       }
     }
     if (data.telemetry !== undefined) {
-      let data24 = data.telemetry;
-      if (data24 && typeof data24 == 'object' && !Array.isArray(data24)) {
-        if (data24.levelId === undefined) {
-          const err30 = {
+      let data26 = data.telemetry;
+      if (data26 && typeof data26 == 'object' && !Array.isArray(data26)) {
+        if (data26.levelId === undefined) {
+          const err31 = {
             instancePath: instancePath + '/telemetry',
             schemaPath: '#/properties/telemetry/required',
             keyword: 'required',
@@ -3766,15 +4181,15 @@ function validate21(
             message: "must have required property '" + 'levelId' + "'",
           };
           if (vErrors === null) {
-            vErrors = [err30];
+            vErrors = [err31];
           } else {
-            vErrors.push(err30);
+            vErrors.push(err31);
           }
           errors++;
         }
-        for (const key2 in data24) {
+        for (const key2 in data26) {
           if (!(key2 === 'levelId')) {
-            const err31 = {
+            const err32 = {
               instancePath: instancePath + '/telemetry',
               schemaPath: '#/properties/telemetry/additionalProperties',
               keyword: 'additionalProperties',
@@ -3782,18 +4197,18 @@ function validate21(
               message: 'must NOT have additional properties',
             };
             if (vErrors === null) {
-              vErrors = [err31];
+              vErrors = [err32];
             } else {
-              vErrors.push(err31);
+              vErrors.push(err32);
             }
             errors++;
           }
         }
-        if (data24.levelId !== undefined) {
+        if (data26.levelId !== undefined) {
           if (
-            !validate27(data24.levelId, {
+            !validate27(data26.levelId, {
               instancePath: instancePath + '/telemetry/levelId',
-              parentData: data24,
+              parentData: data26,
               parentDataProperty: 'levelId',
               rootData,
             })
@@ -3803,7 +4218,7 @@ function validate21(
           }
         }
       } else {
-        const err32 = {
+        const err33 = {
           instancePath: instancePath + '/telemetry',
           schemaPath: '#/properties/telemetry/type',
           keyword: 'type',
@@ -3811,42 +4226,27 @@ function validate21(
           message: 'must be object',
         };
         if (vErrors === null) {
-          vErrors = [err32];
+          vErrors = [err33];
         } else {
-          vErrors.push(err32);
+          vErrors.push(err33);
         }
         errors++;
       }
     }
     if (data.chambers !== undefined) {
-      let data26 = data.chambers;
-      if (Array.isArray(data26)) {
-        const len3 = data26.length;
-        for (let i3 = 0; i3 < len3; i3++) {
-          let data27 = data26[i3];
-          if (data27 && typeof data27 == 'object' && !Array.isArray(data27)) {
-            if (data27.id === undefined) {
-              const err33 = {
-                instancePath: instancePath + '/chambers/' + i3,
+      let data28 = data.chambers;
+      if (Array.isArray(data28)) {
+        const len4 = data28.length;
+        for (let i4 = 0; i4 < len4; i4++) {
+          let data29 = data28[i4];
+          if (data29 && typeof data29 == 'object' && !Array.isArray(data29)) {
+            if (data29.id === undefined) {
+              const err34 = {
+                instancePath: instancePath + '/chambers/' + i4,
                 schemaPath: '#/properties/chambers/items/required',
                 keyword: 'required',
                 params: { missingProperty: 'id' },
                 message: "must have required property '" + 'id' + "'",
-              };
-              if (vErrors === null) {
-                vErrors = [err33];
-              } else {
-                vErrors.push(err33);
-              }
-              errors++;
-            }
-            if (data27.region === undefined) {
-              const err34 = {
-                instancePath: instancePath + '/chambers/' + i3,
-                schemaPath: '#/properties/chambers/items/required',
-                keyword: 'required',
-                params: { missingProperty: 'region' },
-                message: "must have required property '" + 'region' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err34];
@@ -3855,13 +4255,13 @@ function validate21(
               }
               errors++;
             }
-            if (data27.problem === undefined) {
+            if (data29.region === undefined) {
               const err35 = {
-                instancePath: instancePath + '/chambers/' + i3,
+                instancePath: instancePath + '/chambers/' + i4,
                 schemaPath: '#/properties/chambers/items/required',
                 keyword: 'required',
-                params: { missingProperty: 'problem' },
-                message: "must have required property '" + 'problem' + "'",
+                params: { missingProperty: 'region' },
+                message: "must have required property '" + 'region' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err35];
@@ -3870,13 +4270,13 @@ function validate21(
               }
               errors++;
             }
-            if (data27.challengeFamily === undefined) {
+            if (data29.problem === undefined) {
               const err36 = {
-                instancePath: instancePath + '/chambers/' + i3,
+                instancePath: instancePath + '/chambers/' + i4,
                 schemaPath: '#/properties/chambers/items/required',
                 keyword: 'required',
-                params: { missingProperty: 'challengeFamily' },
-                message: "must have required property '" + 'challengeFamily' + "'",
+                params: { missingProperty: 'problem' },
+                message: "must have required property '" + 'problem' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err36];
@@ -3885,33 +4285,48 @@ function validate21(
               }
               errors++;
             }
-            for (const key3 in data27) {
+            if (data29.challengeFamily === undefined) {
+              const err37 = {
+                instancePath: instancePath + '/chambers/' + i4,
+                schemaPath: '#/properties/chambers/items/required',
+                keyword: 'required',
+                params: { missingProperty: 'challengeFamily' },
+                message: "must have required property '" + 'challengeFamily' + "'",
+              };
+              if (vErrors === null) {
+                vErrors = [err37];
+              } else {
+                vErrors.push(err37);
+              }
+              errors++;
+            }
+            for (const key3 in data29) {
               if (!(
                 key3 === 'id' ||
                 key3 === 'region' ||
                 key3 === 'problem' ||
                 key3 === 'challengeFamily'
               )) {
-                const err37 = {
-                  instancePath: instancePath + '/chambers/' + i3,
+                const err38 = {
+                  instancePath: instancePath + '/chambers/' + i4,
                   schemaPath: '#/properties/chambers/items/additionalProperties',
                   keyword: 'additionalProperties',
                   params: { additionalProperty: key3 },
                   message: 'must NOT have additional properties',
                 };
                 if (vErrors === null) {
-                  vErrors = [err37];
+                  vErrors = [err38];
                 } else {
-                  vErrors.push(err37);
+                  vErrors.push(err38);
                 }
                 errors++;
               }
             }
-            if (data27.id !== undefined) {
+            if (data29.id !== undefined) {
               if (
-                !validate27(data27.id, {
-                  instancePath: instancePath + '/chambers/' + i3 + '/id',
-                  parentData: data27,
+                !validate27(data29.id, {
+                  instancePath: instancePath + '/chambers/' + i4 + '/id',
+                  parentData: data29,
                   parentDataProperty: 'id',
                   rootData,
                 })
@@ -3920,11 +4335,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data27.region !== undefined) {
+            if (data29.region !== undefined) {
               if (
-                !validate22(data27.region, {
-                  instancePath: instancePath + '/chambers/' + i3 + '/region',
-                  parentData: data27,
+                !validate22(data29.region, {
+                  instancePath: instancePath + '/chambers/' + i4 + '/region',
+                  parentData: data29,
                   parentDataProperty: 'region',
                   rootData,
                 })
@@ -3933,11 +4348,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data27.problem !== undefined) {
+            if (data29.problem !== undefined) {
               if (
-                !validate29(data27.problem, {
-                  instancePath: instancePath + '/chambers/' + i3 + '/problem',
-                  parentData: data27,
+                !validate29(data29.problem, {
+                  instancePath: instancePath + '/chambers/' + i4 + '/problem',
+                  parentData: data29,
                   parentDataProperty: 'problem',
                   rootData,
                 })
@@ -3946,11 +4361,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data27.challengeFamily !== undefined) {
+            if (data29.challengeFamily !== undefined) {
               if (
-                !validate29(data27.challengeFamily, {
-                  instancePath: instancePath + '/chambers/' + i3 + '/challengeFamily',
-                  parentData: data27,
+                !validate29(data29.challengeFamily, {
+                  instancePath: instancePath + '/chambers/' + i4 + '/challengeFamily',
+                  parentData: data29,
                   parentDataProperty: 'challengeFamily',
                   rootData,
                 })
@@ -3960,23 +4375,23 @@ function validate21(
               }
             }
           } else {
-            const err38 = {
-              instancePath: instancePath + '/chambers/' + i3,
+            const err39 = {
+              instancePath: instancePath + '/chambers/' + i4,
               schemaPath: '#/properties/chambers/items/type',
               keyword: 'type',
               params: { type: 'object' },
               message: 'must be object',
             };
             if (vErrors === null) {
-              vErrors = [err38];
+              vErrors = [err39];
             } else {
-              vErrors.push(err38);
+              vErrors.push(err39);
             }
             errors++;
           }
         }
       } else {
-        const err39 = {
+        const err40 = {
           instancePath: instancePath + '/chambers',
           schemaPath: '#/properties/chambers/type',
           keyword: 'type',
@@ -3984,42 +4399,27 @@ function validate21(
           message: 'must be array',
         };
         if (vErrors === null) {
-          vErrors = [err39];
+          vErrors = [err40];
         } else {
-          vErrors.push(err39);
+          vErrors.push(err40);
         }
         errors++;
       }
     }
     if (data.checkpoints !== undefined) {
-      let data32 = data.checkpoints;
-      if (Array.isArray(data32)) {
-        const len4 = data32.length;
-        for (let i4 = 0; i4 < len4; i4++) {
-          let data33 = data32[i4];
-          if (data33 && typeof data33 == 'object' && !Array.isArray(data33)) {
-            if (data33.id === undefined) {
-              const err40 = {
-                instancePath: instancePath + '/checkpoints/' + i4,
+      let data34 = data.checkpoints;
+      if (Array.isArray(data34)) {
+        const len5 = data34.length;
+        for (let i5 = 0; i5 < len5; i5++) {
+          let data35 = data34[i5];
+          if (data35 && typeof data35 == 'object' && !Array.isArray(data35)) {
+            if (data35.id === undefined) {
+              const err41 = {
+                instancePath: instancePath + '/checkpoints/' + i5,
                 schemaPath: '#/properties/checkpoints/items/required',
                 keyword: 'required',
                 params: { missingProperty: 'id' },
                 message: "must have required property '" + 'id' + "'",
-              };
-              if (vErrors === null) {
-                vErrors = [err40];
-              } else {
-                vErrors.push(err40);
-              }
-              errors++;
-            }
-            if (data33.position === undefined) {
-              const err41 = {
-                instancePath: instancePath + '/checkpoints/' + i4,
-                schemaPath: '#/properties/checkpoints/items/required',
-                keyword: 'required',
-                params: { missingProperty: 'position' },
-                message: "must have required property '" + 'position' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err41];
@@ -4028,28 +4428,43 @@ function validate21(
               }
               errors++;
             }
-            for (const key4 in data33) {
+            if (data35.position === undefined) {
+              const err42 = {
+                instancePath: instancePath + '/checkpoints/' + i5,
+                schemaPath: '#/properties/checkpoints/items/required',
+                keyword: 'required',
+                params: { missingProperty: 'position' },
+                message: "must have required property '" + 'position' + "'",
+              };
+              if (vErrors === null) {
+                vErrors = [err42];
+              } else {
+                vErrors.push(err42);
+              }
+              errors++;
+            }
+            for (const key4 in data35) {
               if (!(key4 === 'id' || key4 === 'position')) {
-                const err42 = {
-                  instancePath: instancePath + '/checkpoints/' + i4,
+                const err43 = {
+                  instancePath: instancePath + '/checkpoints/' + i5,
                   schemaPath: '#/properties/checkpoints/items/additionalProperties',
                   keyword: 'additionalProperties',
                   params: { additionalProperty: key4 },
                   message: 'must NOT have additional properties',
                 };
                 if (vErrors === null) {
-                  vErrors = [err42];
+                  vErrors = [err43];
                 } else {
-                  vErrors.push(err42);
+                  vErrors.push(err43);
                 }
                 errors++;
               }
             }
-            if (data33.id !== undefined) {
+            if (data35.id !== undefined) {
               if (
-                !validate27(data33.id, {
-                  instancePath: instancePath + '/checkpoints/' + i4 + '/id',
-                  parentData: data33,
+                !validate27(data35.id, {
+                  instancePath: instancePath + '/checkpoints/' + i5 + '/id',
+                  parentData: data35,
                   parentDataProperty: 'id',
                   rootData,
                 })
@@ -4058,11 +4473,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data33.position !== undefined) {
+            if (data35.position !== undefined) {
               if (
-                !validate23(data33.position, {
-                  instancePath: instancePath + '/checkpoints/' + i4 + '/position',
-                  parentData: data33,
+                !validate23(data35.position, {
+                  instancePath: instancePath + '/checkpoints/' + i5 + '/position',
+                  parentData: data35,
                   parentDataProperty: 'position',
                   rootData,
                 })
@@ -4072,23 +4487,23 @@ function validate21(
               }
             }
           } else {
-            const err43 = {
-              instancePath: instancePath + '/checkpoints/' + i4,
+            const err44 = {
+              instancePath: instancePath + '/checkpoints/' + i5,
               schemaPath: '#/properties/checkpoints/items/type',
               keyword: 'type',
               params: { type: 'object' },
               message: 'must be object',
             };
             if (vErrors === null) {
-              vErrors = [err43];
+              vErrors = [err44];
             } else {
-              vErrors.push(err43);
+              vErrors.push(err44);
             }
             errors++;
           }
         }
       } else {
-        const err44 = {
+        const err45 = {
           instancePath: instancePath + '/checkpoints',
           schemaPath: '#/properties/checkpoints/type',
           keyword: 'type',
@@ -4096,42 +4511,27 @@ function validate21(
           message: 'must be array',
         };
         if (vErrors === null) {
-          vErrors = [err44];
+          vErrors = [err45];
         } else {
-          vErrors.push(err44);
+          vErrors.push(err45);
         }
         errors++;
       }
     }
     if (data.tunnels !== undefined) {
-      let data36 = data.tunnels;
-      if (Array.isArray(data36)) {
-        const len5 = data36.length;
-        for (let i5 = 0; i5 < len5; i5++) {
-          let data37 = data36[i5];
-          if (data37 && typeof data37 == 'object' && !Array.isArray(data37)) {
-            if (data37.id === undefined) {
-              const err45 = {
-                instancePath: instancePath + '/tunnels/' + i5,
+      let data38 = data.tunnels;
+      if (Array.isArray(data38)) {
+        const len6 = data38.length;
+        for (let i6 = 0; i6 < len6; i6++) {
+          let data39 = data38[i6];
+          if (data39 && typeof data39 == 'object' && !Array.isArray(data39)) {
+            if (data39.id === undefined) {
+              const err46 = {
+                instancePath: instancePath + '/tunnels/' + i6,
                 schemaPath: '#/properties/tunnels/items/required',
                 keyword: 'required',
                 params: { missingProperty: 'id' },
                 message: "must have required property '" + 'id' + "'",
-              };
-              if (vErrors === null) {
-                vErrors = [err45];
-              } else {
-                vErrors.push(err45);
-              }
-              errors++;
-            }
-            if (data37.region === undefined) {
-              const err46 = {
-                instancePath: instancePath + '/tunnels/' + i5,
-                schemaPath: '#/properties/tunnels/items/required',
-                keyword: 'required',
-                params: { missingProperty: 'region' },
-                message: "must have required property '" + 'region' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err46];
@@ -4140,28 +4540,43 @@ function validate21(
               }
               errors++;
             }
-            for (const key5 in data37) {
+            if (data39.region === undefined) {
+              const err47 = {
+                instancePath: instancePath + '/tunnels/' + i6,
+                schemaPath: '#/properties/tunnels/items/required',
+                keyword: 'required',
+                params: { missingProperty: 'region' },
+                message: "must have required property '" + 'region' + "'",
+              };
+              if (vErrors === null) {
+                vErrors = [err47];
+              } else {
+                vErrors.push(err47);
+              }
+              errors++;
+            }
+            for (const key5 in data39) {
               if (!(key5 === 'id' || key5 === 'region')) {
-                const err47 = {
-                  instancePath: instancePath + '/tunnels/' + i5,
+                const err48 = {
+                  instancePath: instancePath + '/tunnels/' + i6,
                   schemaPath: '#/properties/tunnels/items/additionalProperties',
                   keyword: 'additionalProperties',
                   params: { additionalProperty: key5 },
                   message: 'must NOT have additional properties',
                 };
                 if (vErrors === null) {
-                  vErrors = [err47];
+                  vErrors = [err48];
                 } else {
-                  vErrors.push(err47);
+                  vErrors.push(err48);
                 }
                 errors++;
               }
             }
-            if (data37.id !== undefined) {
+            if (data39.id !== undefined) {
               if (
-                !validate27(data37.id, {
-                  instancePath: instancePath + '/tunnels/' + i5 + '/id',
-                  parentData: data37,
+                !validate27(data39.id, {
+                  instancePath: instancePath + '/tunnels/' + i6 + '/id',
+                  parentData: data39,
                   parentDataProperty: 'id',
                   rootData,
                 })
@@ -4170,11 +4585,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data37.region !== undefined) {
+            if (data39.region !== undefined) {
               if (
-                !validate22(data37.region, {
-                  instancePath: instancePath + '/tunnels/' + i5 + '/region',
-                  parentData: data37,
+                !validate22(data39.region, {
+                  instancePath: instancePath + '/tunnels/' + i6 + '/region',
+                  parentData: data39,
                   parentDataProperty: 'region',
                   rootData,
                 })
@@ -4184,23 +4599,23 @@ function validate21(
               }
             }
           } else {
-            const err48 = {
-              instancePath: instancePath + '/tunnels/' + i5,
+            const err49 = {
+              instancePath: instancePath + '/tunnels/' + i6,
               schemaPath: '#/properties/tunnels/items/type',
               keyword: 'type',
               params: { type: 'object' },
               message: 'must be object',
             };
             if (vErrors === null) {
-              vErrors = [err48];
+              vErrors = [err49];
             } else {
-              vErrors.push(err48);
+              vErrors.push(err49);
             }
             errors++;
           }
         }
       } else {
-        const err49 = {
+        const err50 = {
           instancePath: instancePath + '/tunnels',
           schemaPath: '#/properties/tunnels/type',
           keyword: 'type',
@@ -4208,42 +4623,27 @@ function validate21(
           message: 'must be array',
         };
         if (vErrors === null) {
-          vErrors = [err49];
+          vErrors = [err50];
         } else {
-          vErrors.push(err49);
+          vErrors.push(err50);
         }
         errors++;
       }
     }
     if (data.cameraHints !== undefined) {
-      let data40 = data.cameraHints;
-      if (Array.isArray(data40)) {
-        const len6 = data40.length;
-        for (let i6 = 0; i6 < len6; i6++) {
-          let data41 = data40[i6];
-          if (data41 && typeof data41 == 'object' && !Array.isArray(data41)) {
-            if (data41.id === undefined) {
-              const err50 = {
-                instancePath: instancePath + '/cameraHints/' + i6,
+      let data42 = data.cameraHints;
+      if (Array.isArray(data42)) {
+        const len7 = data42.length;
+        for (let i7 = 0; i7 < len7; i7++) {
+          let data43 = data42[i7];
+          if (data43 && typeof data43 == 'object' && !Array.isArray(data43)) {
+            if (data43.id === undefined) {
+              const err51 = {
+                instancePath: instancePath + '/cameraHints/' + i7,
                 schemaPath: '#/properties/cameraHints/items/required',
                 keyword: 'required',
                 params: { missingProperty: 'id' },
                 message: "must have required property '" + 'id' + "'",
-              };
-              if (vErrors === null) {
-                vErrors = [err50];
-              } else {
-                vErrors.push(err50);
-              }
-              errors++;
-            }
-            if (data41.region === undefined) {
-              const err51 = {
-                instancePath: instancePath + '/cameraHints/' + i6,
-                schemaPath: '#/properties/cameraHints/items/required',
-                keyword: 'required',
-                params: { missingProperty: 'region' },
-                message: "must have required property '" + 'region' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err51];
@@ -4252,13 +4652,13 @@ function validate21(
               }
               errors++;
             }
-            if (data41.focus === undefined) {
+            if (data43.region === undefined) {
               const err52 = {
-                instancePath: instancePath + '/cameraHints/' + i6,
+                instancePath: instancePath + '/cameraHints/' + i7,
                 schemaPath: '#/properties/cameraHints/items/required',
                 keyword: 'required',
-                params: { missingProperty: 'focus' },
-                message: "must have required property '" + 'focus' + "'",
+                params: { missingProperty: 'region' },
+                message: "must have required property '" + 'region' + "'",
               };
               if (vErrors === null) {
                 vErrors = [err52];
@@ -4267,28 +4667,43 @@ function validate21(
               }
               errors++;
             }
-            for (const key6 in data41) {
+            if (data43.focus === undefined) {
+              const err53 = {
+                instancePath: instancePath + '/cameraHints/' + i7,
+                schemaPath: '#/properties/cameraHints/items/required',
+                keyword: 'required',
+                params: { missingProperty: 'focus' },
+                message: "must have required property '" + 'focus' + "'",
+              };
+              if (vErrors === null) {
+                vErrors = [err53];
+              } else {
+                vErrors.push(err53);
+              }
+              errors++;
+            }
+            for (const key6 in data43) {
               if (!(key6 === 'id' || key6 === 'region' || key6 === 'focus')) {
-                const err53 = {
-                  instancePath: instancePath + '/cameraHints/' + i6,
+                const err54 = {
+                  instancePath: instancePath + '/cameraHints/' + i7,
                   schemaPath: '#/properties/cameraHints/items/additionalProperties',
                   keyword: 'additionalProperties',
                   params: { additionalProperty: key6 },
                   message: 'must NOT have additional properties',
                 };
                 if (vErrors === null) {
-                  vErrors = [err53];
+                  vErrors = [err54];
                 } else {
-                  vErrors.push(err53);
+                  vErrors.push(err54);
                 }
                 errors++;
               }
             }
-            if (data41.id !== undefined) {
+            if (data43.id !== undefined) {
               if (
-                !validate27(data41.id, {
-                  instancePath: instancePath + '/cameraHints/' + i6 + '/id',
-                  parentData: data41,
+                !validate27(data43.id, {
+                  instancePath: instancePath + '/cameraHints/' + i7 + '/id',
+                  parentData: data43,
                   parentDataProperty: 'id',
                   rootData,
                 })
@@ -4297,11 +4712,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data41.region !== undefined) {
+            if (data43.region !== undefined) {
               if (
-                !validate22(data41.region, {
-                  instancePath: instancePath + '/cameraHints/' + i6 + '/region',
-                  parentData: data41,
+                !validate22(data43.region, {
+                  instancePath: instancePath + '/cameraHints/' + i7 + '/region',
+                  parentData: data43,
                   parentDataProperty: 'region',
                   rootData,
                 })
@@ -4310,11 +4725,11 @@ function validate21(
                 errors = vErrors.length;
               }
             }
-            if (data41.focus !== undefined) {
+            if (data43.focus !== undefined) {
               if (
-                !validate23(data41.focus, {
-                  instancePath: instancePath + '/cameraHints/' + i6 + '/focus',
-                  parentData: data41,
+                !validate23(data43.focus, {
+                  instancePath: instancePath + '/cameraHints/' + i7 + '/focus',
+                  parentData: data43,
                   parentDataProperty: 'focus',
                   rootData,
                 })
@@ -4324,23 +4739,23 @@ function validate21(
               }
             }
           } else {
-            const err54 = {
-              instancePath: instancePath + '/cameraHints/' + i6,
+            const err55 = {
+              instancePath: instancePath + '/cameraHints/' + i7,
               schemaPath: '#/properties/cameraHints/items/type',
               keyword: 'type',
               params: { type: 'object' },
               message: 'must be object',
             };
             if (vErrors === null) {
-              vErrors = [err54];
+              vErrors = [err55];
             } else {
-              vErrors.push(err54);
+              vErrors.push(err55);
             }
             errors++;
           }
         }
       } else {
-        const err55 = {
+        const err56 = {
           instancePath: instancePath + '/cameraHints',
           schemaPath: '#/properties/cameraHints/type',
           keyword: 'type',
@@ -4348,15 +4763,15 @@ function validate21(
           message: 'must be array',
         };
         if (vErrors === null) {
-          vErrors = [err55];
+          vErrors = [err56];
         } else {
-          vErrors.push(err55);
+          vErrors.push(err56);
         }
         errors++;
       }
     }
   } else {
-    const err56 = {
+    const err57 = {
       instancePath,
       schemaPath: '#/type',
       keyword: 'type',
@@ -4364,9 +4779,9 @@ function validate21(
       message: 'must be object',
     };
     if (vErrors === null) {
-      vErrors = [err56];
+      vErrors = [err57];
     } else {
-      vErrors.push(err56);
+      vErrors.push(err57);
     }
     errors++;
   }
