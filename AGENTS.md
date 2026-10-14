@@ -4,7 +4,7 @@ Instructions for every coding agent on this repository (Codex reads this file na
 
 ## The game
 
-**StickSwing** (working title Precision Tether Platformer; repo name StickGame; name chosen by the owner 2026-10-12, GMR-51) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. The rope length is the player-to-impact distance when it locks: on the connection tick if airborne, or on the take-off tick if it connected while grounded (it pays out while running). Run and jump momentum carries into the swing. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is 5 chapters of 3 sections × 3 levels plus a finale boss each, about 50 levels (owner, 2026-10-12; doc 14). The goal grows toward Celeste scale later.
+**StickSwing** (working title Precision Tether Platformer; repo name StickGame; name chosen by the owner 2026-10-12, GMR-51) is a cross-platform momentum-action precision platformer. Three verbs only: **Move, Jump, Rope**. The rope length is the player-to-anchor distance when it locks (Targeting v2, owner 2026-10-14: ropes attach at the anchor's centre; build in progress): on the connection tick if airborne, or on the take-off tick if it connected while grounded (it pays out while running). Run and jump momentum carries into the swing. The rope is drawn as a **dashed line**. Releasing keeps the swing's velocity. v1.0 is 5 chapters of 3 sections × 3 levels plus a finale boss each, about 50 levels (owner, 2026-10-12; doc 14). The goal grows toward Celeste scale later.
 
 ## Source of truth
 
@@ -26,7 +26,7 @@ For the Linear issue you're working on, write down:
 3. the exact acceptance criteria;
 4. the evidence you'll produce (numbers, screenshots, replay links).
 
-**Stop and ask** instead of proceeding if the work would: add a gameplay verb or button; change the rope-length rule or remove release momentum; give mobile a different simulation; make auto-targeting the standard mode; copy reference art or commercial level layouts; add delay or UI between death and retry; or contradict a canon document.
+**Stop and ask** instead of proceeding if the work would: add a gameplay verb or button (combat is swing impacts and stomps, never an attack button: owner 2026-10-14); change the rope-length rule or remove release momentum; give mobile a different simulation; depart from Targeting v2 (owner 2026-10-14: on every platform the rope grabs the one highlighted anchor, at its centre; PC snaps within about 1.1 m), in particular by adding hidden-weight target scoring or any release-timing cue; copy reference art or commercial level layouts; add delay or UI between death and retry; or contradict a canon document.
 
 ## Architecture rules (doc 30, enforced by `npm run lint:deps`)
 

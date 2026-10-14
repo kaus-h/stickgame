@@ -7,12 +7,14 @@ import {
   type TerrainEdgeSide,
 } from './terrainEdges';
 import { kit17AssetUrl } from './Kit17Assets';
+import { NOTEBOOK_STYLE, worldColorCss, type WorldStyle } from '../world/WorldStyle';
 
 export type KitVersion = '0016' | '0017';
 
 /** Preserve the previous terrain art behind an explicit URL flag while 0017 is the default. */
-export function resolveKitVersion(search: string): KitVersion {
-  return new URLSearchParams(search).get('kit') === '0016' ? '0016' : '0017';
+export function resolveKitVersion(search: string, defaultKit: string = '0017'): KitVersion {
+  const kit = new URLSearchParams(search).get('kit');
+  return kit === '0016' || kit === '0017' ? kit : defaultKit === '0016' ? '0016' : '0017';
 }
 
 type CornerOrientation = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
@@ -423,6 +425,7 @@ export function paintKit17Terrain(
   usedParts?: Set<string>,
   classifiedEdges?: readonly TerrainEdge[],
   globalExposedEdges?: readonly TerrainEdge[],
+  style: WorldStyle = NOTEBOOK_STYLE,
 ): Kit17TopologySelection {
   const selected = selectKit17TopologyFromEdges(
     solid,
@@ -469,7 +472,7 @@ export function paintKit17Terrain(
     usedParts?.add(interior.name);
   }
   // A thin collision datum closes any crop gap without extending a foothold beyond authored geometry.
-  c.strokeStyle = '#16161a';
+  c.strokeStyle = worldColorCss(style.ink);
   for (const { edge } of selected.edges) {
     const dx = edge.b.x - edge.a.x,
       dy = edge.b.y - edge.a.y;

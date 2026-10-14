@@ -46,6 +46,19 @@
     "theme": {
       "enum": ["paper", "scenery"]
     },
+    "world": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["family"],
+      "properties": {
+        "family": {
+          "$ref": "#/definitions/text"
+        },
+        "subTheme": {
+          "$ref": "#/definitions/text"
+        }
+      }
+    },
     "solids": {
       "type": "array",
       "items": {
