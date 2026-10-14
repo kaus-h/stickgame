@@ -40,7 +40,7 @@ _Last updated: 2026-10-13, after the owner's second checkpoint and the 1-1 level
 
 - **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`. Tile them into one sheet and read it at ≤ 1500 px.
 - **Hand routes:** the solver's `World` + `PlanSource` (from `node_modules/.cache/route-solver/solver.mjs`, built by `levels:solve`). Fork from a committed replay state and run hand plans. This is how C4/C5/m6 were measured.
-- **Solver:** `npm run levels:solve -- <id>`. It proves *a* route; taught routes need their own tests. A chamber's region must start where its take-off run starts.
+- **Solver:** `npm run levels:solve -- <id>`. It proves _a_ route; taught routes need their own tests. A chamber's region must start where its take-off run starts.
 - **Local e2e:** `E2E_PORT=5186 PW_CHANNEL=chrome npx playwright test <specs> --project=chromium`.
 - **Merging:** only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL.
 - **CI "Check" includes the bundle budget** (1203/1220 KB). Run `npm run bundle:report` after asset changes.
