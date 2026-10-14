@@ -476,11 +476,22 @@ function brokenAqueduct(
   a: number,
 ): void {
   const bays = 5 + Math.floor(r() * 4);
-  const span = (x1 - x0) / bays;
-  const pier = span * 0.22;
-  const deck = Math.max(3, span * 0.18);
+  // Uneven bays: spans wander, so the arcade never reads as a ruled pattern.
+  const weights = Array.from({ length: bays }, () => 0.65 + r() * 0.7);
+  const total = weights.reduce((sum, v) => sum + v, 0);
+  const starts: number[] = [];
+  let acc = x0;
+  for (const wgt of weights) {
+    starts.push(acc);
+    acc += ((x1 - x0) * wgt) / total;
+  }
+  starts.push(x1);
+  const mean = (x1 - x0) / bays;
+  const pier = mean * 0.22;
+  const deck = Math.max(3, mean * 0.18);
   for (let i = 0; i < bays; i++) {
-    const bx = x0 + i * span;
+    const bx = starts[i] ?? x0;
+    const span = (starts[i + 1] ?? x1) - bx;
     // Further bays decay: lower, missing deck, finally just stumps.
     const decay = i / bays;
     const lost = r() < decay * 0.9;
@@ -494,6 +505,9 @@ function brokenAqueduct(
     ];
     c.save();
     poly(c, p);
+    // Opaque on the paper: a pier hides whatever stands behind it.
+    c.fillStyle = 'rgb(205,208,212)';
+    c.fill();
     c.fillStyle = graphite(a * 0.22);
     c.fill();
     c.clip();
@@ -510,6 +524,8 @@ function brokenAqueduct(
       c.beginPath();
       c.arc(ax + rad, deckY + deck + rad, rad, Math.PI, 0);
       c.stroke();
+      c.fillStyle = 'rgb(205,208,212)';
+      c.fillRect(ax, deckY, bx2 - ax, deck);
       c.fillStyle = graphite(a * 0.2);
       c.fillRect(ax, deckY, bx2 - ax, deck);
       sketchLine(c, bx, deckY, bx2 + pier, deckY, r, a * 0.8, 0.9, 6);
@@ -518,7 +534,7 @@ function brokenAqueduct(
       sketchLine(c, bx, deckY, bx + pier + span * 0.25 * r(), deckY + 3, r, a * 0.6, 0.8);
     }
   }
-  sketchLine(c, x0 - span * 0.3, deckY - deck, x1 + span * 0.4, deckY - deck, r, a * 0.15, 0.6);
+  sketchLine(c, x0 - mean * 0.3, deckY - deck, x1 + mean * 0.4, deckY - deck, r, a * 0.15, 0.6);
 }
 
 /**

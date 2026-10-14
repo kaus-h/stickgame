@@ -48,6 +48,11 @@ export class DustMotes {
     }
   }
 
+  /** Dev evidence: whether the dust is drifting, and its clock (held at 0 when calm). */
+  stats(): { drifting: boolean; clock: number } {
+    return { drifting: !this.calm, clock: this.clock };
+  }
+
   destroy(): void {
     this.g.destroy();
   }

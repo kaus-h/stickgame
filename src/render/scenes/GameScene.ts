@@ -202,6 +202,9 @@ export class GameScene extends Phaser.Scene {
     surfacePixels: number;
     kitId?: string;
     backgrounds: ReturnType<Kit17Background['presentation']>;
+    world: string;
+    vista: ReturnType<NonNullable<GameScene['vista']>['presentation']> | null;
+    motes: { drifting: boolean; clock: number } | null;
   } {
     return {
       // Fully presented: the kit is built and the level has finished inking itself onto the page.
@@ -214,6 +217,9 @@ export class GameScene extends Phaser.Scene {
         textures: 0,
         surfacePixels: 0,
       },
+      world: this.style.id,
+      vista: this.vista?.presentation() ?? null,
+      motes: this.motes?.stats() ?? null,
     };
   }
 

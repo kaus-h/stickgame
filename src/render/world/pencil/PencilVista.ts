@@ -124,14 +124,27 @@ export class PencilVista {
     this.frozen = true;
   }
 
-  presentation(): { layers: number; textures: number; surfacePixels: number } {
+  presentation(): {
+    layers: number;
+    textures: number;
+    surfacePixels: number;
+    offsets: { id: string; x: number; y: number }[];
+    foreground: { offset: number; top: number; height: number } | null;
+  } {
     let px = 0;
     for (const key of this.keys) {
       const t = this.scene.textures.exists(key) ? this.scene.textures.get(key) : null;
       const src = t?.getSourceImage() as { width?: number; height?: number } | undefined;
       px += (src?.width ?? 0) * (src?.height ?? 0);
     }
-    return { layers: this.layers.length, textures: this.keys.length, surfacePixels: px };
+    const fg = this.foreground;
+    return {
+      layers: this.layers.length,
+      textures: this.keys.length,
+      surfacePixels: px,
+      offsets: this.layers.map((l) => ({ id: l.spec.id, x: l.offX, y: l.offY })),
+      foreground: fg ? { offset: this.fgOffset, top: fg.y, height: fg.height * fg.scaleY } : null,
+    };
   }
 
   private bake(viewW: number, viewH: number): void {
