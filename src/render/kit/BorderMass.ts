@@ -8,17 +8,22 @@ import {
   type ProjectedTerrainBounds,
 } from './outsideTerrainRects';
 
+import { NOTEBOOK_STYLE, worldColorCss, type WorldStyle } from '../world/WorldStyle';
+
 const HATCH_KEY = 'terrain-border-hatch-256';
+const hatchKey = (style: WorldStyle): string =>
+  style.id === 'notebook' ? HATCH_KEY : `${HATCH_KEY}-${style.id}`;
 const HATCH_SIZE = 256;
 const EPSILON = 1e-7;
 
-function ensureHatchTexture(scene: Phaser.Scene): boolean {
-  if (scene.textures.exists(HATCH_KEY)) return true;
-  const texture = scene.textures.createCanvas(HATCH_KEY, HATCH_SIZE, HATCH_SIZE);
+function ensureHatchTexture(scene: Phaser.Scene, style: WorldStyle): boolean {
+  if (scene.textures.exists(hatchKey(style))) return true;
+  const texture = scene.textures.createCanvas(hatchKey(style), HATCH_SIZE, HATCH_SIZE);
   if (!texture) return false;
   const context = texture.getContext();
   context.clearRect(0, 0, HATCH_SIZE, HATCH_SIZE);
   context.lineCap = 'round';
+  context.strokeStyle = worldColorCss(style.terrainBorderInk);
 
   // Both fields tile seamlessly in 256 px: the -1.5 family shifts by 384 px and
   // the 0.5 family by 128 px over one horizontal repeat, while offsets cycle by 128.
@@ -27,7 +32,7 @@ function ensureHatchTexture(scene: Phaser.Scene): boolean {
     { slope: 0.5, spacing: 16, baseAlpha: 0.6 },
   ];
   for (const field of fields) {
-    for (let offset = -512; offset <= 768; offset += field.spacing) {
+    for (let offset = -512; offset <= 768; offset += field.spacing / style.hatchDensity) {
       const phase = (2 * Math.PI * offset) / 128;
       context.globalAlpha = field.baseAlpha + Math.sin(phase) * 0.025;
       context.lineWidth = 0.58 + (Math.sin(phase + 0.8) + 1) * 0.12;
@@ -111,8 +116,9 @@ export class BorderMass {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly level: LevelDef,
+    private readonly style: WorldStyle = NOTEBOOK_STYLE,
   ) {
-    this.textureReady = ensureHatchTexture(scene);
+    this.textureReady = ensureHatchTexture(scene, style);
     this.topColumns = topBoundColumns(level);
     this.canvasRenderer = !(scene.sys.renderer as unknown as { gl?: WebGLRenderingContext }).gl;
     scene.events.once('shutdown', () => {
@@ -180,7 +186,7 @@ export class BorderMass {
   ): void {
     while (this.sprites.length < rects.length) {
       const sprite = this.scene.add
-        .tileSprite(camera.x, camera.y, 1, 1, HATCH_KEY)
+        .tileSprite(camera.x, camera.y, 1, 1, hatchKey(this.style))
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(-60);

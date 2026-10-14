@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { getLevelWorld } from '../../content/level';
 import { metersToPixels as m } from '../../core';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
 import type { RenderFrame } from '../frame';
@@ -72,12 +73,14 @@ export class DebugOverlay {
         s.player.position.y >= region.min.y &&
         s.player.position.y <= region.max.y,
     );
+    const world = this.level ? getLevelWorld(this.level) : undefined;
     const lines = [
       ...(this.level
         ? [
             `level ${this.level.id} | telemetry ${this.level.telemetry?.levelId ?? this.level.id} | chamber ${chamber?.id ?? 'none'}`,
           ]
         : []),
+      `world ${world?.family ?? '-'}/${world?.subTheme ?? '-'}`,
       ...formatOverlay(s, frame.stats),
       formatRace(s, frame.race),
       ...(this.extra ? [this.extra()] : []),
