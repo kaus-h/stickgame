@@ -6,7 +6,7 @@
  */
 
 export type Layer = 'base' | 'pulse' | 'tension' | 'sting';
-export type Voice = 'keys' | 'bass' | 'click' | 'drone';
+export type Voice = 'keys' | 'bass' | 'click' | 'drone' | 'chime' | 'pad';
 
 export interface NoteEvent {
   readonly layer: Layer;
@@ -19,6 +19,8 @@ export interface NoteEvent {
   readonly length: number;
   /** 0..1 before layer gain. */
   readonly velocity: number;
+  /** Stereo position -1..1 (stings only; everything else sits in the centre). */
+  readonly pan?: number;
 }
 
 export interface Bank {
@@ -176,16 +178,107 @@ export function notesForBeat(bank: Bank, beat: number): NoteEvent[] {
   return out;
 }
 
-/** The clear sting: the section motif, quick and bright, an octave up. */
-export function stingNotes(bank: Bank): NoteEvent[] {
-  return bank.motif.map((note, i) => ({
-    layer: 'sting',
-    voice: 'keys',
-    note: note + 12,
-    at: i * 0.25,
-    length: 0.8,
-    velocity: 0.5,
-  }));
+/** Which clear the sting celebrates (owner 2026-10-13: smoother, and never the same jingle twice). */
+export interface StingCue {
+  /** The chamber just reached (1-based progress through the level), or the chamber count on exit. */
+  readonly index: number;
+  /** 0..1 through the level: later clears start higher, so the stings climb with the player. */
+  readonly progress: number;
+  /** The exit: a longer figure that resolves home to the section's tonic over a held chord. */
+  readonly final: boolean;
+}
+
+/** Index walks through the sting's pitch pool (chord tones and the motif, stacked in the key). */
+const CONTOURS: readonly (readonly number[])[] = [
+  [0, 1, 2, 3],
+  [0, 2, 1, 3],
+  [1, 0, 2, 4],
+  [0, 1, 3, 2],
+  [2, 1, 3, 4],
+  [0, 2, 3, 5],
+];
+/** Onsets in beats: triplets, a lilt, an unhurried walk, a quick lean into a held note. */
+const RHYTHMS: readonly (readonly number[])[] = [
+  [0, 1 / 3, 2 / 3, 1],
+  [0, 0.5, 0.75, 1.25],
+  [0, 0.5, 1, 1.5],
+  [0, 0.25, 0.5, 1],
+];
+const STING_LOW = 64;
+const STING_SPAN = 22;
+
+/**
+ * The clear sting: a soft chime arpeggio over a pad bloom, built from the chord that is sounding
+ * when it lands, so it always belongs to the bar it falls in. Contour and rhythm change with the
+ * chamber and the bar, and the register climbs through the level. Notes ring on into each other
+ * (legato, like a held pedal) instead of blipping. The exit resolves to the tonic.
+ */
+export function stingNotes(bank: Bank, cue: StingCue, beat: number): NoteEvent[] {
+  const bar = Math.floor(beat / BEATS_PER_BAR);
+  const chord = cue.final ? (bank.bars[0] ?? []) : (bank.bars[bar % bank.bars.length] ?? []);
+  const classes = new Set([...chord.slice(1), ...bank.motif].map((n) => n % 12));
+  const pool: number[] = [];
+  // Skip a note a semitone above one already taken: ringing chimes a half step apart turn muddy.
+  for (let n = STING_LOW; n <= STING_LOW + STING_SPAN; n++)
+    if (classes.has(n % 12) && pool.at(-1) !== n - 1) pool.push(n);
+  const tonic = (bank.bars[0]?.[0] ?? 50) % 12;
+  const pick = (k: number) => pool[Math.max(0, Math.min(pool.length - 1, k))] ?? STING_LOW;
+  const out: NoteEvent[] = [];
+
+  if (cue.final) {
+    // Up through the home chord in triplets, then land on the high tonic and let it ring.
+    const top = 79 + ((tonic - 7 + 12) % 12);
+    const line = [...pool.filter((n) => n < top).slice(-4), top];
+    line.forEach((note, i) => {
+      const last = i === line.length - 1;
+      out.push({
+        layer: 'sting',
+        voice: 'chime',
+        note,
+        at: last ? 2 : i / 3,
+        length: last ? 4 : 3 - i / 3,
+        velocity: last ? 0.46 : 0.3 + i * 0.02,
+        pan: -0.3 + (0.6 * i) / (line.length - 1),
+      });
+    });
+    [(chord[0] ?? 50) + 12, ...chord.slice(1, 3)].forEach((note, i) => {
+      out.push({
+        layer: 'sting',
+        voice: 'pad',
+        note,
+        at: 1.5 + i * 0.04,
+        length: 5,
+        velocity: 0.3,
+      });
+    });
+    return out;
+  }
+
+  const r = hash(cue.index * 7 + 3, bar);
+  const contour = CONTOURS[Math.floor(r * CONTOURS.length)] ?? CONTOURS[0] ?? [0];
+  const rhythm = RHYTHMS[(cue.index + Math.floor(r * 97)) % RHYTHMS.length] ?? RHYTHMS[0] ?? [0];
+  const start = Math.round(cue.progress * Math.max(0, pool.length - 6));
+  const end = (rhythm[rhythm.length - 1] ?? 1) + 1.5;
+  contour.forEach((step, i) => {
+    const at = rhythm[i] ?? i * 0.5;
+    const last = i === contour.length - 1;
+    out.push({
+      layer: 'sting',
+      voice: 'chime',
+      note: pick(start + step),
+      // Tiny seeded push and pull so the figure breathes like a hand, not a sequencer.
+      at: i === 0 ? at : at + (hash(cue.index, bar * 8 + i) - 0.5) * 0.03,
+      length: end - at,
+      // A gentle swell into the arrival note.
+      velocity: last ? 0.42 : 0.32 + i * 0.02,
+      pan: (r < 0.5 ? -1 : 1) * (-0.25 + (0.5 * i) / Math.max(1, contour.length - 1)),
+    });
+  });
+  // The bloom under it: two chord tones an octave below the figure, slow in, slow out.
+  chord.slice(1, 3).forEach((note, i) => {
+    out.push({ layer: 'sting', voice: 'pad', note, at: i * 0.05, length: end, velocity: 0.22 });
+  });
+  return out;
 }
 
 export function midiToHz(note: number): number {

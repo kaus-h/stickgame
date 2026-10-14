@@ -7,6 +7,7 @@ import {
   SECTION_1,
   stingNotes,
   type Bank,
+  type StingCue,
   type Layer,
   type NoteEvent,
 } from './score';
@@ -25,6 +26,7 @@ export class MusicEngine implements MusicSink {
   private transport: Transport | null = null;
   private timer: ReturnType<typeof setInterval> | null = null;
   private readonly gains = new Map<Layer, GainNode>();
+  private echo: AudioNode[] = [];
   private noise: AudioBuffer | null = null;
   private bank: Bank = SECTION_1;
   private pendingBank: Bank | null = null;
@@ -51,6 +53,22 @@ export class MusicEngine implements MusicSink {
       g.gain.value = layer === 'sting' ? 1 : 0;
       g.connect(bus);
       this.gains.set(layer, g);
+    }
+    // The sting rings into a soft dotted-8th echo, darkened each repeat: a tail, not a slapback.
+    const sting = this.gains.get('sting');
+    if (sting) {
+      const delay = ctx.createDelay(1);
+      delay.delayTime.value = SECONDS_PER_BEAT * 0.75;
+      const fb = ctx.createGain();
+      fb.gain.value = 0.32;
+      const tone = ctx.createBiquadFilter();
+      tone.type = 'lowpass';
+      tone.frequency.value = 1900;
+      const wet = ctx.createGain();
+      wet.gain.value = 0.3;
+      sting.connect(delay).connect(tone).connect(fb).connect(delay);
+      tone.connect(wet).connect(bus);
+      this.echo = [delay, tone, fb, wet];
     }
     this.noise = ctx.createBuffer(1, Math.ceil(ctx.sampleRate * 0.06), ctx.sampleRate);
     const data = this.noise.getChannelData(0);
@@ -89,13 +107,12 @@ export class MusicEngine implements MusicSink {
     return `music ${this.bank.id} bar ${String(bar)} | base ${t.base.toFixed(2)} pulse ${t.pulse.toFixed(2)} tension ${t.tension.toFixed(2)}${t.dipping ? ' (dip)' : ''}`;
   }
 
-  sting(): void {
+  sting(cue: StingCue): void {
     const out = this.output();
     if (!out || !this.transport) return;
-    const { time } = this.transport.nextBarTime();
-    // Land on the next beat rather than the bar if the bar is far: stings answer the moment.
-    const at = Math.min(time, out.ctx.currentTime + SECONDS_PER_BEAT);
-    for (const n of stingNotes(this.bank)) this.play(out.ctx, n, at);
+    // Land on the next 8th of the grid: it answers the moment and still sits in time.
+    const { beat, time } = this.transport.gridAfter(out.ctx.currentTime + 0.03, 0.5);
+    for (const n of stingNotes(this.bank, cue, beat)) this.play(out.ctx, n, time);
   }
 
   dispose(): void {
@@ -103,6 +120,8 @@ export class MusicEngine implements MusicSink {
     this.timer = null;
     for (const g of this.gains.values()) g.disconnect();
     this.gains.clear();
+    for (const n of this.echo) n.disconnect();
+    this.echo = [];
     this.transport = null;
   }
 
@@ -150,7 +169,12 @@ export class MusicEngine implements MusicSink {
     const t = beatTime + n.at * SECONDS_PER_BEAT;
     const len = n.length * SECONDS_PER_BEAT;
     const amp = ctx.createGain();
-    amp.connect(dest);
+    let pan: StereoPannerNode | null = null;
+    if (n.pan && typeof ctx.createStereoPanner === 'function') {
+      pan = ctx.createStereoPanner();
+      pan.pan.value = n.pan;
+      amp.connect(pan).connect(dest);
+    } else amp.connect(dest);
     const end = (stopAt: number, ...nodes: AudioScheduledSourceNode[]): void => {
       for (const node of nodes) {
         node.start(t);
@@ -159,6 +183,7 @@ export class MusicEngine implements MusicSink {
       // Free the per-note gain once the voice is done (no node build-up over a long session).
       nodes[0]?.addEventListener('ended', () => {
         amp.disconnect();
+        pan?.disconnect();
       });
     };
     switch (n.voice) {
@@ -180,6 +205,57 @@ export class MusicEngine implements MusicSink {
         b.connect(bg).connect(lp);
         envelope(amp.gain, t, 0.012, 0.5 * n.velocity, 0.35, len, 0.5);
         end(t + len + 0.6, a, b);
+        break;
+      }
+      case 'chime': {
+        // Glass-and-felt bell: sine body, a soft octave, a faint quick glint two octaves up.
+        // Rounded attack and a long free decay, so overlapping notes blur into one gesture.
+        const f = midiToHz(n.note);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 2600;
+        lp.connect(amp);
+        const a = ctx.createOscillator();
+        a.type = 'sine';
+        a.frequency.value = f;
+        const b = ctx.createOscillator();
+        b.type = 'triangle';
+        b.frequency.value = f * 2.001;
+        const bg = ctx.createGain();
+        bg.gain.value = 0.18;
+        const c = ctx.createOscillator();
+        c.type = 'sine';
+        c.frequency.value = f * 4.007;
+        const cg = ctx.createGain();
+        cg.gain.setValueAtTime(0.07, t);
+        cg.gain.setTargetAtTime(0, t, 0.08);
+        a.connect(lp);
+        b.connect(bg).connect(lp);
+        c.connect(cg).connect(lp);
+        const peak = 0.62 * n.velocity;
+        amp.gain.setValueAtTime(0, t);
+        amp.gain.linearRampToValueAtTime(peak, t + 0.025);
+        amp.gain.setTargetAtTime(peak * 0.25, t + 0.025, 0.55);
+        amp.gain.setTargetAtTime(0, t + len, 0.35);
+        end(t + len + 1.6, a, b, c);
+        break;
+      }
+      case 'pad': {
+        const f = midiToHz(n.note);
+        const a = ctx.createOscillator();
+        a.type = 'triangle';
+        a.frequency.value = f * 0.998;
+        const b = ctx.createOscillator();
+        b.type = 'triangle';
+        b.frequency.value = f * 1.002;
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 1100;
+        a.connect(lp);
+        b.connect(lp);
+        lp.connect(amp);
+        envelope(amp.gain, t, 0.35, 0.4 * n.velocity, 0.8, len, 1.4);
+        end(t + len + 1.6, a, b);
         break;
       }
       case 'bass': {

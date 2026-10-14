@@ -1,4 +1,5 @@
 import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
+import type { StingCue } from './score';
 
 /**
  * What the music should be doing (GMR-42). Reads simulation events and snapshots, never writes
@@ -8,8 +9,8 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../sim';
  *   to "pencil ghosts" while the player stands still and plans, so it never competes with the
  *   attach and release cues when precision matters.
  * - **Tension** rises through the level's chambers. A death dips it for a moment; nothing restarts.
- * - **Sting**: one bright figure when the player moves into a new chamber for the first time this
- *   run, and on the exit.
+ * - **Sting**: a soft chime figure when the player moves into a new chamber for the first time this
+ *   run (a different one each clear, climbing through the level), and a resolving one on the exit.
  */
 export interface MusicTargets {
   readonly base: number;
@@ -23,7 +24,7 @@ export interface MusicTargets {
 
 export interface MusicSink {
   setTargets(t: MusicTargets): void;
-  sting(): void;
+  sting(cue: StingCue): void;
 }
 
 const PULSE_FULL_SPEED = 9;
@@ -49,7 +50,10 @@ export class MusicDirector {
   onEvents(events: readonly SimEvent[]): void {
     for (const e of events) {
       if (e.type === 'death') this.dip = DEATH_DIP_S;
-      if (e.type === 'exit') this.sink.sting();
+      if (e.type === 'exit') {
+        const n = Math.max(1, this.level.chambers?.length ?? 1);
+        this.sink.sting({ index: n, progress: 1, final: true });
+      }
       if (e.type === 'lifeEnd' && e.reason === 'restart') this.restartRun();
     }
   }
@@ -69,7 +73,12 @@ export class MusicDirector {
       this.chamber = idx;
       if (idx > this.reached) {
         // A chamber reached for the first time this run gets the clear sting (not the first one).
-        if (this.reached >= 0) this.sink.sting();
+        if (this.reached >= 0)
+          this.sink.sting({
+            index: idx,
+            progress: chambers.length > 1 ? idx / (chambers.length - 1) : 1,
+            final: false,
+          });
         this.reached = idx;
       }
     }

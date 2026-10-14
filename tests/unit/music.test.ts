@@ -40,7 +40,60 @@ describe('music score (GMR-42)', () => {
           ).toBe(true);
         }
       }
-      for (const n of stingNotes(bank)) expect(scale.has(n.note % 12)).toBe(true);
+      for (let index = 1; index <= 9; index++)
+        for (let beat = 0; beat < 32; beat += 0.5)
+          for (const final of [false, true])
+            for (const n of stingNotes(bank, { index, progress: index / 9, final }, beat))
+              expect(scale.has(n.note % 12), `${bank.id} sting ${String(n.note)}`).toBe(true);
+    }
+  });
+
+  it('varies the clear sting: neighbouring chambers never play the same figure', () => {
+    const figure = (index: number, beat: number) =>
+      stingNotes(SECTION_1, { index, progress: index / 8, final: false }, beat)
+        .filter((n) => n.voice === 'chime')
+        .map((n) => `${String(n.note)}@${n.at.toFixed(2)}`)
+        .join(' ');
+    for (let index = 1; index < 8; index++)
+      for (let beat = 0; beat < 32; beat += 4)
+        expect(figure(index, beat)).not.toBe(figure(index + 1, beat + 6));
+    const distinct = new Set<string>();
+    for (let index = 1; index <= 8; index++) distinct.add(figure(index, index * 6));
+    expect(distinct.size).toBeGreaterThanOrEqual(6);
+  });
+
+  it('keeps the sting smooth: legato chimes, no half-step clusters, a rising register', () => {
+    for (let index = 1; index <= 8; index++) {
+      const chimes = stingNotes(SECTION_1, { index, progress: index / 8, final: false }, 8).filter(
+        (n) => n.voice === 'chime',
+      );
+      // Every note is still ringing when the next one starts.
+      for (let i = 0; i + 1 < chimes.length; i++) {
+        const [a, b] = [chimes[i], chimes[i + 1]];
+        expect((a?.at ?? 0) + (a?.length ?? 0)).toBeGreaterThan(b?.at ?? 0);
+      }
+      const notes = chimes.map((n) => n.note).sort((x, y) => x - y);
+      for (let i = 0; i + 1 < notes.length; i++)
+        expect((notes[i + 1] ?? 0) - (notes[i] ?? 0)).not.toBe(1);
+    }
+    const low = (progress: number) =>
+      Math.min(
+        ...stingNotes(SECTION_1, { index: 2, progress, final: false }, 0)
+          .filter((n) => n.voice === 'chime')
+          .map((n) => n.note),
+      );
+    expect(low(1)).toBeGreaterThan(low(0));
+  });
+
+  it('resolves the exit sting home to the section tonic', () => {
+    for (const [bank, tonic] of [
+      [SECTION_1, 2],
+      [SECTION_2, 7],
+    ] as const) {
+      const chimes = stingNotes(bank, { index: 6, progress: 1, final: true }, 13).filter(
+        (n) => n.voice === 'chime',
+      );
+      expect((chimes.at(-1)?.note ?? 0) % 12).toBe(tonic);
     }
   });
 

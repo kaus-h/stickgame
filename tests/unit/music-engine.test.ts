@@ -51,6 +51,7 @@ function fakeContext() {
     createOscillator: source,
     createBufferSource: source,
     createBiquadFilter: () => ({ ...node(), type: '', frequency: param(), Q: param() }),
+    createDelay: () => ({ ...node(), delayTime: param() }),
     createBuffer: (_c: number, n: number) => ({
       getChannelData: () => new Float32Array(n),
       copyToChannel: vi.fn(),
