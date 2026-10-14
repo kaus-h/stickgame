@@ -1,6 +1,6 @@
 # Context pack: StickSwing (repo StickGame; working title Precision Tether Platformer)
 
-`Context pack: 2026-10-13 @ main after #91`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
+`Context pack: 2026-10-13 @ main after #93`. Upload this file to the BrowserGPT project "StickGame" (and Muse, if it supports projects), and replace it whenever this line changes. Workflow: [workflow.md](workflow.md).
 
 ## Browser agent instructions
 
@@ -140,5 +140,8 @@ A cross-platform momentum-action precision platformer. Three verbs only: **Move,
   - a lamplit front page;
   - wide floating slabs drawn as hatched overhangs with ink drips (#90);
   - C6 is the level's peak: a 7-tick connection window, then a short whip (#91).
-- **Font:** Mansalva (self-hosted, `src/render/typeface.ts`). Caveat is gone.
+  - a varied, chord-aware chime sting on each chamber clear, a resolving one on the exit; the lamp a touch darker (#92);
+  - C4's "too long" lesson now kills ground connections; C5's single long rope and both lessons are pinned in `tests/unit/level11.test.ts`; the unreachable m6 is removed (#93).
+- **Owner direction (2026-10-13):** as levels progress, difficulty comes from puzzles and timing (which anchor, what order, when to leave the ground), not mechanical execution.
+- **Font:** Mansalva (self-hosted, `src/render/typeface.ts`), owner-confirmed. Caveat is gone.
 - **Live plan:** `docs/agents/HANDOFF.md`. The visual pass is `docs/art/living-notebook.md`.
