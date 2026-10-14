@@ -33,18 +33,18 @@ interface LayerSpec {
 }
 
 const LAYERS: readonly LayerSpec[] = [
-  { id: 'sky', f: 0.03, fy: 0.02, depth: -99.6, scale: 0.5, band: 1, paint: paintSky },
-  { id: 'far', f: 0.08, fy: 0.04, depth: -99.4, scale: 0.7, band: 1, paint: paintFar },
-  { id: 'midfar', f: 0.2, fy: 0.08, depth: -98.6, scale: 0.7, band: 0.8, paint: paintMidFar },
-  { id: 'mid', f: 0.4, fy: 0.16, depth: -98.2, scale: 0.7, band: 0.72, paint: paintMid },
+  { id: 'sky', f: 0.03, fy: 0.02, depth: -99.6, scale: 0.3, band: 1, paint: paintSky },
+  { id: 'far', f: 0.08, fy: 0.04, depth: -99.4, scale: 0.45, band: 1, paint: paintFar },
+  { id: 'midfar', f: 0.18, fy: 0.08, depth: -98.6, scale: 0.5, band: 0.8, paint: paintMidFar },
+  { id: 'mid', f: 0.32, fy: 0.14, depth: -98.2, scale: 0.55, band: 0.72, paint: paintMid },
 ];
 const SHAFT_DEPTH = -99;
-const SHAFT_W = 1024;
-const SHAFT_H = 576;
+const SHAFT_W = 512;
+const SHAFT_H = 288;
 const CHUNK = 2048;
 /** Foreground strip: baked against a 720 px tall screen, scaled to the real one. */
 const FG_REF_H = 720;
-const FG_H = 130;
+const FG_H = 64;
 const FG_W = 2600;
 const FG_RATE = 1.35;
 export const FOREGROUND_DEPTH = 83;
@@ -138,7 +138,7 @@ export class PencilVista {
     this.clear();
     const gen = this.generation++;
     // Leave room for wider screens and resizes without a rebake.
-    const bw = Math.max(viewW, viewH * 2.2) + 64;
+    const bw = Math.max(viewW, viewH * 1.9) + 64;
     const bh = viewH + 32;
     this.bakedView = { w: bw, h: bh };
     const b = this.level.bounds;
@@ -155,7 +155,10 @@ export class PencilVista {
       canvas.height = h;
       const c = canvas.getContext('2d');
       if (!c) return;
-      spec.paint({ c, w, h, u: viewH * spec.scale }, rng(this.seed + index * 7919));
+      spec.paint(
+        { c, w, h, u: viewH * spec.scale, vw: viewW * spec.scale },
+        rng(this.seed + index * 7919),
+      );
       const images: Phaser.GameObjects.Image[] = [];
       for (let cx = 0, k = 0; cx < w; cx += CHUNK, k++) {
         const cw = Math.min(CHUNK, w - cx);

@@ -18,7 +18,8 @@ export interface GraphiteTile {
   readonly h: number;
 }
 
-const MASS_DARK = '#43464d';
+const MASS_MID = '#787c83';
+const SHADE = (a: number): string => `rgba(14,15,19,${a.toFixed(3)})`;
 const LIT = (a: number): string => `rgba(168,172,179,${a.toFixed(3)})`;
 const CRUST = '#d0cec7';
 const INK = 'rgba(16,17,21,0.92)';
@@ -104,56 +105,43 @@ export function paintGraphiteTerrain(
     }
   }
 
-  // 1. Mass: dark graphite, lit from the top and the upper right, darkest under the undersides.
+  // 1. Mass: mid-grey graphite. Darkest only along the shadow side (faces turned away from the
+  // upper-right light) and under the undersides; the interior of big masses stays mid-grey.
   c.save();
   c.clip(union);
-  c.fillStyle = MASS_DARK;
+  c.fillStyle = MASS_MID;
   c.fillRect(tile.x, tile.y, tile.w, tile.h);
+  tonalBlotches(c, tile);
   for (const f of frames) {
-    const depth = isTop(f) ? m(2.4) : isBottom(f) ? m(1.1) : m(0.9);
-    const lit = isTop(f) ? 0.95 : f.nx < -0.5 ? 0.5 : f.nx > 0.5 ? 0.18 : 0;
-    const g = c.createLinearGradient(
-      (f.a.x + f.b.x) / 2,
-      (f.a.y + f.b.y) / 2,
-      (f.a.x + f.b.x) / 2 + f.nx * depth,
-      (f.a.y + f.b.y) / 2 + f.ny * depth,
-    );
-    if (isBottom(f)) {
-      g.addColorStop(0, 'rgba(10,11,14,0.6)');
-      g.addColorStop(1, 'rgba(10,11,14,0)');
-    } else {
-      g.addColorStop(0, LIT(lit));
-      g.addColorStop(0.5, LIT(lit * 0.45));
-      g.addColorStop(1, LIT(0));
-    }
+    const shadowSide = !isTop(f) && !isBottom(f) && f.nx > 0.5;
+    if (!isBottom(f) && !shadowSide) continue;
+    const depth = isBottom(f) ? m(0.9) : m(1.1);
+    const mx = (f.a.x + f.b.x) / 2,
+      my = (f.a.y + f.b.y) / 2;
+    const g = c.createLinearGradient(mx, my, mx + f.nx * depth, my + f.ny * depth);
+    g.addColorStop(0, SHADE(isBottom(f) ? 0.62 : 0.55));
+    g.addColorStop(0.45, SHADE(isBottom(f) ? 0.26 : 0.22));
+    g.addColorStop(1, SHADE(0));
     c.fillStyle = g;
-    // A band hugging the edge, extended past the ends so corners blend.
-    const ext = Math.min(depth, m(0.6));
-    c.beginPath();
-    c.moveTo(f.a.x - f.ux * ext, f.a.y - f.uy * ext);
-    c.lineTo(f.b.x + f.ux * ext, f.b.y + f.uy * ext);
-    c.lineTo(f.b.x + f.ux * ext + f.nx * depth, f.b.y + f.uy * ext + f.ny * depth);
-    c.lineTo(f.a.x - f.ux * ext + f.nx * depth, f.a.y - f.uy * ext + f.ny * depth);
-    c.closePath();
-    c.fill();
+    band(c, f, depth, m(0.4));
   }
-  // 2. World-locked cross-hatching over the tone, plus lifted light strokes and cracks.
-  hatchField(c, tile, -1.45, 9 / hatchDensity, 'rgba(14,15,19,0.22)', 0.7, 1);
+  // 2. Directional hatching with a lighter crossing pass, lifted strokes and cracks.
+  hatchField(c, tile, -1.45, 10 / hatchDensity, 'rgba(14,15,19,0.13)', 0.7, 1);
   hatchPatches(c, tile, hatchDensity);
   cracks(c, tile);
-  // Graphite pools toward the bottom of the page: masses darken as they drop toward the pit.
-  const sink = c.createLinearGradient(0, floorY - m(6.5), 0, floorY);
-  sink.addColorStop(0, 'rgba(8,9,12,0)');
-  sink.addColorStop(0.55, 'rgba(8,9,12,0.3)');
-  sink.addColorStop(1, 'rgba(8,9,12,0.62)');
+  // Graphite gathers a little toward the pit, capped so a deep mass never goes black.
+  const sink = c.createLinearGradient(0, floorY - m(5), 0, floorY);
+  sink.addColorStop(0, SHADE(0));
+  sink.addColorStop(1, SHADE(0.22));
   c.fillStyle = sink;
-  c.fillRect(tile.x, Math.max(tile.y, floorY - m(6.5)), tile.w, tile.h);
-  // Light from above and the upper right lifts the upper faces, hatching included.
+  c.fillRect(tile.x, Math.max(tile.y, floorY - m(5)), tile.w, tile.h);
+  // Light from above and the upper right lifts the upper faces and the lit sides.
   c.globalCompositeOperation = 'screen';
   for (const f of frames) {
-    if (!isTop(f) && !(f.nx < -0.5)) continue;
-    const depth = isTop(f) ? m(1.7) : m(0.7);
-    const lit = isTop(f) ? 0.55 : 0.3;
+    const litSide = !isTop(f) && !isBottom(f) && f.nx < -0.5;
+    if (!isTop(f) && !litSide) continue;
+    const depth = isTop(f) ? m(1.8) : m(0.8);
+    const lit = isTop(f) ? 0.55 : 0.32;
     const mx = (f.a.x + f.b.x) / 2,
       my = (f.a.y + f.b.y) / 2;
     const g = c.createLinearGradient(mx, my, mx + f.nx * depth, my + f.ny * depth);
@@ -161,22 +149,45 @@ export function paintGraphiteTerrain(
     g.addColorStop(0.4, LIT(lit * 0.5));
     g.addColorStop(1, LIT(0));
     c.fillStyle = g;
-    const ext = m(0.5);
-    c.beginPath();
-    c.moveTo(f.a.x - f.ux * ext, f.a.y - f.uy * ext);
-    c.lineTo(f.b.x + f.ux * ext, f.b.y + f.uy * ext);
-    c.lineTo(f.b.x + f.ux * ext + f.nx * depth, f.b.y + f.uy * ext + f.ny * depth);
-    c.lineTo(f.a.x - f.ux * ext + f.nx * depth, f.a.y - f.uy * ext + f.ny * depth);
-    c.closePath();
-    c.fill();
+    band(c, f, depth, m(0.5));
   }
   c.globalCompositeOperation = 'source-over';
   c.restore();
 
   // 3. Edges: ragged sides, root-hung undersides, crusted tops (tops last: they stay crisp).
-  for (const f of frames) if (!isTop(f) && !isBottom(f)) side(c, f);
-  for (const f of frames) if (isBottom(f)) underside(c, f);
+  for (const f of frames) if (!isTop(f) && !isBottom(f)) side(c, f, frames);
+  for (const f of frames) if (isBottom(f)) underside(c, f, frames);
   for (const f of frames) if (isTop(f)) crust(c, f, frames);
+}
+
+/** A band hugging an edge on its inner side, extended past the ends so corners blend. */
+function band(c: CanvasRenderingContext2D, f: EdgeFrame, depth: number, ext: number): void {
+  c.beginPath();
+  c.moveTo(f.a.x - f.ux * ext, f.a.y - f.uy * ext);
+  c.lineTo(f.b.x + f.ux * ext, f.b.y + f.uy * ext);
+  c.lineTo(f.b.x + f.ux * ext + f.nx * depth, f.b.y + f.uy * ext + f.ny * depth);
+  c.lineTo(f.a.x - f.ux * ext + f.nx * depth, f.a.y - f.uy * ext + f.ny * depth);
+  c.closePath();
+  c.fill();
+}
+
+/** Broad, soft world-seeded tonal variation so big masses never read as flat fills. */
+function tonalBlotches(c: CanvasRenderingContext2D, tile: GraphiteTile): void {
+  const cell = m(2.5);
+  for (let gy = Math.floor(tile.y / cell) - 1; gy <= (tile.y + tile.h) / cell + 1; gy++) {
+    for (let gx = Math.floor(tile.x / cell) - 1; gx <= (tile.x + tile.w) / cell + 1; gx++) {
+      const r = rng(gx * 4441 + gy * 7177 + 3);
+      const x = (gx + r()) * cell,
+        y = (gy + r()) * cell;
+      const rad = cell * (0.6 + r() * 0.8);
+      const dark = r() < 0.5;
+      const g = c.createRadialGradient(x, y, 0, x, y, rad);
+      g.addColorStop(0, dark ? SHADE(0.12 + r() * 0.08) : LIT(0.14 + r() * 0.1));
+      g.addColorStop(1, dark ? SHADE(0) : LIT(0));
+      c.fillStyle = g;
+      c.fillRect(x - rad, y - rad, rad * 2, rad * 2);
+    }
+  }
 }
 
 /** Long hatch lines across the tile at a slope (dy/dx), world-phased so tiles join. */
@@ -229,12 +240,12 @@ function hatchField(
  */
 function hatchPatches(c: CanvasRenderingContext2D, tile: GraphiteTile, density: number): void {
   const cell = 34;
-  const angles = [-1.05, -0.8, -1.25, 0.5, 0.95, -0.35];
+  const angles = [-1.05, -0.95, -1.15, -1.25, 0.55, -0.85];
   c.lineCap = 'round';
   for (let gy = Math.floor(tile.y / cell) - 1; gy <= (tile.y + tile.h) / cell + 1; gy++) {
     for (let gx = Math.floor(tile.x / cell) - 1; gx <= (tile.x + tile.w) / cell + 1; gx++) {
       const r = rng(gx * 73856093 + gy * 19349663 + 11);
-      const layers = r() < 0.45 ? 2 : 1;
+      const layers = r() < 0.35 ? 2 : 1;
       for (let layer = 0; layer < layers; layer++) {
         const ang = (angles[Math.floor(r() * angles.length)] ?? -1) + (r() - 0.5) * 0.25;
         const ux = Math.cos(ang),
@@ -244,7 +255,7 @@ function hatchPatches(c: CanvasRenderingContext2D, tile: GraphiteTile, density: 
         const strokes = Math.round((6 + r() * 7) * density * 0.7);
         const gap = 3 + r() * 2.2;
         const len = 18 + r() * 26;
-        const dark = layer === 0 ? 0.42 + r() * 0.3 : 0.55 + r() * 0.3;
+        const dark = layer === 0 ? 0.38 + r() * 0.22 : 0.42 + r() * 0.2;
         for (let k = 0; k < strokes; k++) {
           const o = (k - strokes / 2) * gap;
           const l = len * (0.6 + r() * 0.5);
@@ -306,119 +317,166 @@ function cracks(c: CanvasRenderingContext2D, tile: GraphiteTile): void {
   }
 }
 
-/** Ragged side contour: notches eaten into the face, a few chips proud of it, doubled ink. */
-function side(c: CanvasRenderingContext2D, f: EdgeFrame): void {
+const near = (p: Pt, q: Pt): boolean => Math.hypot(p.x - q.x, p.y - q.y) < 1;
+
+/**
+ * A ragged contour along an exposed edge. `profile(d)` gives the inward offset (px) at distance d
+ * from `start` along `dir`: positive eats a notch into the mass (revealing the page), negative
+ * pushes a rock chunk out of it.
+ */
+function raggedEdge(
+  c: CanvasRenderingContext2D,
+  start: Pt,
+  dir: Pt,
+  inward: Pt,
+  len: number,
+  profile: (d: number) => number,
+  chunkFill: string,
+): void {
+  const n = Math.max(2, Math.ceil(len / 5));
   const pts: Pt[] = [];
-  const step = 6;
-  // Skip the top lip region so the crusted corner stays clean.
-  const n = Math.max(2, Math.ceil(f.len / step));
+  const offs: number[] = [];
   for (let i = 0; i <= n; i++) {
-    const t = (i / n) * f.len;
-    // Mostly inward, and deeper erosion further down the face (the top stays true).
-    const below = f.uy * (f.uy > 0 ? t : t - f.len); // px below the edge's upper end
-    const depthBelow = Math.abs(below);
-    const amp = 4 + Math.min(8, depthBelow / 12);
-    // Under the crusted lip the face is undercut, so the lip overhangs (never the top line).
-    const undercut =
-      depthBelow < 14 ? 0 : depthBelow < 60 ? Math.sin(((depthBelow - 14) / 46) * Math.PI) * 9 : 0;
-    const wander = fbm1((t + f.seed) / 34, f.seed) * amp + amp * 0.35 + undercut;
-    const along = Math.min(t, f.len - t);
-    const fade = Math.min(1, along / 14);
-    pts.push({
-      x: f.a.x + f.ux * t + f.nx * wander * fade,
-      y: f.a.y + f.uy * t + f.ny * wander * fade,
-    });
+    const d = (i / n) * len;
+    const o = profile(d);
+    offs.push(o);
+    pts.push({ x: start.x + dir.x * d + inward.x * o, y: start.y + dir.y * d + inward.y * o });
   }
-  // Eat notches into the mass where the contour moved inward (reveals the page behind).
+  const end = { x: start.x + dir.x * len, y: start.y + dir.y * len };
+  // Notches: erase between a line well outside the edge and the contour.
   c.save();
   c.globalCompositeOperation = 'destination-out';
-  c.beginPath();
-  c.moveTo(f.a.x - f.nx * 8, f.a.y - f.ny * 8);
-  for (const p of pts) c.lineTo(p.x, p.y);
-  c.lineTo(f.b.x - f.nx * 8, f.b.y - f.ny * 8);
-  c.closePath();
   c.fillStyle = '#000';
+  c.beginPath();
+  c.moveTo(start.x - inward.x * 14, start.y - inward.y * 14);
+  for (const p of pts) c.lineTo(p.x, p.y);
+  c.lineTo(end.x - inward.x * 14, end.y - inward.y * 14);
+  c.closePath();
   c.fill();
   c.restore();
-  // Chips proud of the face where it bulges out.
-  c.fillStyle = MASS_DARK;
+  // Chunks proud of the edge: filled mass.
+  c.fillStyle = chunkFill;
   c.beginPath();
-  c.moveTo(f.a.x, f.a.y);
-  for (const p of pts) {
-    const out = (p.x - f.a.x) * f.nx + (p.y - f.a.y) * f.ny;
-    if (out < 0) c.lineTo(p.x, p.y);
-    else {
-      // project back onto the edge line
-      const t = (p.x - f.a.x) * f.ux + (p.y - f.a.y) * f.uy;
-      c.lineTo(f.a.x + f.ux * t, f.a.y + f.uy * t);
-    }
-  }
-  c.lineTo(f.b.x, f.b.y);
+  c.moveTo(start.x, start.y);
+  pts.forEach((p, i) => {
+    const d = (i / n) * len;
+    if ((offs[i] ?? 0) < 0) c.lineTo(p.x, p.y);
+    else c.lineTo(start.x + dir.x * d, start.y + dir.y * d);
+  });
+  c.lineTo(end.x, end.y);
   c.closePath();
   c.fill();
-  // The contour: a heavy pass and a loose second pass.
+  // The contour: a heavy pass and a loose second pass just inside it.
   for (let pass = 0; pass < 2; pass++) {
-    c.strokeStyle = pass === 0 ? INK : 'rgba(16,17,21,0.45)';
+    c.strokeStyle = pass === 0 ? INK : 'rgba(16,17,21,0.42)';
     c.lineWidth = pass === 0 ? 1.7 : 0.8;
     c.beginPath();
+    const off = pass === 0 ? 0 : 2;
     pts.forEach((p, i) => {
-      const off = pass === 0 ? 0 : 1.6;
-      const x = p.x + f.nx * off,
-        y = p.y + f.ny * off;
-      if (i === 0) c.moveTo(x, y);
-      else c.lineTo(x, y);
+      if (i === 0) c.moveTo(p.x + inward.x * off, p.y + inward.y * off);
+      else c.lineTo(p.x + inward.x * off, p.y + inward.y * off);
     });
     c.stroke();
   }
-  // Vines spilling over the face from the lip: only on faces whose top is a lit corner.
+}
+
+interface Bump {
+  readonly at: number;
+  readonly len: number;
+  readonly size: number;
+}
+
+/** Seeded bumps along an edge (chunks or notches), irregularly spaced. */
+function bumps(r: () => number, len: number, gap: number, size: number): Bump[] {
+  const out: Bump[] = [];
+  for (let d = 20 + r() * gap; d < len - 16; d += gap * (0.5 + r() * 1.3))
+    out.push({ at: d, len: 10 + r() * 30, size: size * (0.4 + r() * 0.8) });
+  return out;
+}
+
+const bumpAt = (list: readonly Bump[], d: number): number => {
+  let o = 0;
+  for (const b of list) {
+    const t = (d - b.at) / b.len + 0.5;
+    if (t > 0 && t < 1) o += Math.sin(t * Math.PI) * b.size;
+  }
+  return o;
+};
+
+/**
+ * Vertical faces: a rounded overhanging lip under the crust, an undercut below it, a slight
+ * seeded lean, chipped notches and protruding chunks, and an eroded lower corner where the face
+ * meets an exposed underside. The walkable top line is never moved.
+ */
+function side(c: CanvasRenderingContext2D, f: EdgeFrame, frames: readonly EdgeFrame[]): void {
   const r = rng(f.seed * 31 + 7);
-  const topEnd = f.a.y < f.b.y ? f.a : f.b;
-  const vines = r() < 0.7 ? 1 + Math.floor(r() * 4) : 0;
-  for (let i = 0; i < vines; i++) {
-    const x = topEnd.x - f.nx * (1 + r() * 4);
-    const y = topEnd.y + 6 + r() * 10;
-    root(c, x, y, Math.min(f.len * 0.8, 18 + r() * 70), r, 0.85, 1.3, 0.4);
+  const upperIsA = f.a.y <= f.b.y;
+  const upper = upperIsA ? f.a : f.b,
+    lower = upperIsA ? f.b : f.a;
+  const dir = { x: (lower.x - upper.x) / f.len, y: (lower.y - upper.y) / f.len };
+  const inward = { x: f.nx, y: f.ny };
+  const lipped = frames.some((o) => isTop(o) && (near(o.a, upper) || near(o.b, upper)));
+  const footed = frames.some((o) => isBottom(o) && (near(o.a, lower) || near(o.b, lower)));
+  const lean = (r() - 0.35) * 0.06;
+  const chunks = bumps(r, f.len, 70, 7);
+  const notches = bumps(r, f.len, 55, 6);
+  const profile = (d: number): number => {
+    const e = f.len - d;
+    if (lipped && d < 12) return -2.5 * Math.sin((d / 12) * Math.PI);
+    let o = fbm1((d + f.seed) / 26, f.seed) * (2.5 + Math.min(4, d / 25)) + 2.5 + lean * d;
+    if (lipped && d < 64) o += Math.sin(((d - 12) / 52) * Math.PI) * 10;
+    o += bumpAt(notches, d) - bumpAt(chunks, d);
+    if (footed && e < 46) o += (1 - e / 46) ** 2 * 18;
+    const ramp = Math.min(1, (lipped ? 12 : d) / 6, e / 6);
+    return Math.max(-9, Math.min(24, o * ramp));
+  };
+  const shadow = f.nx > 0.5;
+  raggedEdge(c, upper, dir, inward, f.len, profile, shadow ? '#585b62' : '#8c9097');
+  // Vines spilling over the face from the lip.
+  if (lipped) {
+    const vines = r() < 0.75 ? 1 + Math.floor(r() * 4) : 0;
+    for (let i = 0; i < vines; i++) {
+      const x = upper.x - inward.x * (1 + r() * 3);
+      const y = upper.y + 4 + r() * 8;
+      root(c, x, y, Math.min(f.len * 0.8, 16 + r() * 64), r, 0.85, 1.3, 0.4);
+    }
   }
 }
 
-/** Underside: an irregular inked lip, hanging roots in clusters, and the odd loose crumb. */
-function underside(c: CanvasRenderingContext2D, f: EdgeFrame): void {
-  const pts: Pt[] = [];
-  const n = Math.max(2, Math.ceil(f.len / 6));
-  for (let i = 0; i <= n; i++) {
-    const t = (i / n) * f.len;
-    const wander = fbm1((t + f.seed) / 30, f.seed + 3) * 3;
-    pts.push({ x: f.a.x + f.ux * t - f.nx * wander, y: f.a.y + f.uy * t - f.ny * wander });
-  }
-  c.fillStyle = MASS_DARK;
-  c.beginPath();
-  c.moveTo(f.a.x, f.a.y);
-  for (const p of pts) c.lineTo(p.x, p.y);
-  c.lineTo(f.b.x, f.b.y);
-  c.closePath();
-  c.fill();
-  c.strokeStyle = INK;
-  c.lineWidth = 1.8;
-  c.beginPath();
-  pts.forEach((p, i) => {
-    if (i === 0) c.moveTo(p.x, p.y);
-    else c.lineTo(p.x, p.y);
-  });
-  c.stroke();
+/** Undersides: wandering lip with hanging rock and notches, eroded rounded ends, roots. */
+function underside(c: CanvasRenderingContext2D, f: EdgeFrame, frames: readonly EdgeFrame[]): void {
+  const r = rng(f.seed * 17 + 5);
+  const chunks = bumps(r, f.len, 60, 8);
+  const notches = bumps(r, f.len, 45, 5);
+  const capped = (p: Pt): boolean =>
+    frames.some((o) => o !== f && !isBottom(o) && !isTop(o) && (near(o.a, p) || near(o.b, p)));
+  const capA = capped(f.a),
+    capB = capped(f.b);
+  const profile = (d: number): number => {
+    let o = fbm1((d + f.seed) / 24, f.seed + 3) * 3.5 + 1.5;
+    o += bumpAt(notches, d) - bumpAt(chunks, d);
+    const ea = d,
+      eb = f.len - d;
+    if (capA && ea < 40) o += (1 - ea / 40) ** 2 * 16;
+    if (capB && eb < 40) o += (1 - eb / 40) ** 2 * 16;
+    const ramp = Math.min(1, (capA ? 6 : ea) / 5, (capB ? 6 : eb) / 5);
+    return Math.max(-10, Math.min(22, o * ramp));
+  };
+  raggedEdge(c, f.a, { x: f.ux, y: f.uy }, { x: f.nx, y: f.ny }, f.len, profile, '#4f5259');
   // Root clusters keyed to world x, so they never fall at even intervals.
   const x0 = Math.min(f.a.x, f.b.x),
     x1 = Math.max(f.a.x, f.b.x);
   const y = (f.a.y + f.b.y) / 2;
   for (let cx = Math.floor(x0 / 40) * 40; cx < x1; cx += 40) {
     const h = lattice(Math.floor(cx / 40), 91);
-    if (h > 0.55 || cx < x0 + 6) continue;
-    const r = rng(Math.floor(cx) * 7 + 3);
-    const count = 1 + Math.floor(r() * 5);
+    if (h > 0.6 || cx < x0 + 6) continue;
+    const rr = rng(Math.floor(cx) * 7 + 3);
+    const count = 1 + Math.floor(rr() * 5);
     for (let k = 0; k < count; k++) {
-      const rx = cx + r() * 40;
-      if (rx > x1 - 6) continue;
-      const long = r() < 0.3;
-      root(c, rx, y - 1, long ? 30 + r() * 60 : 6 + r() * 22, r, 0.88, long ? 1.6 : 1.1, 0.5);
+      const rx = cx + rr() * 40;
+      if (rx > x1 - 8 || rx < x0 + 8) continue;
+      const long = rr() < 0.3;
+      root(c, rx, y + 1, long ? 30 + rr() * 60 : 6 + rr() * 22, rr, 0.88, long ? 1.6 : 1.1, 0.5);
     }
   }
 }

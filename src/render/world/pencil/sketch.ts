@@ -275,3 +275,40 @@ export function ridge(
   }
   return pts;
 }
+
+/**
+ * A finger-rubbed graphite stroke: overlapping soft ellipses along a gently bent path, thick in the
+ * middle and feathered at both ends (soft smudge shapes, never round blobs).
+ */
+export function rubbed(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  len: number,
+  thick: number,
+  ang: number,
+  bend: number,
+  r: Rand,
+  color: (a: number) => string,
+  alpha: number,
+): void {
+  const steps = Math.max(4, Math.ceil(len / Math.max(2, thick * 0.5)));
+  const ux = Math.cos(ang),
+    uy = Math.sin(ang);
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    const px = x + ux * len * t - uy * bend * Math.sin(Math.PI * t) * len * 0.15;
+    const py = y + uy * len * t + ux * bend * Math.sin(Math.PI * t) * len * 0.15;
+    const wdt = thick * Math.sin(Math.PI * t) ** 0.6 * (0.8 + r() * 0.4) + 0.5;
+    c.save();
+    c.translate(px, py);
+    c.rotate(ang + bend * Math.cos(Math.PI * t) * 0.3);
+    c.scale(1, 0.45);
+    const g = c.createRadialGradient(0, 0, 0, 0, 0, wdt * 1.6);
+    g.addColorStop(0, color(alpha * (0.35 + r() * 0.25)));
+    g.addColorStop(1, color(0));
+    c.fillStyle = g;
+    c.fillRect(-wdt * 1.6, -wdt * 1.6, wdt * 3.2, wdt * 3.2);
+    c.restore();
+  }
+}

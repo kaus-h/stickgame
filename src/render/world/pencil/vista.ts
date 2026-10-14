@@ -8,7 +8,7 @@ import {
   root,
   sketchLine,
   sketchPath,
-  smudge,
+  rubbed,
   type Rand,
 } from './sketch';
 
@@ -23,6 +23,8 @@ export interface LayerCanvas {
   readonly w: number;
   readonly h: number;
   readonly u: number;
+  /** Visible view width, texture pixels. */
+  readonly vw: number;
 }
 
 type Pt = { x: number; y: number };
@@ -73,36 +75,48 @@ export function paintSky({ c, w, h, u }: LayerCanvas, r: Rand): void {
   sky.addColorStop(1, graphite(0));
   c.fillStyle = sky;
   c.fillRect(0, 0, w, h - u * 0.35);
-  // Billowing cloud banks: soft dark undersides, lifted light tops, swirled pencil contours.
-  const banks = Math.ceil(w / (u * 0.35));
+  // Cloud banks as rubbed graphite: long soft finger-smudged strokes with lifted (erased) light
+  // edges on top and a few streaks dragged through them. Never round blobs.
+  const banks = Math.ceil(w / (u * 0.45));
   for (let i = 0; i < banks; i++) {
     const cx = r() * w;
-    const cy = top + u * (0.02 + r() * 0.3);
-    const size = u * (0.08 + r() * 0.16);
-    for (let k = 0; k < 6; k++) {
-      const bx = cx + (r() - 0.5) * size * 2.6;
-      const by = cy + (r() - 0.5) * size * 0.7;
-      const br = size * (0.45 + r() * 0.6);
-      smudge(c, bx, by + br * 0.35, br * 1.3, br * 0.7, graphite, 0.1 + r() * 0.08);
-      smudge(c, bx + br * 0.2, by - br * 0.25, br, br * 0.65, mist, 0.16 + r() * 0.12);
-      // A loose swirled pencil contour on some billows (never a regular stamp).
-      if (r() < 0.45) {
-        c.strokeStyle = graphite(0.06 + r() * 0.07);
-        c.lineWidth = 0.6 + r() * 0.5;
-        c.beginPath();
-        const ox = (r() - 0.5) * br * 0.5,
-          oy = (r() - 0.5) * br * 0.3;
-        const a0 = Math.PI * (0.9 + r() * 0.4);
-        c.ellipse(
-          bx + ox,
-          by + oy,
-          br * (0.5 + r() * 0.4),
-          br * (0.3 + r() * 0.3),
-          (r() - 0.5) * 0.6,
-          a0,
-          a0 + Math.PI * (0.35 + r() * 0.5),
+    const cy = top + u * (0.0 + r() * 0.32);
+    const size = u * (0.12 + r() * 0.2);
+    const strokes = 3 + Math.floor(r() * 4);
+    for (let k = 0; k < strokes; k++) {
+      const len = size * (1.4 + r() * 2.2);
+      const x0 = cx + (r() - 0.6) * size * 2;
+      const y0 = cy + (r() - 0.5) * size * 0.6;
+      const ang = (r() - 0.5) * 0.35;
+      const bend = (r() - 0.5) * 0.8;
+      const thick = size * (0.18 + r() * 0.22);
+      rubbed(c, x0, y0, len, thick, ang, bend, r, graphite, 0.1 + r() * 0.08);
+      // The eraser lifts a lighter edge along the top of the stroke.
+      rubbed(
+        c,
+        x0 + len * 0.1,
+        y0 - thick * 0.7,
+        len * 0.75,
+        thick * 0.45,
+        ang,
+        bend,
+        r,
+        mist,
+        0.2,
+      );
+      // Dragged graphite streaks.
+      for (let s = 0; s < 3; s++) {
+        const sy = y0 + (r() - 0.5) * thick;
+        sketchLine(
+          c,
+          x0 + len * 0.1 * r(),
+          sy,
+          x0 + len * (0.6 + r() * 0.4),
+          sy + len * ang,
+          r,
+          0.05 + r() * 0.05,
+          0.6,
         );
-        c.stroke();
       }
     }
   }
@@ -128,86 +142,6 @@ export function paintSky({ c, w, h, u }: LayerCanvas, r: Rand): void {
 }
 
 // --- far: the colossal landmark ------------------------------------------------------------------
-
-/** One sketched tower: body, roof (spire, crenels or broken), arched slits and left-side shade. */
-function tower(
-  c: CanvasRenderingContext2D,
-  x: number,
-  baseY: number,
-  tw: number,
-  th: number,
-  roof: 'spire' | 'crenel' | 'broken',
-  r: Rand,
-  a: number,
-): void {
-  const left = x - tw / 2,
-    right = x + tw / 2,
-    top = baseY - th;
-  const body: Pt[] = [
-    { x: left, y: baseY },
-    { x: left + tw * 0.03, y: top },
-  ];
-  if (roof === 'crenel') {
-    const n = 3 + Math.floor(r() * 3);
-    for (let i = 0; i < n; i++) {
-      const x0 = left + (tw * i) / n,
-        x1 = left + (tw * (i + 0.5)) / n;
-      body.push({ x: x0, y: top - tw * 0.12 }, { x: x1, y: top - tw * 0.12 }, { x: x1, y: top });
-    }
-  } else if (roof === 'broken') {
-    for (let i = 1; i < 6; i++)
-      body.push({ x: left + (tw * i) / 6, y: top + (r() - 0.3) * tw * 0.5 });
-  }
-  body.push({ x: right - tw * 0.03, y: top }, { x: right, y: baseY });
-  c.save();
-  poly(c, body);
-  c.fillStyle = mist(0.22);
-  c.fill();
-  c.fillStyle = graphite(a * 0.18);
-  c.fill();
-  c.clip();
-  // Shade the left face (light from the upper right).
-  hatchBox(c, { x: left, y: top - tw, w: tw * 0.45, h: th + tw }, 1.25, 3.2, a * 0.5, r, 0.7);
-  hatchBox(c, { x: left, y: top - tw, w: tw, h: th + tw }, 1.9, 9, a * 0.22, r, 0.6);
-  c.restore();
-  sketchPath(c, body, r, a * 0.75, 0.9, 2, 1.2);
-  // Construction overshoot: the hand hasn't finished.
-  sketchLine(c, left, baseY, left + tw * 0.03, top, r, a * 0.3, 0.6, tw * 0.5);
-  sketchLine(c, right, baseY, right - tw * 0.03, top, r, a * 0.3, 0.6, tw * 0.4);
-  if (roof === 'spire') {
-    const sh = tw * (1.4 + r() * 1.2);
-    const spire: Pt[] = [
-      { x: left - tw * 0.06, y: top },
-      { x: x + (r() - 0.5) * tw * 0.1, y: top - sh },
-      { x: right + tw * 0.06, y: top },
-    ];
-    c.save();
-    poly(c, spire);
-    c.fillStyle = graphite(a * 0.22);
-    c.fill();
-    c.clip();
-    hatchBox(c, { x: left - tw * 0.1, y: top - sh, w: tw * 0.6, h: sh }, 1.35, 2.6, a * 0.5, r);
-    c.restore();
-    sketchPath(c, spire, r, a * 0.8, 0.9, 2, 1);
-    sketchLine(c, x, top - sh, x, top - sh - tw * 0.35, r, a * 0.6, 0.7);
-  }
-  // Arched slit windows in a loose column.
-  const rows = Math.floor(th / (tw * 0.9));
-  for (let i = 0; i < rows; i++) {
-    if (r() < 0.35) continue;
-    const wy = top + tw * 0.5 + i * tw * 0.9;
-    const ww = tw * 0.14;
-    const wx = x + (r() - 0.5) * tw * 0.3;
-    c.fillStyle = graphite(a * 0.75);
-    c.beginPath();
-    c.moveTo(wx - ww, wy + ww * 3);
-    c.lineTo(wx - ww, wy);
-    c.arc(wx, wy, ww, Math.PI, 0);
-    c.lineTo(wx + ww, wy + ww * 3);
-    c.closePath();
-    c.fill();
-  }
-}
 
 /** A run of arches (aqueduct or bridge) from x0 to x1 with its deck at deckY. */
 function arcade(
@@ -323,76 +257,340 @@ function crag(
   return top;
 }
 
-/** The colossal landmark: a ruined citadel of towers and spires on a crag, with an aqueduct. */
-export function paintFar(lc: LayerCanvas, r: Rand): void {
-  const { c, w, h, u } = lc;
-  const a = 0.5;
-  const horizon = h - u * 0.3;
-  // One landmark per ~1.7 view widths of layer, never evenly spaced.
-  const count = Math.max(1, Math.round(w / (u * 3)));
-  for (let k = 0; k < count; k++) {
-    const cx = ((k + 0.35 + r() * 0.3) / count) * w;
-    const scale = u * (1.15 + r() * 0.25);
-    const rockTop = horizon - scale * 0.2;
-    const top = crag(c, cx - scale * 0.42, cx + scale * 0.36, rockTop, h, r, a * 0.8, 0.12);
-    const surface = (x: number): number => {
-      let best = rockTop;
-      let bd = Infinity;
-      for (const p of top) {
-        const d = Math.abs(p.x - x);
-        if (d < bd) {
-          bd = d;
-          best = p.y;
-        }
-      }
-      return best + 2;
-    };
-    // Towers, tallest near the middle, ruined at the edges.
-    const towers = 10 + Math.floor(r() * 5);
-    for (let i = 0; i < towers; i++) {
-      const t = (i + r() * 0.6) / towers;
-      const x = cx - scale * 0.32 + t * scale * 0.6;
-      const centre = 1 - Math.abs(t - 0.5) * 1.6;
-      const th = scale * (0.1 + centre * 0.42 + r() * 0.12);
-      const tw = scale * (0.035 + r() * 0.045);
-      const roof =
-        centre > 0.5 ? (r() < 0.75 ? 'spire' : 'crenel') : r() < 0.6 ? 'broken' : 'spire';
-      tower(c, x, surface(x), tw, th, roof, r, a);
+/** Faint construction lines: the hand's guides, left visible around the ruins. */
+function guides(
+  c: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  hgt: number,
+  r: Rand,
+  a: number,
+): void {
+  for (let i = 0; i < 2 + Math.floor(r() * 3); i++) {
+    const gy = y + r() * hgt;
+    sketchLine(c, x - w * 0.3, gy, x + w * 1.3, gy + (r() - 0.5) * 3, r, a * 0.22, 0.6);
+  }
+  for (let i = 0; i < 1 + Math.floor(r() * 3); i++) {
+    const gx = x + r() * w;
+    sketchLine(c, gx, y - hgt * 0.4, gx + (r() - 0.5) * 3, y + hgt, r, a * 0.18, 0.6);
+  }
+}
+
+/** A crumbling wall: jagged stepped top, arched openings, left-side shade, course lines. */
+function ruinWall(
+  c: CanvasRenderingContext2D,
+  x0: number,
+  x1: number,
+  baseY: number,
+  hgt: number,
+  r: Rand,
+  a: number,
+): void {
+  const w = x1 - x0;
+  const top: Pt[] = [];
+  let y = baseY - hgt * (0.5 + r() * 0.5);
+  for (let x = x0; x <= x1; x += w / (6 + Math.floor(r() * 6))) {
+    // Broken masonry: steps and bites, now and then a tall surviving stub.
+    y = Math.min(baseY - hgt * 0.15, Math.max(baseY - hgt, y + (r() - 0.5) * hgt * 0.45));
+    top.push({ x, y }, { x: x + w * 0.04, y: y + (r() - 0.3) * hgt * 0.12 });
+  }
+  const body: Pt[] = [{ x: x0, y: baseY }, ...top, { x: x1, y: baseY }];
+  c.save();
+  c.beginPath();
+  body.forEach((p, i) => {
+    if (i === 0) c.moveTo(p.x, p.y);
+    else c.lineTo(p.x, p.y);
+  });
+  c.closePath();
+  // Arched openings (even-odd holes), in an irregular row.
+  const openings = Math.floor(w / (hgt * 0.35));
+  for (let i = 0; i < openings; i++) {
+    if (r() < 0.35) continue;
+    const ow = hgt * (0.08 + r() * 0.08);
+    const ox = x0 + ((i + 0.5) / openings) * w;
+    const oy = baseY - hgt * (0.12 + r() * 0.1);
+    const oh = hgt * (0.2 + r() * 0.2);
+    c.moveTo(ox - ow, oy);
+    c.lineTo(ox - ow, oy - oh);
+    c.arc(ox, oy - oh, ow, Math.PI, 0);
+    c.lineTo(ox + ow, oy);
+    c.closePath();
+  }
+  c.fillStyle = mist(0.18);
+  c.fill('evenodd');
+  c.fillStyle = graphite(a * 0.2);
+  c.fill('evenodd');
+  c.clip('evenodd');
+  hatchBox(c, { x: x0, y: baseY - hgt, w: w * 0.45, h: hgt }, 1.25, 3.2, a * 0.45, r, 0.7);
+  hatchBox(c, { x: x0, y: baseY - hgt, w, h: hgt }, 1.9, 8, a * 0.2, r, 0.6);
+  // Masonry courses.
+  for (let cy = baseY - hgt * 0.1; cy > baseY - hgt; cy -= hgt * (0.08 + r() * 0.06))
+    sketchLine(c, x0, cy, x1, cy + (r() - 0.5) * 2, r, a * 0.25, 0.5);
+  c.restore();
+  sketchPath(c, body, r, a * 0.75, 0.9, 2, 1.2);
+}
+
+/** A tall broken spire: a slender tower snapped off, with the lost spire left as a ghost guide. */
+function brokenSpire(
+  c: CanvasRenderingContext2D,
+  x: number,
+  baseY: number,
+  tw: number,
+  th: number,
+  r: Rand,
+  a: number,
+): void {
+  const lean = (r() - 0.5) * tw * 0.5;
+  const breakY = baseY - th;
+  const body: Pt[] = [
+    { x: x - tw / 2, y: baseY },
+    { x: x - tw / 2 + lean * 0.8, y: breakY + tw * 0.4 },
+    { x: x - tw * 0.2 + lean, y: breakY - tw * 0.3 },
+    { x: x + tw * 0.05 + lean, y: breakY + tw * 0.2 },
+    { x: x + tw * 0.28 + lean, y: breakY - tw * 0.9 },
+    { x: x + tw / 2 + lean * 0.9, y: breakY + tw * 0.5 },
+    { x: x + tw / 2, y: baseY },
+  ];
+  c.save();
+  poly(c, body);
+  c.fillStyle = mist(0.2);
+  c.fill();
+  c.fillStyle = graphite(a * 0.22);
+  c.fill();
+  c.clip();
+  hatchBox(
+    c,
+    { x: x - tw / 2, y: breakY - tw, w: tw * 0.5, h: th + tw },
+    1.3,
+    2.8,
+    a * 0.55,
+    r,
+    0.7,
+  );
+  c.restore();
+  sketchPath(c, body, r, a * 0.85, 0.9, 2, 1);
+  // Lancet slits climbing the shaft.
+  for (let yy = baseY - tw * 1.5; yy > breakY + tw; yy -= tw * (1.2 + r() * 0.8)) {
+    if (r() < 0.3) continue;
+    const sx = x + lean * ((baseY - yy) / th);
+    c.fillStyle = graphite(a * 0.7);
+    c.fillRect(sx - tw * 0.07, yy - tw * 0.45, tw * 0.14, tw * 0.45);
+  }
+  // The missing spire, only as faint construction lines.
+  const apex = { x: x + lean * 1.3, y: breakY - th * 0.45 };
+  sketchLine(c, x - tw / 2 + lean, breakY, apex.x, apex.y, r, a * 0.18, 0.6, 6);
+  sketchLine(c, x + tw / 2 + lean, breakY, apex.x, apex.y, r, a * 0.18, 0.6, 6);
+  sketchLine(c, x + lean, breakY + tw, apex.x, apex.y - tw, r, a * 0.14, 0.5);
+}
+
+/** A great arch, one side collapsed; its full circle survives as a construction guide. */
+function brokenArch(
+  c: CanvasRenderingContext2D,
+  x0: number,
+  span: number,
+  baseY: number,
+  hgt: number,
+  r: Rand,
+  a: number,
+): void {
+  const pier = span * 0.16;
+  const rad = span / 2 - pier / 2;
+  const cx = x0 + span / 2;
+  const spring = baseY - hgt + rad;
+  const keep = 0.45 + r() * 0.35; // fraction of the arc still standing, from the left
+  const leftPier: Pt[] = [
+    { x: x0, y: baseY },
+    { x: x0, y: spring - rad * 0.2 },
+    { x: x0 + pier, y: spring - rad * 0.2 },
+    { x: x0 + pier, y: baseY },
+  ];
+  const rightH = hgt * (0.25 + r() * 0.45);
+  const rightPier: Pt[] = [
+    { x: x0 + span - pier, y: baseY },
+    { x: x0 + span - pier, y: baseY - rightH },
+    { x: x0 + span - pier * 0.5, y: baseY - rightH - pier * 0.6 },
+    { x: x0 + span, y: baseY - rightH * 0.85 },
+    { x: x0 + span, y: baseY },
+  ];
+  for (const piece of [leftPier, rightPier]) {
+    c.save();
+    poly(c, piece);
+    c.fillStyle = graphite(a * 0.22);
+    c.fill();
+    c.clip();
+    hatchBox(c, boxOf(piece), 1.3, 3, a * 0.5, r, 0.7);
+    c.restore();
+    sketchPath(c, piece, r, a * 0.8, 0.9, 2, 1);
+  }
+  // The surviving voussoirs: a thick band of arc, ending in a ragged break.
+  const a0 = Math.PI,
+    a1 = Math.PI + Math.PI * keep;
+  const thick = pier * 0.9;
+  c.save();
+  c.beginPath();
+  c.arc(cx, spring, rad + thick, a0, a1);
+  c.lineTo(
+    cx + Math.cos(a1) * rad + (r() - 0.5) * thick,
+    spring + Math.sin(a1) * rad + thick * 0.4,
+  );
+  c.arc(cx, spring, rad, a1, a0, true);
+  c.closePath();
+  c.fillStyle = graphite(a * 0.24);
+  c.fill();
+  c.clip();
+  hatchBox(
+    c,
+    { x: x0, y: spring - rad - thick, w: span, h: rad + thick },
+    1.2,
+    2.6,
+    a * 0.5,
+    r,
+    0.7,
+  );
+  c.restore();
+  c.strokeStyle = graphite(a * 0.75);
+  c.lineWidth = 0.9;
+  c.beginPath();
+  c.arc(cx, spring, rad + thick, a0, a1);
+  c.stroke();
+  c.beginPath();
+  c.arc(cx, spring, rad, a0, a1);
+  c.stroke();
+  // Ghost of the whole arch.
+  c.strokeStyle = graphite(a * 0.16);
+  c.lineWidth = 0.6;
+  c.beginPath();
+  c.arc(cx, spring, rad + thick * 0.5, Math.PI, Math.PI * 2);
+  c.stroke();
+}
+
+/** An aqueduct striding off in one direction, its deck broken and its far end crumbling. */
+function brokenAqueduct(
+  c: CanvasRenderingContext2D,
+  x0: number,
+  x1: number,
+  deckY: number,
+  bottom: number,
+  r: Rand,
+  a: number,
+): void {
+  const bays = 5 + Math.floor(r() * 4);
+  const span = (x1 - x0) / bays;
+  const pier = span * 0.22;
+  const deck = Math.max(3, span * 0.18);
+  for (let i = 0; i < bays; i++) {
+    const bx = x0 + i * span;
+    // Further bays decay: lower, missing deck, finally just stumps.
+    const decay = i / bays;
+    const lost = r() < decay * 0.9;
+    const stump = r() < decay * 0.6;
+    const topY = stump ? deckY + (bottom - deckY) * (0.3 + r() * 0.4) : deckY;
+    const p: Pt[] = [
+      { x: bx, y: bottom },
+      { x: bx, y: topY + (r() - 0.5) * 4 },
+      { x: bx + pier, y: topY + (r() - 0.2) * 6 },
+      { x: bx + pier, y: bottom },
+    ];
+    c.save();
+    poly(c, p);
+    c.fillStyle = graphite(a * 0.22);
+    c.fill();
+    c.clip();
+    hatchBox(c, boxOf(p), 1.3, 3.2, a * 0.45, r, 0.7);
+    c.restore();
+    sketchPath(c, p, r, a * 0.75, 0.8, 1);
+    if (!stump && !lost) {
+      // Arch and deck to the next pier.
+      const ax = bx + pier,
+        bx2 = bx + span;
+      const rad = (bx2 - ax) / 2;
+      c.strokeStyle = graphite(a * 0.7);
+      c.lineWidth = 0.9;
+      c.beginPath();
+      c.arc(ax + rad, deckY + deck + rad, rad, Math.PI, 0);
+      c.stroke();
+      c.fillStyle = graphite(a * 0.2);
+      c.fillRect(ax, deckY, bx2 - ax, deck);
+      sketchLine(c, bx, deckY, bx2 + pier, deckY, r, a * 0.8, 0.9, 6);
+    } else if (!stump) {
+      // A snapped deck end.
+      sketchLine(c, bx, deckY, bx + pier + span * 0.25 * r(), deckY + 3, r, a * 0.6, 0.8);
     }
-    // A great ruined arch between the main towers.
-    const archX = cx - scale * 0.05;
-    const archY = surface(archX) - scale * 0.3;
-    arcade(c, archX - scale * 0.07, archX + scale * 0.09, archY, scale * 0.3, r, a, 1);
-    // An aqueduct striding off to the right, falling into mist.
-    const deck = horizon - scale * 0.26;
-    arcade(
-      c,
-      cx + scale * 0.3,
-      cx + scale * 1.2,
-      deck,
-      h - deck,
-      r,
-      a * 0.85,
-      6 + Math.floor(r() * 3),
-    );
-    // Waterfall: a pale vertical streak off the crag face.
-    const fx = cx + scale * 0.12;
+  }
+  sketchLine(c, x0 - span * 0.3, deckY - deck, x1 + span * 0.4, deckY - deck, r, a * 0.15, 0.6);
+}
+
+/**
+ * The colossal landmark: half-sketched ruins on a crag, composed differently for every landmark
+ * (seeded per level): crumbling walls, one tall broken spire, a collapsing great arch and an
+ * aqueduct falling into mist. Landmarks are spaced more than a view apart, so at most one is on
+ * screen at a time.
+ */
+export function paintFar(lc: LayerCanvas, r: Rand): void {
+  const { c, w, h, u, vw } = lc;
+  const a = 0.62;
+  const horizon = h - u * 0.3;
+  const spacing = vw * 1.35;
+  const count = Math.max(1, Math.floor((w - vw * 0.3) / spacing) + 1);
+  const slack = Math.max(0, w - spacing * (count - 1));
+  let cx = slack * (0.3 + r() * 0.4);
+  for (let k = 0; k < count; k++, cx += spacing * (1 + r() * 0.15)) {
+    if (cx > w) break;
+    const scale = u * (1.0 + r() * 0.35);
+    const flip = r() < 0.5 ? 1 : -1;
+    const rockTop = horizon - scale * (0.12 + r() * 0.12);
+    const span0 = cx - scale * (0.3 + r() * 0.15),
+      span1 = cx + scale * (0.25 + r() * 0.15);
+    const top = crag(c, span0, span1, rockTop, h, r, a * 0.8, 0.1, 0.05 + r() * 0.1);
+    const surface = (x: number): number =>
+      top.reduce((best, p) => (Math.abs(p.x - x) < Math.abs(best.x - x) ? p : best)).y + 2;
+    guides(c, span0, rockTop - scale * 0.6, span1 - span0, scale * 0.6, r, a);
+    // Crumbling walls across the crag, in two or three uneven runs.
+    const runs = 2 + Math.floor(r() * 2);
+    for (let i = 0; i < runs; i++) {
+      const wx0 = span0 + (span1 - span0) * (i / runs + r() * 0.1);
+      const wx1 = wx0 + (span1 - span0) * (0.18 + r() * 0.2);
+      ruinWall(c, wx0, wx1, surface((wx0 + wx1) / 2), scale * (0.12 + r() * 0.18), r, a);
+    }
+    // The broken spire, off-centre.
+    const sx = cx + flip * scale * (0.08 + r() * 0.15);
+    brokenSpire(c, sx, surface(sx), scale * (0.06 + r() * 0.03), scale * (0.45 + r() * 0.25), r, a);
+    // A collapsing great arch on the other side of the spire.
+    const archW = scale * (0.16 + r() * 0.1);
+    const ax = cx - flip * scale * (0.05 + r() * 0.12) - archW / 2;
+    brokenArch(c, ax, archW, surface(ax + archW / 2), scale * (0.3 + r() * 0.15), r, a);
+    // The aqueduct strides away on the flip side, decaying into mist.
+    // Deck high in the sky band, well above where playable ledges sit.
+    const deck = horizon - scale * (0.4 + r() * 0.12);
+    const reach = scale * (0.7 + r() * 0.5);
+    if (flip > 0) brokenAqueduct(c, span1 - scale * 0.05, span1 + reach, deck, h, r, a * 0.85);
+    else {
+      c.save();
+      c.translate(2 * (span0 + scale * 0.05), 0);
+      c.scale(-1, 1);
+      brokenAqueduct(c, span0 + scale * 0.05, span0 + scale * 0.05 + reach, deck, h, r, a * 0.85);
+      c.restore();
+    }
+    // A thread of waterfall off the crag face.
+    const fx = cx + (r() - 0.5) * scale * 0.3;
     const fy = surface(fx) + 4;
     const fall = c.createLinearGradient(0, fy, 0, h);
-    fall.addColorStop(0, mist(0.55));
+    fall.addColorStop(0, mist(0.5));
     fall.addColorStop(1, mist(0));
     c.fillStyle = fall;
-    c.fillRect(fx - 4, fy, 8, h - fy);
+    c.fillRect(fx - 3, fy, 6, h - fy);
   }
-  // The landmark dissolves into mist below the horizon.
-  mistBand(c, 0, w, horizon - u * 0.22, h, 0.92);
+  // Far is palest: veiled, and dissolving into mist below the horizon.
+  veil(c, w, h, 0.12);
+  mistBand(c, 0, w, horizon - u * 0.24, h, 0.92);
 }
 
 // --- mid far: pinnacles, pines, a small bridge ------------------------------------------------------
 
 export function paintMidFar(lc: LayerCanvas, r: Rand): void {
   const { c, w, h, u } = lc;
-  const a = 0.5;
+  const a = 0.52;
   const xs = clustered(r, 0, w, u * 0.6, u * 0.28, [1, 3]).sort((p, q) => p - q);
   let prev: { x: number; top: number } | null = null;
   for (const x of xs) {
@@ -404,7 +602,7 @@ export function paintMidFar(lc: LayerCanvas, r: Rand): void {
     const kind = r();
     if (kind < 0.3) {
       const tx = x + (r() - 0.5) * pw * 0.3;
-      tower(c, tx, at(tx), pw * 0.25, u * 0.08, 'spire', r, a);
+      ruinWall(c, tx - pw * 0.3, tx + pw * 0.3, at(tx), u * (0.05 + r() * 0.05), r, a);
     } else if (kind < 0.8) {
       const n = 1 + Math.floor(r() * 4);
       for (let i = 0; i < n; i++) {
@@ -418,7 +616,7 @@ export function paintMidFar(lc: LayerCanvas, r: Rand): void {
     }
     prev = { x, top };
   }
-  veil(c, w, h, 0.3);
+  veil(c, w, h, 0.16);
   mistBand(c, 0, w, h - u * 0.42, h, 0.85);
 }
 
@@ -435,12 +633,12 @@ function veil(c: CanvasRenderingContext2D, w: number, h: number, alpha: number):
 
 export function paintMid(lc: LayerCanvas, r: Rand): void {
   const { c, w, h, u } = lc;
-  const a = 0.72;
+  const a = 0.68;
   const xs = clustered(r, -u * 0.2, w, u * 0.85, u * 0.3, [1, 2]).sort((p, q) => p - q);
   for (const x of xs) {
     const cw = u * (0.18 + r() * 0.3);
     const top = h - u * (0.36 + r() * 0.3);
-    const surface = crag(c, x - cw / 2, x + cw / 2, top, h + 4, r, a, 0.3, 0.25 + r() * 0.4);
+    const surface = crag(c, x - cw / 2, x + cw / 2, top, h + 4, r, a, 0.22, 0.25 + r() * 0.4);
     // Overhanging lip: roots and vines spill down the face from the top edge.
     for (const p of surface) {
       if (r() < 0.45) continue;
@@ -457,7 +655,7 @@ export function paintMid(lc: LayerCanvas, r: Rand): void {
       else deadTree(c, p.x, p.y + 2, u * (0.06 + r() * 0.06), r, a);
     }
   }
-  veil(c, w, h, 0.16);
+  veil(c, w, h, 0.12);
   mistBand(c, 0, w, h - u * 0.16, h, 0.6);
 }
 
@@ -536,11 +734,11 @@ export function paintForeground(c: CanvasRenderingContext2D, w: number, h: numbe
   const centres = clustered(r, 0, w, w / 5, w / 14, [1, 2]);
   for (const cx of centres) {
     // Keep the clump inside the tile so the wrap seam is clean.
-    const width = h * (0.9 + r() * 2.2);
+    const width = h * (1.6 + r() * 4);
     const x0 = Math.max(4, cx - width / 2),
       x1 = Math.min(w - 4, cx + width / 2);
     if (x1 - x0 < h * 0.4) continue;
-    const peak = h * (0.1 + r() * 0.2);
+    const peak = h * (0.14 + r() * 0.24);
     const pts: Pt[] = [{ x: x0, y: h + 2 }];
     const n = 10;
     for (let i = 0; i <= n; i++) {
@@ -575,7 +773,7 @@ export function paintForeground(c: CanvasRenderingContext2D, w: number, h: numbe
       c.lineCap = 'round';
       for (let b = 0; b < blades; b++) {
         const bx = p.x + (r() - 0.5) * 10;
-        const bh = h * (0.08 + r() * 0.2);
+        const bh = h * (0.1 + r() * 0.3);
         const lean = (r() - 0.5) * bh;
         c.lineWidth = 0.8 + r() * 1.1;
         c.beginPath();
@@ -602,7 +800,7 @@ export function paintForeground(c: CanvasRenderingContext2D, w: number, h: numbe
           reach(ang + (r() - 0.5) * 1.2, len * 0.55, wdt * 0.55, ex, ey);
         }
       };
-      reach(-Math.PI / 2 + (r() - 0.5) * 0.9, h * (0.18 + r() * 0.16), 3, bx, by);
+      reach(-Math.PI / 2 + (r() - 0.5) * 1.2, h * (0.2 + r() * 0.12), 2, bx, by);
     }
   }
 }
