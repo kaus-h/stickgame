@@ -15,7 +15,7 @@ _Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The visio
 - **New vision (memories `chapter-worlds-idea`, `ava-inspiration`):**
   - Each chapter is a distinct art-style world, with **sub-theme worlds** inside it. For example, Digital → home screen, software, file system, binary/code, internet, glitch.
   - The owner loves Alan Becker's "Animation vs. Animator": kinetic choreography, digital environments, fight/adventure energy. **Use its qualities only**, never its sequences, characters or premise (AGENTS.md stop-and-ask).
-  - Fights: the default proposal is set pieces using Move/Jump/Rope. **A combat button would be a canon change, and the owner must decide.**
+  - **Fights (owner decided 2026-10-14): no attack button.** Combat is momentum swing damage (swing precisely into targets or weak points on bosses; speed and angle matter) plus Mario-style stomps. The three verbs stay.
   - Proposed arc: pencil → cut paper → paint → neon → digital (the drawing is scanned in).
 - **Concept frames:** round 1 (text-only, GPT-6 High) is in the StickGame ChatGPT project, as 4 chats (A notebook, B neon, C painterly, D cut-paper). Round 2, restyling our own frame `.claude/concept-refs/ref-0.png`, is **blocked until the owner says in chat "yes, upload the 1-1 screenshots to ChatGPT"**, or attaches the file themselves.
 - **Deep Research (BrowserGPT, StickGame project), started 2026-10-14:**
@@ -29,7 +29,6 @@ _Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The visio
 
 1. **Owner decisions (batch them):**
    - approve the screenshot upload for concept round 2 (add a 5th, digital, frame);
-   - choose fights as set pieces vs. a combat verb;
    - choose the order of the chapter worlds;
    - pick a concept direction for chapter 1.
 2. Digest both Deep Research reports into a short **world bible draft** (`docs/art/worlds.md`): chapters → sub-themes → signature hazard, anchor twist, set piece, palette, music. Update 07A, doc 14 and the `world-look-decision` memory once the owner confirms.
