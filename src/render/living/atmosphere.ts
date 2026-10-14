@@ -19,6 +19,9 @@ export class DustMotes {
     scene: Phaser.Scene,
     depth: number,
     private readonly calm: boolean,
+    /** Speck colour: graphite by default; a pale grey where dust catches light shafts. */
+    private readonly color: number = GRAPHITE,
+    private readonly strength = 1,
   ) {
     this.g = scene.add.graphics().setScrollFactor(0).setDepth(depth);
   }
@@ -41,7 +44,7 @@ export class DustMotes {
       // Specks twinkle as they turn in the light.
       const turn = 0.5 + 0.5 * Math.sin(t * (0.8 + hash(i) * 1.4) + i * 2.1);
       const r = 0.7 + 1.3 * hash(i * 9.1);
-      g.fillStyle(GRAPHITE, 0.08 + 0.17 * turn).fillCircle(x, y, r);
+      g.fillStyle(this.color, (0.08 + 0.17 * turn) * this.strength).fillCircle(x, y, r);
     }
   }
 

@@ -4,10 +4,16 @@ vi.mock('phaser', () => ({}));
 import {
   getWorldStyle,
   NOTEBOOK_STYLE,
+  PENCIL_STYLE,
+  resolveWorldStyle,
   WORLD_STYLES,
   worldColorCss,
+  worldOverride,
   type WorldStyle,
 } from '../../src/render/world/WorldStyle';
+import { compileLevel } from '../../src/content';
+import firstRope from '../../content/levels/1-1.json';
+import movingPivots from '../../content/levels/2-1.json';
 import { ensurePaperTexture, PAGE, paperTextureKey } from '../../src/render/page/NotebookPage';
 import { addPageVignette, pageVignetteTextureKey } from '../../src/render/living/pageVignette';
 import { resolveKitVersion } from '../../src/render/kit/Kit17Terrain';
@@ -50,7 +56,9 @@ describe('world style registry', () => {
     expect(NOTEBOOK_STYLE.backgroundKey).toBe('kit17');
     expect(NOTEBOOK_STYLE.motes).toBe(true);
     expect(NOTEBOOK_STYLE.musicBankId).toBeUndefined();
-    expect(Object.keys(WORLD_STYLES)).toEqual(['notebook']);
+    expect(Object.keys(WORLD_STYLES)).toEqual(['notebook', 'pencil']);
+    expect(NOTEBOOK_STYLE.page).toBeUndefined();
+    expect(NOTEBOOK_STYLE.terrainPainter).toBeUndefined();
   });
 
   it('preserves every approved lamp stop and pool position', () => {
@@ -92,6 +100,48 @@ describe('world style registry', () => {
     expect(worldColorCss(0)).toBe('#000000');
     expect(worldColorCss(0x16161a)).toBe('#16161a');
     expect(worldColorCss(0x16161a, 0.4)).toBe('rgba(22,22,26,0.4)');
+  });
+});
+
+describe('pencil world (chapter 1)', () => {
+  it('is an unruled sketchbook with no margin line or binding, graphite terrain and shafts', () => {
+    expect(PENCIL_STYLE.page).toEqual({ kind: 'sketchbook', margin: false, binding: false });
+    expect(PENCIL_STYLE.terrainPainter).toBe('graphite');
+    expect(PENCIL_STYLE.light).toBe('graphite-shafts');
+    expect(PENCIL_STYLE.backgroundKey).toBe('pencil-vista');
+    expect(PENCIL_STYLE.doodles).toBe(false);
+    expect(PENCIL_STYLE.anchorHalo?.alpha).toBeGreaterThan(0.5);
+  });
+
+  it('keeps red out of the palette (red is reserved for lethal)', () => {
+    const tokens = [
+      PENCIL_STYLE.paper.base,
+      PENCIL_STYLE.paper.fibre,
+      PENCIL_STYLE.paper.rule,
+      PENCIL_STYLE.paper.margin,
+      PENCIL_STYLE.ink,
+      PENCIL_STYLE.pencil,
+      PENCIL_STYLE.terrainBorderInk,
+      PENCIL_STYLE.anchorHalo?.color ?? 0,
+    ];
+    for (const c of tokens) {
+      const r = (c >> 16) & 255,
+        g = (c >> 8) & 255,
+        b = c & 255;
+      expect(r - Math.min(g, b)).toBeLessThan(24);
+    }
+  });
+
+  it('resolves both chapter 1 sub-themes to pencil, and the ?world= override wins', () => {
+    expect(getWorldStyle({ family: 'pencil', subTheme: 'margin-wilds' })).toBe(PENCIL_STYLE);
+    expect(getWorldStyle({ family: 'pencil', subTheme: 'construction-lines' })).toBe(PENCIL_STYLE);
+    const level = compileLevel(firstRope);
+    expect(resolveWorldStyle(level, '')).toBe(PENCIL_STYLE);
+    expect(resolveWorldStyle(level, '?level=1-1&world=notebook')).toBe(NOTEBOOK_STYLE);
+    expect(resolveWorldStyle(compileLevel(movingPivots), '?world=pencil')).toBe(PENCIL_STYLE);
+    expect(worldOverride('?world=unknown')).toBeNull();
+    expect(worldOverride('?world=constructor')).toBeNull();
+    expect(worldOverride('')).toBeNull();
   });
 });
 

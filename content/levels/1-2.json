@@ -1,7 +1,7 @@
 {
   "$schema": "../level.schema.json",
   "version": 2,
-  "world": { "family": "notebook" },
+  "world": { "family": "pencil", "subTheme": "margin-wilds" },
   "id": "1-2",
   "name": "Release",
   "section": "section-1",

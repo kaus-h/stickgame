@@ -41,7 +41,8 @@ import { kitHazardKind, LevelKit } from '../kit/LevelKit';
 import { Kit17Background } from '../kit/Kit17Background';
 import { resolveKitVersion } from '../kit/Kit17Terrain';
 import { getLevelTheme } from '../../content';
-import { resolveWorldStyle } from '../world/WorldStyle';
+import { resolveWorldStyle, type WorldStyle } from '../world/WorldStyle';
+import { pencilWorld } from '../world/pencilWorld';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
 /** High contrast (GMR-50): pencil marks darken toward ink but stay distinguishable from it. */
@@ -153,8 +154,12 @@ export class GameScene extends Phaser.Scene {
   private reticleScale = 1;
   /** World pencil, or PENCIL_HC under high contrast. */
   private pencil: number = 0x8a8a8a;
-  private get style() {
-    return resolveWorldStyle(this.opts.level);
+  private styleFor: { level: LevelDef; style: WorldStyle } | null = null;
+  /** The level's world style, or the `?world=` dev override; resolved once per level. */
+  private get style(): WorldStyle {
+    if (this.styleFor?.level !== this.opts.level)
+      this.styleFor = { level: this.opts.level, style: resolveWorldStyle(this.opts.level) };
+    return this.styleFor.style;
   }
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
@@ -163,6 +168,9 @@ export class GameScene extends Phaser.Scene {
   private bodies!: BodiesLayer;
   private kit!: LevelKit;
   private kit17Background: Kit17Background | null = null;
+  /** Chapter 1 pencil world: baked parallax vista, light shafts and foreground. */
+  private vista: InstanceType<NonNullable<ReturnType<typeof pencilWorld>>['PencilVista']> | null =
+    null;
   /** Drawn alpha per anchor, eased toward the reach cue (GMR-56). */
   private readonly anchorAlpha: number[] = [];
   /** Completion presentation owns the camera until this scene is replaced. */
@@ -312,12 +320,15 @@ export class GameScene extends Phaser.Scene {
       .map(poolShape);
     this.poolG = this.add.graphics().setDepth(-48.5);
     // Margin doodles sit on the page behind the terrain, above the sketched scenery (-97..-99).
-    this.doodles = new MarginDoodles(
-      this.add.graphics().setDepth(-60),
-      this.opts.level,
-      this.opts.level.spawn,
-      this.highContrast,
-    );
+    this.doodles =
+      this.style.doodles === false
+        ? null
+        : new MarginDoodles(
+            this.add.graphics().setDepth(-60),
+            this.opts.level,
+            this.opts.level.spawn,
+            this.highContrast,
+          );
     this.bodies = new BodiesLayer(
       this,
       this.opts.level,
@@ -352,7 +363,12 @@ export class GameScene extends Phaser.Scene {
       (typeof window !== 'undefined' &&
         new URLSearchParams(window.location.search).get('lamp') === '0');
     this.vignette = flat ? null : addPageVignette(this, 85, this.style);
-    this.motes = this.style.motes ? new DustMotes(this, 84, this.reducedMotion) : null;
+    // Pencil world: pale graphite dust drifting in the light shafts.
+    this.motes = this.style.motes
+      ? this.style.light === 'graphite-shafts'
+        ? new DustMotes(this, 84, this.reducedMotion, 0xf3f4f6, 2.2)
+        : new DustMotes(this, 84, this.reducedMotion)
+      : null;
     // Written onto the page as the level opens; the scene persists across deaths, so never on retry.
     if (LevelTitleCard.shouldShow(this.opts.level.id) && this.opts.overview !== true)
       this.titleCard = new LevelTitleCard(
@@ -428,6 +444,7 @@ export class GameScene extends Phaser.Scene {
         const b = this.bodies.stats();
         const k = this.kit.stats();
         const bg = this.kit17Background?.presentation();
+        const vista = this.vista?.presentation();
         const extra = this.opts.debugExtra
           ? `
 ${this.opts.debugExtra()}`
@@ -437,7 +454,8 @@ art ${k.kitId}/${getLevelTheme(this.opts.level)} | tiles ${String(k.tiles)} | ba
 bodies ${String(b.count)} | simulating ${String(b.simulating)} | visible ${b.visible ? 'on' : 'off'}${b.sweeping ? ' | erasing' : ''}
 page turn ${this.pageTurnPresentation().active ? 'active' : 'idle'} | progress ${this.pageTurnPresentation().progress.toFixed(3)}
 a11y contrast ${this.highContrast ? 'high' : 'normal'} | reticle ${String(this.reticleScale)}x | boil ${this.reducedMotion ? 'off' : 'on'}
-doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this.doodles?.stats().flying ?? 0)} | title card ${this.titleCard ? this.titleCard.progress().toFixed(2) : 'off'}`;
+doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this.doodles?.stats().flying ?? 0)} | title card ${this.titleCard ? this.titleCard.progress().toFixed(2) : 'off'}
+vista ${vista ? `${String(vista.layers)} layers | ${String(vista.textures)} textures | ${((vista.surfacePixels * 4) / 1024 / 1024).toFixed(1)} MiB` : 'off'}`;
       });
     if (this.opts.touchControls) this.touchView = new TouchControlsView(this);
     this.unsubscribe = this.opts.onEvents((events) => {
@@ -466,6 +484,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       this.fitCamera();
       if (this.eraserCamera && !this.reducedMotion) this.fitEraserCamera();
       this.kit17Background?.update(this.cameras.main, this.reducedMotion);
+      this.vista?.update(this.cameras.main, this.reducedMotion, this.scale.height);
     };
     this.scale.on('resize', resize);
     this.events.once('shutdown', () => {
@@ -481,6 +500,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     });
     this.fitCamera();
     this.kit17Background?.update(this.cameras.main, this.reducedMotion);
+    this.vista?.update(this.cameras.main, this.reducedMotion, this.scale.height);
     const spawn = this.opts.level.spawn;
     this.camCenter = spawn;
   }
@@ -527,6 +547,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     this.lastTime = time;
     this.followCamera(frame, dt);
     this.kit17Background?.update(this.cameras.main, this.reducedMotion);
+    this.vista?.update(this.cameras.main, this.reducedMotion, this.scale.height);
     this.syncPaperCamera();
     this.drawIn?.update(dt, this.cameras.main.worldView);
     this.vignette?.setDisplaySize(this.scale.width, this.scale.height);
@@ -630,8 +651,14 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       resolveKitVersion(window.location.search, this.style.terrainKitKey) === '0017'
         ? new Kit17Background(this)
         : null;
+    const pencil = this.style.backgroundKey === 'pencil-vista' ? pencilWorld() : null;
+    this.vista =
+      pencil && !this.highContrast && typeof document !== 'undefined'
+        ? new pencil.PencilVista(this, this.opts.level, (obj) => this.crispObjects.add(obj))
+        : null;
     const g = this.add.graphics();
-    if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level, this.style);
+    if (getLevelTheme(this.opts.level) === 'scenery' && this.style.doodles !== false)
+      drawDoodles(g, this.opts.level, this.style);
     this.kit = new LevelKit(this, this.opts.level, this.style);
     this.framed = framedAnchors(this.opts.level.anchors);
 
