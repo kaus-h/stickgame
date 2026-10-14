@@ -202,7 +202,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 409, "simTicks": 45476, "deathsEncountered": 2117 }
+      "search": { "expansions": 401, "simTicks": 44758, "deathsEncountered": 2068 }
     }
   ],
   "notes": [],

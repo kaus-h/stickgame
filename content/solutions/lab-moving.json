@@ -3,7 +3,7 @@
   "level": "lab-moving",
   "solved": true,
   "start": "spawn",
-  "totalTicks": 666,
+  "totalTicks": 700,
   "chambers": [
     {
       "id": "level",
@@ -12,8 +12,8 @@
       "goal": { "kind": "exit" },
       "startTick": 0,
       "solved": true,
-      "endTick": 666,
-      "ticks": 666,
+      "endTick": 700,
+      "ticks": 700,
       "plan": [
         { "t": 0, "action": "move", "axis": 1 },
         { "t": 38, "action": "rope", "anchor": 0, "offset": 0, "release": 169 },
@@ -23,9 +23,11 @@
         { "t": 236, "action": "rope", "anchor": 1, "offset": 0, "release": 298 },
         { "t": 343, "action": "jump", "hold": 49 },
         { "t": 380, "action": "rope", "anchor": 2, "offset": 0, "release": 430 },
-        { "t": 482, "action": "rope", "anchor": 3, "offset": 0, "release": 545 },
-        { "t": 581, "action": "jump", "hold": 44 },
-        { "t": 617, "action": "rope", "anchor": 4, "offset": 0, "release": 644 }
+        { "t": 479, "action": "jump", "hold": 50 },
+        { "t": 508, "action": "rope", "anchor": 3, "offset": 0, "release": 543 },
+        { "t": 595, "action": "jump", "hold": 40 },
+        { "t": 620, "action": "move", "axis": 0 },
+        { "t": 624, "action": "rope", "anchor": 4, "offset": 0, "release": 667 }
       ],
       "windows": [
         {
@@ -173,67 +175,100 @@
         },
         {
           "step": 8,
-          "action": "rope",
+          "action": "jump",
           "event": "press",
-          "tick": 482,
-          "earliest": -12,
-          "latest": 13,
-          "size": 26,
+          "tick": 479,
+          "earliest": -5,
+          "latest": 4,
+          "size": 10,
           "capped": false,
           "startClipped": false
         },
         {
           "step": 8,
-          "action": "rope",
-          "event": "release",
-          "tick": 545,
-          "earliest": -15,
-          "latest": 12,
-          "size": 28,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 9,
-          "action": "jump",
-          "event": "press",
-          "tick": 581,
-          "earliest": -13,
-          "latest": 12,
-          "size": 26,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 9,
           "action": "jump",
           "event": "release",
-          "tick": 625,
-          "earliest": -35,
+          "tick": 529,
+          "earliest": -32,
           "latest": 40,
-          "size": 76,
+          "size": 73,
           "capped": true,
           "startClipped": false
         },
         {
-          "step": 10,
+          "step": 9,
           "action": "rope",
           "event": "press",
-          "tick": 617,
-          "earliest": -14,
-          "latest": 14,
-          "size": 29,
+          "tick": 508,
+          "earliest": -8,
+          "latest": 8,
+          "size": 17,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "release",
+          "tick": 543,
+          "earliest": -5,
+          "latest": 7,
+          "size": 13,
           "capped": false,
           "startClipped": false
         },
         {
           "step": 10,
+          "action": "jump",
+          "event": "press",
+          "tick": 595,
+          "earliest": -7,
+          "latest": 6,
+          "size": 14,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 10,
+          "action": "jump",
+          "event": "release",
+          "tick": 635,
+          "earliest": -31,
+          "latest": 32,
+          "size": 64,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "move",
+          "event": "press",
+          "tick": 620,
+          "earliest": -24,
+          "latest": 40,
+          "size": 65,
+          "capped": true,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "rope",
+          "event": "press",
+          "tick": 624,
+          "earliest": -12,
+          "latest": 11,
+          "size": 24,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
           "action": "rope",
           "event": "release",
-          "tick": 644,
-          "earliest": -8,
-          "latest": 8,
-          "size": 17,
+          "tick": 667,
+          "earliest": -5,
+          "latest": 5,
+          "size": 11,
           "capped": false,
           "startClipped": false
         }
@@ -249,9 +284,9 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 3739, "simTicks": 518242, "deathsEncountered": 13957 }
+      "search": { "expansions": 1196, "simTicks": 144845, "deathsEncountered": 3601 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-moving\",\"s\":0,\"n\":666,\"i\":[[0,[\"m\",1]],[38,[\"a\",14.821443859939894,1],\"r\"],[120,[\"m\",-1]],[128,[\"m\",1]],[169,\"R\"],[180,[\"a\",16.999999999999996,1],\"r\"],[192,\"R\"],[236,[\"a\",34,1.7492131868318221],\"r\"],[298,\"R\"],[343,\"j\"],[380,[\"a\",55.49347383639935,0],\"r\"],[392,\"J\"],[430,\"R\"],[482,[\"a\",70.45923364331462,1],\"r\"],[545,\"R\"],[581,\"j\"],[617,[\"a\",86.84320497372973,1],\"r\"],[625,\"J\"],[644,\"R\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"lab-moving\",\"s\":0,\"n\":700,\"i\":[[0,[\"m\",1]],[38,[\"a\",14.821443859939894,1],\"r\"],[120,[\"m\",-1]],[128,[\"m\",1]],[169,\"R\"],[180,[\"a\",16.999999999999996,1],\"r\"],[192,\"R\"],[236,[\"a\",34,1.7492131868318221],\"r\"],[298,\"R\"],[343,\"j\"],[380,[\"a\",55.49347383639935,0],\"r\"],[392,\"J\"],[430,\"R\"],[479,\"j\"],[508,[\"a\",69.37143011830453,1],\"r\"],[529,\"J\"],[543,\"R\"],[595,\"j\"],[620,[\"m\",0]],[624,[\"a\",86.69076670010965,1],\"r\"],[635,\"J\"],[667,\"R\"]]}"
 }

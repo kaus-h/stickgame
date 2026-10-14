@@ -28,14 +28,18 @@ describe('route solver neutral-target diagnostics', () => {
 
   it('excludes closer anchors outside the preferred pool, blocked anchors and spent anchors', () => {
     const blocked = (_from: unknown, to: { x: number }) =>
-      to.x === 4.2 ? { distance: 1, point: vec2(1, 0), normal: vec2(-1, 0) } : null;
+      to.x === 4.2 ? { distance: 1, point: vec2(1, 0), normal: vec2(-1, 0), segment: 0 } : null;
     expect(neutralAmbiguityNote(42, vec2(0, 0), 1, anchors, ids, rope, blocked)).toBeNull();
     expect(
       neutralAmbiguityNote(
         42,
         vec2(0, 0),
         1,
-        [anchors[0]!, { ...anchors[1]!, usable: false }, anchors[2]!],
+        [
+          anchors[0] as (typeof anchors)[number],
+          { ...(anchors[1] as (typeof anchors)[number]), usable: false },
+          anchors[2] as (typeof anchors)[number],
+        ],
         ids,
         rope,
         () => null,

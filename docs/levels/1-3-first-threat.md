@@ -28,17 +28,17 @@ Grounded shots a4, a6 and a7 pay out until take-off; these are **locked** length
 
 ## Chambers and route solver results
 
-`npm run levels:solve -- 1-3` solves the original level from spawn in about 2.6 s, producing a **1308-tick / 21.80 s death-free replay**. The fixture is `content/solutions/1-3.json`; the normal fixture suite replays it on every test run. Windows sweep one input while keeping the others fixed, so they describe this route, not every possible route or human difficulty.
+`npm run levels:solve -- 1-3` solves the original level from spawn in about 7 s, producing a **1329-tick / 22.15 s death-free replay** (re-solved for centre attach, GMR-118). The fixture is `content/solutions/1-3.json`; the normal fixture suite replays it on every test run. Windows sweep one input while keeping the others fixed, so they describe this route, not every possible route or human difficulty.
 
 | Chamber | Name / stated problem                                                 | Family             | Tightest jump/rope input      | Window   | Band     | Clear tick |
 | ------- | --------------------------------------------------------------------- | ------------------ | ----------------------------- | -------- | -------- | ---------- |
 | C1      | Stomp the patroller and ride its rebound over a wall too tall to jump | stomp introduction | jump press, tick 48 (−14…+15) | 30 ticks | generous | 184        |
-| C2      | Drop onto the pillar goon and rebound to the high ledge               | enemy-assisted     | a2 press, tick 272 (−3…+4)    | 8 ticks  | standard | 455        |
-| C3      | Jump, catch the first horizontal moving pivot and ride across         | moving pivot       | jump press, tick 458 (−3…+3)  | 7 ticks  | standard | 638        |
-| C4      | Connect close for a short fast swing between floor and hanging teeth  | rope length        | a4 release, tick 718 (−5…+5)  | 11 ticks | standard | 816        |
-| C5      | Intercept a faster pivot during the reachable part of its run         | moving intercept   | a5 press, tick 820 (−4…+5)    | 10 ticks | standard | 979        |
-| C6      | Time the release into a low pocket between spikes                     | release            | a6 release, tick 1058 (−2…+2) | 5 ticks  | tight    | 1123       |
-| C7      | Stomp for height, catch the mover and drop into the shaft             | Section 1 finale   | a7 release, tick 1276 (−1…+2) | 4 ticks  | tight    | 1308       |
+| C2      | Drop onto the pillar goon and rebound to the high ledge               | enemy-assisted     | a2 press, tick 269 (−4…+13)   | 18 ticks | generous | 456        |
+| C3      | Jump, catch the first horizontal moving pivot and ride across         | moving pivot       | jump press, tick 459 (−3…+3)  | 7 ticks  | standard | 640        |
+| C4      | Connect close for a short fast swing between floor and hanging teeth  | rope length        | a4 press, tick 690 (−4…+4)    | 9 ticks  | standard | 814        |
+| C5      | Intercept a faster pivot during the reachable part of its run         | moving intercept   | a5 press, tick 820 (−6…+7)    | 14 ticks | standard | 979        |
+| C6      | Time the release into a low pocket between spikes                     | release            | a6 release, tick 1058 (−2…+1) | 4 ticks  | tight    | 1122       |
+| C7      | Stomp for height, catch the mover and drop into the shaft             | Section 1 finale   | jump press, tick 1131 (−4…+5) | 10 ticks | standard | 1329       |
 
 The solver's chamber summary excludes movement-axis trims. `tests/unit/level13.test.ts` also remeasures all four C1 axis changes against the original goal, with the solver's 120-tick deadline slack and ±40-tick scan: tick 0 has 7 ticks, reverse at 72 has 4, neutral at 76 has 6, forward at 108 has at least 66 (scan-capped). **Every measured main-route input, including steering, has at least 4 ticks.** C1's brief reverse at tick 72 has a 4-tick window: the introduction's jump is generous but the rebound steering is tight. Thus the full-input reading has **three tight chambers**, four standard, and none expert; the jump/rope reading has two tight chambers. C3 and C5 windows are clipped by the preceding chamber boundary and are lower bounds. C7's wider 1.8 m goon replaces the draft's 1.2 m surface: it removes a one-tick steering stop while retaining a 4-tick shaft-release challenge. This is local level tuning, not an enemy-system change.
 
@@ -52,7 +52,7 @@ Groups are C1–C3, C4–C5, C6–C7; death restarts immediately from the latest
 
 After g1's rebound, briefly land on the wall top, catch **m1** at (26, −2), swing through the 1.05 m spike opening, then catch a2 from above and land on C2's high ledge without stomping g2. The ground route has a separate 1.1 m underpass; the mastery gate never blocks the standard floor run. At the gate the verified shortcut travels about 17.18 m/s horizontally.
 
-`docs/levels/1-3-mastery-route.json` contains the reproducible replay and measured windows. A search copy merged C1/C2's goal and removed g2 to discover the shortcut; **the retained replay is tested against the original level with all three goons and all seven chamber goals**. It completes in **1186 ticks / 19.77 s**, saving 122 ticks / 2.03 s (9.3%). It uses m1 and leaves g2 alive. m1's press window is 4 ticks, but later steering/jump trims include 1-tick expert windows. These belong only to the optional route. The committed main route ignores m1.
+`docs/levels/1-3-mastery-route.json` contains the reproducible replay and measured windows. A search copy merged C1/C2's goal and removed g2 to discover the shortcut; **the retained replay is tested against the original level with all three goons and all seven chamber goals**. It completes in **1151 ticks / 19.18 s**, saving 178 ticks / 2.97 s (13.4%) against the 1329-tick main route (re-derived for centre attach, GMR-118). It uses m1 and leaves g2 alive. m1's press window is 4 ticks, but later steering/jump trims include 2-tick expert windows. These belong only to the optional route. The committed main route ignores m1.
 
 ## Exit and failure readability
 

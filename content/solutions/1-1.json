@@ -234,7 +234,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 2, "simTicks": 618, "deathsEncountered": 9 }
+      "search": { "expansions": 2, "simTicks": 477, "deathsEncountered": 9 }
     },
     {
       "id": "1-1-c5",
@@ -387,7 +387,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 165, "simTicks": 7235, "deathsEncountered": 967 }
+      "search": { "expansions": 165, "simTicks": 7192, "deathsEncountered": 964 }
     },
     {
       "id": "1-1-c7",

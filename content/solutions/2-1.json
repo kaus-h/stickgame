@@ -159,7 +159,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 773, "simTicks": 55742, "deathsEncountered": 4121 }
+      "search": { "expansions": 5, "simTicks": 1220, "deathsEncountered": 15 }
     },
     {
       "id": "2-1-c3",
@@ -301,7 +301,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 10, "simTicks": 2879, "deathsEncountered": 30 }
+      "search": { "expansions": 10, "simTicks": 2738, "deathsEncountered": 30 }
     },
     {
       "id": "2-1-c5",
@@ -396,7 +396,7 @@
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 9365, "simTicks": 1025275, "deathsEncountered": 42245 }
+      "search": { "expansions": 9340, "simTicks": 994292, "deathsEncountered": 40463 }
     },
     {
       "id": "2-1-c6",

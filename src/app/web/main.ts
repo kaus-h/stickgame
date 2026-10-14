@@ -491,9 +491,12 @@ async function start(): Promise<void> {
     bindDom(game.canvas, mapper);
     bindTouchDom(game.canvas, touch);
     game.events.on('prestep', () => {
-      if (document.visibilityState === 'visible') pad.poll(navigator.getGamepads?.() ?? []);
+      if (document.visibilityState === 'visible')
+        pad.poll('getGamepads' in navigator ? navigator.getGamepads() : []);
     });
-    window.addEventListener('blur', () => pad.release());
+    window.addEventListener('blur', () => {
+      pad.release();
+    });
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState !== 'visible') pad.release();
     });

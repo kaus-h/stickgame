@@ -70,7 +70,11 @@ export interface SimSnapshot {
   /** World-space aim point, if any. */
   readonly aim: Vec2 | null;
   /** Controller selection state, shared by all platforms and visible in debug tools. */
-  readonly selection: { readonly mode: 'mouse' | 'point' | 'touch'; readonly direction: Vec2; readonly anchor: number | null };
+  readonly selection: {
+    readonly mode: 'mouse' | 'point' | 'touch';
+    readonly direction: Vec2;
+    readonly anchor: number | null;
+  };
   /** Contacts that began during the last step (debug and feedback; never gameplay input). */
   readonly contacts: readonly ContactSnapshot[];
   /** The most recent death (survives the reset it caused). */
@@ -413,9 +417,11 @@ export class Simulation {
       { type: 'move', axis: this.axis },
       this.jumpHeld ? { type: 'jumpPress' } : { type: 'jumpRelease' },
     ];
-    if (this.selectionMode === 'point') out.push({ type: 'ropePoint', direction: this.pointDirection });
+    if (this.selectionMode === 'point')
+      out.push({ type: 'ropePoint', direction: this.pointDirection });
     else if (this.selectionMode === 'touch') {
-      const position = this.touchAnchor === null ? this.aim : this.physics.anchorPosition(this.anchorIds[this.touchAnchor]!);
+      const touchId = this.touchAnchor === null ? undefined : this.anchorIds[this.touchAnchor];
+      const position = touchId === undefined ? this.aim : this.physics.anchorPosition(touchId);
       if (position) out.push({ type: 'ropeTouch', target: position });
     } else if (this.aim) out.push({ type: 'ropeAim', target: this.aim });
     return out;
@@ -528,7 +534,11 @@ export class Simulation {
         spent: this.spent[i] === true,
       })),
       aim: this.aim,
-      selection: { mode: this.selectionMode, direction: this.pointDirection, anchor: this.highlightedAnchor },
+      selection: {
+        mode: this.selectionMode,
+        direction: this.pointDirection,
+        anchor: this.highlightedAnchor,
+      },
       lastDeath: this.lastDeath,
       runTick: this.runTicks,
       lifeTick: this.attemptTicks,
@@ -568,20 +578,42 @@ export class Simulation {
 
   private target(player: Vec2, anchors: readonly Vec2[]): TargetResolution | null {
     const list = anchors.map((position, i) => ({
-        position,
-        radius: (this.level.anchors[i] as LevelDef['anchors'][number]).radius,
-        usable: this.usable(i),
-      }));
+      position,
+      radius: (this.level.anchors[i] as LevelDef['anchors'][number]).radius,
+      usable: this.usable(i),
+    }));
     const raycast = (from: Vec2, to: Vec2) => this.physics.raycast(from, to);
-    if (this.selectionMode === 'point') return resolvePointTarget(player, this.pointDirection,
-      this.facing, list, this.tuning.rope, raycast, this.highlightedAnchor);
+    if (this.selectionMode === 'point')
+      return resolvePointTarget(
+        player,
+        this.pointDirection,
+        this.facing,
+        list,
+        this.tuning.rope,
+        raycast,
+        this.highlightedAnchor,
+      );
     if (this.selectionMode === 'touch') {
-      if (this.touchPickPending && this.aim) return resolveTarget(player, this.aim, list,
-        { ...this.tuning.rope, selectRadius: this.assist.wideSelectRadius || 1.8 }, raycast);
+      if (this.touchPickPending && this.aim)
+        return resolveTarget(
+          player,
+          this.aim,
+          list,
+          { ...this.tuning.rope, selectRadius: this.assist.wideSelectRadius || 1.8 },
+          raycast,
+        );
       return resolveAnchor(player, this.touchAnchor ?? -1, list, this.tuning.rope, raycast);
     }
     if (!this.aim) return null;
-    return resolveTarget(player, this.aim, list, this.tuning.rope, raycast, this.assist, this.highlightedAnchor);
+    return resolveTarget(
+      player,
+      this.aim,
+      list,
+      this.tuning.rope,
+      raycast,
+      this.assist,
+      this.highlightedAnchor,
+    );
   }
 
   private clearSelection(): void {
@@ -593,8 +625,10 @@ export class Simulation {
   }
 
   private updateHighlight(): void {
-    const target = this.target(this.physics.bodyState(this.body).position,
-      this.anchorIds.map(id => this.physics.anchorPosition(id)));
+    const target = this.target(
+      this.physics.bodyState(this.body).position,
+      this.anchorIds.map((id) => this.physics.anchorPosition(id)),
+    );
     if (this.touchPickPending) {
       this.touchAnchor = target?.anchor ?? null;
       this.touchPickPending = false;

@@ -66,7 +66,7 @@ describe('level 1-3 route proofs', () => {
       (event): event is Extract<SimEvent, { type: 'exit' }> => event.type === 'exit',
     );
 
-    expect(mainSolution.totalTicks).toBe(1308);
+    expect(mainSolution.totalTicks).toBe(1329);
     expect(run.replay.ticks).toBe(mainSolution.totalTicks);
     expect(run.reached.map(({ id }) => id)).toEqual(goals.map(({ id }) => id));
     expect(run.reached.map(({ tick }) => tick)).toEqual(
@@ -89,10 +89,10 @@ describe('level 1-3 route proofs', () => {
     expect(exits[0]?.attempt).toMatchObject({ family: 'shaft', accepted: true });
 
     const windows = mainSolution.chambers.flatMap(({ windows: chamberWindows }) => chamberWindows);
-    expect(windows).toHaveLength(24);
+    expect(windows).toHaveLength(28);
     expect(windows.every(({ size }) => size >= 4)).toBe(true);
     expect(mainSolution.chambers.map(({ tightestWindow }) => tightestWindow.size)).toEqual([
-      30, 8, 7, 11, 10, 5, 4,
+      30, 18, 7, 9, 14, 4, 10,
     ]);
 
     const firstChamber = mainSolution.chambers[0];
@@ -120,11 +120,11 @@ describe('level 1-3 route proofs', () => {
         capped,
       })),
     ).toEqual([
-      // Widened by the 60-degree stomp rule (2026-10-12): was 7, 4, 6 and 66 ticks.
-      { tick: 0, earliest: 0, latest: 10, size: 11, capped: false },
-      { tick: 72, earliest: -3, latest: 3, size: 7, capped: false },
-      { tick: 76, earliest: -3, latest: 4, size: 8, capped: false },
-      { tick: 108, earliest: -32, latest: 40, size: 73, capped: true },
+      // Re-measured under centre attach (GMR-118); the 60-degree stomp rule widened these 2026-10-12.
+      { tick: 0, earliest: 0, latest: 12, size: 13, capped: false },
+      { tick: 80, earliest: -3, latest: 2, size: 6, capped: false },
+      { tick: 84, earliest: -2, latest: 4, size: 7, capped: false },
+      { tick: 116, earliest: -32, latest: 40, size: 73, capped: true },
     ]);
     expect([...windows, ...steeringWindows].every(({ size }) => size >= 4)).toBe(true);
   });

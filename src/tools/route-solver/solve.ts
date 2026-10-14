@@ -9,6 +9,7 @@ import {
 } from '../../core';
 import { parseLevel, parseRuntimeTuning, type RuntimeTuning } from '../../content';
 import { anchorPathState, type LevelDef } from '../../sim';
+import { makeCameraFair } from './camera-fair';
 import { neutralAmbiguityNote } from './diagnostics';
 import { chamberSpecs, goalReached, inside, type ChamberGoal, type ChamberSpec } from './goals';
 import { PlanSource, type PlanStep } from './plan';
@@ -139,6 +140,7 @@ export function solveLevel(
     } else todo = specs.slice(0, index + 1);
   }
 
+  const fair = makeCameraFair(level, tuning);
   let steps: PlanStep[] = [];
   const chambers: ChamberReport[] = [];
   let failed = false;
@@ -164,7 +166,10 @@ export function solveLevel(
       });
       continue;
     }
-    const found = searchChamber(world, steps, spec, level, tuning, options.search);
+    const found = searchChamber(world, steps, spec, level, tuning, {
+      ...options.search,
+      fair: options.search.fair ?? fair,
+    });
     const search = {
       expansions: found.expansions,
       simTicks: found.simTicks,
@@ -195,7 +200,9 @@ export function solveLevel(
       deadline: found.endTick + options.deadlineSlack,
     };
     let plan = simplify(run, found.steps, from);
-    plan = centre(run, plan, from, options.maxShift);
+    const centred = centre(run, plan, from, options.maxShift);
+    // Centring may move a press earlier than the camera allows: keep it only if it stays fair.
+    if (fair(centred, found.endTick, false)) plan = centred;
     const windows = timedInputs(plan, from).map((input) =>
       measureWindow(run, plan, input, from, options.maxShift),
     );
@@ -274,11 +281,7 @@ function recordReplay(
         const snap = before();
         const move = intents.find((intent) => intent.type === 'move');
         const facing =
-          move?.type === 'move' && move.axis !== 0
-            ? move.axis > 0
-              ? 1
-              : -1
-            : snap.player.facing;
+          move?.type === 'move' && move.axis !== 0 ? (move.axis > 0 ? 1 : -1) : snap.player.facing;
         const note = neutralAmbiguityNote(
           tick,
           snap.player.position,

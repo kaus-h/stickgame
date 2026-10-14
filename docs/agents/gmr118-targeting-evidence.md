@@ -18,21 +18,21 @@ Acceptance requires centre attachment on every assist tier, mouse snap/miss, sti
 
 Old values below were read directly from baseline `content/solutions/*.json`, before regeneration. A tightest window measures a jump or rope input with other inputs fixed. "No timed inputs" denotes a null tightest window, not an infinite measured window.
 
-| Level | Old tightest | New tightest | Old route | New route |
-| --- | --- | --- | --- | --- |
-| 1-1 | 5 ticks | Pending | 965 ticks | Pending |
-| 1-2 | 3 ticks | Pending | 1294 ticks | Pending |
-| 1-3 | 4 ticks | Pending | 1308 ticks | Pending |
-| 2-1 | 5 ticks | Pending | 1184 ticks | Pending |
-| lab-01 | 1 tick | Pending | 435 ticks | Pending |
-| lab-anchors | 7 ticks | Pending | 449 ticks | Pending |
-| lab-authoring | 29 ticks | Pending | 115 ticks | Pending |
-| lab-collision | Recorded unsolved | Pending | None | Pending |
-| lab-exit-miss | 1 tick | Pending | 101 ticks | Pending |
-| lab-exit-shaft | No timed inputs | Pending | 59 ticks | Pending |
-| lab-exit-slot | No timed inputs | Pending | 67 ticks | Pending |
-| lab-exit-wide | No timed inputs | Pending | 67 ticks | Pending |
-| lab-moving | 2 ticks | Pending | 755 ticks | Pending |
+| Level          | Old tightest      | New tightest | Old route  | New route |
+| -------------- | ----------------- | ------------ | ---------- | --------- |
+| 1-1            | 5 ticks           | Pending      | 965 ticks  | Pending   |
+| 1-2            | 3 ticks           | Pending      | 1294 ticks | Pending   |
+| 1-3            | 4 ticks           | Pending      | 1308 ticks | Pending   |
+| 2-1            | 5 ticks           | Pending      | 1184 ticks | Pending   |
+| lab-01         | 1 tick            | Pending      | 435 ticks  | Pending   |
+| lab-anchors    | 7 ticks           | Pending      | 449 ticks  | Pending   |
+| lab-authoring  | 29 ticks          | Pending      | 115 ticks  | Pending   |
+| lab-collision  | Recorded unsolved | Pending      | None       | Pending   |
+| lab-exit-miss  | 1 tick            | Pending      | 101 ticks  | Pending   |
+| lab-exit-shaft | No timed inputs   | Pending      | 59 ticks   | Pending   |
+| lab-exit-slot  | No timed inputs   | Pending      | 67 ticks   | Pending   |
+| lab-exit-wide  | No timed inputs   | Pending      | 67 ticks   | Pending   |
+| lab-moving     | 2 ticks           | Pending      | 755 ticks  | Pending   |
 
 ## Verification
 

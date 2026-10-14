@@ -1,5 +1,6 @@
 import type { RuntimeTuning } from '../../content';
 import type { LevelDef } from '../../sim';
+import type { CameraFair } from './camera-fair';
 import { DistanceField, goalReached, inside, type ChamberSpec } from './goals';
 import { PlanSource, type PlanStep } from './plan';
 import { runPlan, type World } from './world';
@@ -25,6 +26,8 @@ export interface SearchOptions {
   readonly expansionsPerCell: number;
   /** Cost in ticks added per jump/rope/release input: prefers routes with fewer inputs. */
   readonly inputCost: number;
+  /** Veto for rope presses the real camera would not have shown in time (GMR-118). */
+  readonly fair?: CameraFair;
 }
 
 export const DEFAULT_SEARCH: SearchOptions = {
@@ -277,6 +280,8 @@ export function searchChamber(
           }
           if (verb.kind === 'rope' && k === 1 && !events.some((e) => e.type === 'ropeAttach'))
             break; // invalid press (blocked, too far, too close): nothing to explore
+          if (verb.kind === 'rope' && k === 1 && opts.fair && !opts.fair(steps, w.tick, true))
+            break; // the camera would not have shown this anchor long enough
           if (goalReached(spec.goal, w, events)) {
             return { solved: true, steps, endTick: w.tick, expansions, simTicks, deaths, closest };
           }
