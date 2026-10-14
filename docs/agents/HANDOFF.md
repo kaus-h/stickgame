@@ -2,52 +2,51 @@
 
 The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-13, after the owner's second checkpoint and the 1-1 level pass (#92, #93). **Owner direction: beauty first; later levels lean on puzzles and timing, not mechanical skill.**_
+_Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The vision is shifting: 1-1's look is NOT signed off, and the game becomes a journey through art-style worlds.**_
 
 ## State
 
-- **Owner checkpoint answers (in memory, `owner-answers-2026-10-13`):** music is liked; the camera and C6 are approved; the spider and Mansalva are in; "keep expanding aesthetics".
-- **#92, acting on those answers:**
-  - The section-clear sting is now a chord-aware chime arpeggio over a pad bloom. Contour and rhythm vary per chamber and bar, the register climbs through the level, and the exit resolves to the tonic.
-  - The lamp is a touch darker at the edges, with the centre unchanged.
-- **#93, the level pass:**
-  - **C4:** the pool rose from 8.3 to 7.8, so ground-connected ropes now die (the lesson never bit before).
-  - **C5:** the taught single long rope is measured and pinned.
-  - **Tests:** both lessons, and the mistakes they correct, are in `tests/unit/level11.test.ts`.
-  - **m6 removed:** it was physically unreachable.
-  - **C6:** its region starts on the ledge (x 92).
-  - **Camera:** look-ahead points behind terrain no longer frame hidden anchors.
-  - **Spider:** it waits above the title card.
-  - Measurements and decisions are in `docs/levels/1-1-first-rope.md`.
-
-## Open PRs and tasks
-
-- None after #93 merges. No Codex or inbox work is in flight. Old worktrees remain (`.claude/worktrees/*`, `D:/tmp/codex/*`, `D:/tmp/wt/atmos`); clean them up only if the owner asks.
+- **Owner checkpoint 2026-10-14** (played main on the :5191 preview; memory `owner-answers-2026-10-14`):
+  - The C4 and C5 lessons work.
+  - The sting should be subtle → done in #94.
+  - The lamp darkness is right, just less yellow → done in #94.
+  - The whole music track should sound **"cleaner, more cyberpunk future creative whimsy"** → not started.
+  - **1-1 look: "not at all" the aesthetic they want.** Everything bothers them: flat, beige, terrain reads as boxes, no wow moments.
+- **New vision (memories `chapter-worlds-idea`, `ava-inspiration`):**
+  - Each chapter is a distinct art-style world, with **sub-theme worlds** inside it. For example, Digital → home screen, software, file system, binary/code, internet, glitch.
+  - The owner loves Alan Becker's "Animation vs. Animator": kinetic choreography, digital environments, fight/adventure energy. **Use its qualities only**, never its sequences, characters or premise (AGENTS.md stop-and-ask).
+  - Fights: the default proposal is set pieces using Move/Jump/Rope. **A combat button would be a canon change, and the owner must decide.**
+  - Proposed arc: pencil → cut paper → paint → neon → digital (the drawing is scanned in).
+- **Concept frames:** round 1 (text-only, GPT-6 High) is in the StickGame ChatGPT project, as 4 chats (A notebook, B neon, C painterly, D cut-paper). Round 2, restyling our own frame `.claude/concept-refs/ref-0.png`, is **blocked until the owner says in chat "yes, upload the 1-1 screenshots to ChatGPT"**, or attaches the file themselves.
+- **Deep Research (BrowserGPT, StickGame project), started 2026-10-14:**
+  1. art-style worlds and sub-theme worlds for a three-verb rope platformer (precedents, a catalog, a 5-chapter map);
+  2. an extremely deep analysis of Animation vs. Animator (qualities → original game design, a do-not-copy list, set-piece concepts).
+     Read their final reports (with `get_page_text`, in a subagent) before designing.
+- **Preview:** `preview-main` in `.claude/launch.json` serves a detached main worktree at `D:/tmp/wt/preview-main`, port 5191. Update it with `git -C D:/tmp/wt/preview-main checkout --detach origin/main` after a fetch.
+- **Stash:** `stash@{0}` holds another session's dark-lamp WIP (PageLamp class missing). The owner's 2026-10-14 answer superseded it; drop it once the owner confirms.
 
 ## Next
 
-1. **Owner checkpoint (batch these):**
-   - Play 1-1 for the new C4: does "connect on the ground → ink" read as a fair lesson?
-   - Does C5's jump-early idea land?
-   - Ear: does the varied sting feel smoother?
-   - Eye: is the lamp right?
-   - 1-1 sign-off.
-2. **Level Factory:** GMR-116 (authoring format) and GMR-117 (mechanic catalog). Design for puzzle and timing reads: a taught route plus a pinned mistake per chamber, as in `level11.test.ts`.
-3. Then levels in batches (1-2 is the quality bar; see the `level-design-feedback` memory).
-4. **Aesthetics backlog (owner: keep expanding):** ink stains and meniscus where pools meet walls (subtle at play scale), more varied terrain silhouettes, and richer sky life in open chambers.
+1. **Owner decisions (batch them):**
+   - approve the screenshot upload for concept round 2 (add a 5th, digital, frame);
+   - choose fights as set pieces vs. a combat verb;
+   - choose the order of the chapter worlds;
+   - pick a concept direction for chapter 1.
+2. Digest both Deep Research reports into a short **world bible draft** (`docs/art/worlds.md`): chapters → sub-themes → signature hazard, anchor twist, set piece, palette, music. Update 07A, doc 14 and the `world-look-decision` memory once the owner confirms.
+3. **Music remix:** a cleaner synth palette and production, "cyberpunk future creative whimsy" (`src/audio/music/*`). It may become per-world banks.
+4. **Level Factory:** GMR-116 (authoring format, with a per-chapter **world style** field: palette, terrain kit, background, music bank) and GMR-117 (mechanic catalog). Each chamber gets a taught route plus a pinned mistake (the `tests/unit/level11.test.ts` pattern).
+5. Rebuild 1-1's look in the chosen chapter-1 style (terrain silhouettes, depth, wow moments).
 
 ## Workflow notes
 
-- **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`. Tile them into one sheet and read it at ≤ 1500 px.
-- **Hand routes:** the solver's `World` + `PlanSource` (from `node_modules/.cache/route-solver/solver.mjs`, built by `levels:solve`). Fork from a committed replay state and run hand plans. This is how C4/C5/m6 were measured.
-- **Solver:** `npm run levels:solve -- <id>`. It proves _a_ route; taught routes need their own tests. A chamber's region must start where its take-off run starts.
-- **Local e2e:** `E2E_PORT=5186 PW_CHANNEL=chrome npx playwright test <specs> --project=chromium`.
-- **Merging:** only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL.
-- **CI "Check" includes the bundle budget** (1203/1220 KB). Run `npm run bundle:report` after asset changes.
+- **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`; tile them and read at ≤ 1500 px.
+- **Hand routes:** the solver's `World` + `PlanSource` (`node_modules/.cache/route-solver/solver.mjs`). Fork from a committed replay state.
+- **BrowserGPT work runs in a subagent** (it drives `mcp__Claude_Browser__*` tabs, one chat per task, inside the StickGame project, GPT-6 High). Uploading local files to ChatGPT needs the owner's explicit approval in chat.
+- **Merging:** only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL. CI "Check" includes the bundle budget (1203/1220 KB).
 
 ## Watch out
 
 - **Slim Phaser:** use canvas overlays and string blend modes, not `Phaser.*` runtime constants.
 - **`npm run check | grep … && git commit` masks failures.** Check the exit code.
-- **No sun doodles.** Dashes belong to the rope alone.
-- **Windows Python:** pass `newline=''` (it rewrites CRLF otherwise), and don't print non-ASCII to a cp1252 console. A failed script piped into `gh pr edit --body-file` blanks the PR body.
+- **No sun doodles.** Dashes belong to the rope alone. Red always means lethal.
+- **Windows Python:** pass `newline=''`. Don't print non-ASCII to cp1252. A failed script piped into `gh pr edit --body-file` blanks the PR body.
