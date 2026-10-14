@@ -7,6 +7,7 @@ import {
   SECTION_1,
   SECTION_2,
   stingNotes,
+  UNPITCHED,
 } from '../../src/audio/music/score';
 import { Transport } from '../../src/audio/music/transport';
 import type { LevelDef, SimEvent, SimSnapshot } from '../../src/sim';
@@ -14,7 +15,7 @@ import type { LevelDef, SimEvent, SimSnapshot } from '../../src/sim';
 describe('music score (GMR-42)', () => {
   it('is a pure function of the beat, and the pitched layers repeat every 8 bars', () => {
     const pitched = (beat: number) =>
-      notesForBeat(SECTION_1, beat).filter((n) => n.voice !== 'click');
+      notesForBeat(SECTION_1, beat).filter((n) => !UNPITCHED.has(n.voice));
     for (let beat = 0; beat < 64; beat++) {
       expect(notesForBeat(SECTION_1, beat)).toEqual(notesForBeat(SECTION_1, beat));
       expect(pitched(beat)).toEqual(pitched(beat + 32));
@@ -31,7 +32,7 @@ describe('music score (GMR-42)', () => {
     ] as const) {
       for (let beat = 0; beat < 32 * 4; beat++) {
         for (const n of notesForBeat(bank, beat)) {
-          if (n.voice === 'click') continue;
+          if (UNPITCHED.has(n.voice)) continue;
           // The tension layer's deliberate flattened-second rub is the one licensed exception.
           if (n.layer === 'tension' && n.velocity < 0.3) continue;
           expect(
