@@ -3,6 +3,7 @@ import { metersToPixels as m } from '../../core';
 import type { LevelDef } from '../../sim';
 import { hash, strokeInk, wobble, type Pt } from '../ink';
 import { NOTEBOOK_STYLE, type WorldStyle } from '../world/WorldStyle';
+import { pencilWorld } from '../world/pencilWorld';
 
 /** Paper-and-ink palette (style bible §2). */
 export const PAGE = {
@@ -38,6 +39,12 @@ export function ensurePaperTexture(scene: Phaser.Scene, style: WorldStyle = NOTE
   const tex = scene.textures.createCanvas(key, TILE, TILE);
   if (!tex) return;
   const c = tex.getContext();
+  const pencil = style.page?.kind === 'sketchbook' ? pencilWorld() : null;
+  if (pencil) {
+    pencil.paintSketchbookPaper(c, TILE, style);
+    tex.refresh();
+    return;
+  }
   c.fillStyle = css(style.paper.base);
   c.fillRect(0, 0, TILE, TILE);
   // Soft blotches: paper is never perfectly flat.
@@ -120,7 +127,9 @@ export function drawFrame(
   const holeX = 26;
   const marginX = 64;
   // Margin.
-  g.lineStyle(2, style.paper.margin, 0.75).lineBetween(marginX, 0, marginX, h);
+  if (style.page?.margin !== false)
+    g.lineStyle(2, style.paper.margin, 0.75).lineBetween(marginX, 0, marginX, h);
+  if (style.page?.binding === false) return;
   // Punched holes and wire coils every ~34 px.
   for (let y = 14, k = 0; y < h; y += 34, k++) {
     g.fillStyle(style.paper.binding.hole, 1).fillCircle(holeX, y, 6.5);

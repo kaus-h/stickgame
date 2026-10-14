@@ -37,6 +37,11 @@ export function addPageVignette(
     const t = textures.createCanvas(key, W, H);
     if (!t) return null;
     const c = t.getContext();
+    if (style.light === 'graphite-shafts') {
+      paintGraphiteVignette(c, W, H);
+      t.refresh();
+      return addImage(scene, key, depth);
+    }
     c.fillStyle = '#ffffff';
     c.fillRect(0, 0, W, H);
     const cx = W * style.lamp.centre.x,
@@ -59,10 +64,48 @@ export function addPageVignette(
     c.globalCompositeOperation = 'source-over';
     t.refresh();
   }
+  return addImage(scene, key, depth);
+}
+
+function addImage(scene: Phaser.Scene, key: string, depth: number): Phaser.GameObjects.Image {
   return scene.add
     .image(0, 0, key)
     .setOrigin(0, 0)
     .setScrollFactor(0)
     .setDepth(depth)
     .setBlendMode('MULTIPLY');
+}
+
+/**
+ * Chapter 1 light (pencil world): the page is lit from the upper right, so graphite gathers
+ * toward the edges and pools heavily along the bottom, where the eye rests least. The centre
+ * band, where the hero, anchors and rope live, stays almost untouched (multiply by near-white).
+ */
+function paintGraphiteVignette(c: CanvasRenderingContext2D, w: number, h: number): void {
+  c.fillStyle = '#ffffff';
+  c.fillRect(0, 0, w, h);
+  const cx = w * 0.6,
+    cy = h * 0.36;
+  const pool = c.createRadialGradient(cx, cy, h * 0.18, cx, cy, w * 0.66);
+  pool.addColorStop(0, 'rgb(255,255,255)');
+  pool.addColorStop(0.45, 'rgb(246,247,249)');
+  pool.addColorStop(0.75, 'rgb(196,199,205)');
+  pool.addColorStop(1, 'rgb(128,131,138)');
+  c.fillStyle = pool;
+  c.fillRect(0, 0, w, h);
+  c.globalCompositeOperation = 'multiply';
+  // Heavier graphite toward the bottom edge.
+  const fall = c.createLinearGradient(0, h * 0.62, 0, h);
+  fall.addColorStop(0, 'rgb(255,255,255)');
+  fall.addColorStop(0.6, 'rgb(220,222,226)');
+  fall.addColorStop(1, 'rgb(150,152,158)');
+  c.fillStyle = fall;
+  c.fillRect(0, h * 0.62, w, h * 0.38);
+  // The far left is furthest from the light.
+  const left = c.createLinearGradient(0, 0, w * 0.22, 0);
+  left.addColorStop(0, 'rgb(196,198,203)');
+  left.addColorStop(1, 'rgb(255,255,255)');
+  c.fillStyle = left;
+  c.fillRect(0, 0, w * 0.22, h);
+  c.globalCompositeOperation = 'source-over';
 }
