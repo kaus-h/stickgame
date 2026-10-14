@@ -56,6 +56,13 @@ export class Transport {
     };
   }
 
+  /** The first grid point at or after `time`, on a `step`-beat grid (stings land on the 8th). */
+  gridAfter(time: number, step: number): { beat: number; time: number } {
+    const origin = this.nextTime - this.nextBeat * SECONDS_PER_BEAT;
+    const k = Math.ceil((time - origin) / (step * SECONDS_PER_BEAT) - 1e-9);
+    return { beat: k * step, time: origin + k * step * SECONDS_PER_BEAT };
+  }
+
   get beat(): number {
     return this.nextBeat;
   }
