@@ -3,7 +3,7 @@
   "level": "1-1",
   "solved": true,
   "start": "spawn",
-  "totalTicks": 954,
+  "totalTicks": 965,
   "chambers": [
     {
       "id": "1-1-c1",
@@ -182,102 +182,105 @@
       "goal": { "kind": "region", "min": { "x": 68, "y": -6 }, "max": { "x": 90, "y": 11.4 } },
       "startTick": 410,
       "solved": true,
-      "endTick": 480,
-      "ticks": 70,
-      "plan": [{ "t": 416, "action": "rope", "anchor": 3, "offset": 2, "release": null }],
+      "endTick": 487,
+      "ticks": 77,
+      "plan": [
+        { "t": 413, "action": "jump", "hold": 20 },
+        { "t": 458, "action": "rope", "anchor": 3, "offset": 0, "release": null }
+      ],
       "windows": [
         {
           "step": 5,
-          "action": "rope",
+          "action": "jump",
           "event": "press",
-          "tick": 416,
-          "earliest": -6,
-          "latest": 6,
-          "size": 13,
+          "tick": 413,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
           "capped": false,
           "startClipped": true
+        },
+        {
+          "step": 5,
+          "action": "jump",
+          "event": "release",
+          "tick": 433,
+          "earliest": -3,
+          "latest": 3,
+          "size": 7,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 6,
+          "action": "rope",
+          "event": "press",
+          "tick": 458,
+          "earliest": -2,
+          "latest": 2,
+          "size": 5,
+          "capped": false,
+          "startClipped": false
         }
       ],
       "tightestWindow": {
-        "step": 5,
+        "step": 6,
         "action": "rope",
         "event": "press",
-        "tick": 416,
-        "earliest": -6,
-        "latest": 6,
-        "size": 13,
+        "tick": 458,
+        "earliest": -2,
+        "latest": 2,
+        "size": 5,
         "capped": false,
-        "startClipped": true
+        "startClipped": false
       },
-      "search": { "expansions": 2, "simTicks": 1652, "deathsEncountered": 17 }
+      "search": { "expansions": 2, "simTicks": 1490, "deathsEncountered": 21 }
     },
     {
       "id": "1-1-c5",
       "problem": "Too short: connect early on the ground for a long rope that carries to the far ledge.",
       "challengeFamily": "rope-length",
-      "goal": { "kind": "region", "min": { "x": 98, "y": -6 }, "max": { "x": 122, "y": 11.4 } },
-      "startTick": 480,
+      "goal": { "kind": "checkpoint", "index": 1, "id": "1-1-cpB" },
+      "startTick": 487,
       "solved": true,
-      "endTick": 714,
-      "ticks": 234,
+      "endTick": 673,
+      "ticks": 186,
       "plan": [
-        { "t": 539, "action": "rope", "anchor": 4, "offset": 0, "release": 583 },
-        { "t": 600, "action": "rope", "anchor": 4, "offset": 1, "release": 632 },
-        { "t": 620, "action": "rope", "anchor": 4, "offset": 1, "release": 652 }
+        { "t": 557, "action": "rope", "anchor": 4, "offset": 0, "release": 588 },
+        { "t": 606, "action": "rope", "anchor": 4, "offset": 1, "release": 638 },
+        { "t": 626, "action": "rope", "anchor": 4, "offset": 0, "release": 658 }
       ],
       "windows": [
         {
-          "step": 5,
+          "step": 6,
           "action": "rope",
           "event": "release",
-          "tick": 488,
+          "tick": 495,
           "earliest": -5,
+          "latest": 14,
+          "size": 20,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 7,
+          "action": "rope",
+          "event": "press",
+          "tick": 557,
+          "earliest": -26,
           "latest": 20,
-          "size": 26,
+          "size": 47,
           "capped": false,
           "startClipped": false
         },
         {
-          "step": 6,
-          "action": "rope",
-          "event": "press",
-          "tick": 539,
-          "earliest": -32,
-          "latest": 37,
-          "size": 70,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 6,
+          "step": 7,
           "action": "rope",
           "event": "release",
-          "tick": 583,
-          "earliest": -6,
+          "tick": 588,
+          "earliest": -5,
           "latest": 2,
-          "size": 9,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 7,
-          "action": "rope",
-          "event": "press",
-          "tick": 600,
-          "earliest": -3,
-          "latest": 6,
-          "size": 10,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 7,
-          "action": "rope",
-          "event": "release",
-          "tick": 632,
-          "earliest": -31,
-          "latest": 16,
-          "size": 48,
+          "size": 8,
           "capped": false,
           "startClipped": false
         },
@@ -285,7 +288,29 @@
           "step": 8,
           "action": "rope",
           "event": "press",
-          "tick": 620,
+          "tick": 606,
+          "earliest": -3,
+          "latest": 5,
+          "size": 9,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 8,
+          "action": "rope",
+          "event": "release",
+          "tick": 638,
+          "earliest": -31,
+          "latest": 17,
+          "size": 49,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 9,
+          "action": "rope",
+          "event": "press",
+          "tick": 626,
           "earliest": -23,
           "latest": 11,
           "size": 35,
@@ -293,10 +318,10 @@
           "startClipped": false
         },
         {
-          "step": 8,
+          "step": 9,
           "action": "rope",
           "event": "release",
-          "tick": 652,
+          "tick": 658,
           "earliest": -31,
           "latest": 40,
           "size": 72,
@@ -305,74 +330,54 @@
         }
       ],
       "tightestWindow": {
-        "step": 6,
+        "step": 7,
         "action": "rope",
         "event": "release",
-        "tick": 583,
-        "earliest": -6,
+        "tick": 588,
+        "earliest": -5,
         "latest": 2,
-        "size": 9,
+        "size": 8,
         "capped": false,
         "startClipped": false
       },
-      "search": { "expansions": 344, "simTicks": 204871, "deathsEncountered": 1918 }
+      "search": { "expansions": 386, "simTicks": 222806, "deathsEncountered": 2010 }
     },
     {
       "id": "1-1-c6",
       "problem": "Chain two ropes between a low ceiling and a high red pool.",
       "challengeFamily": "low-floor",
       "goal": { "kind": "region", "min": { "x": 122, "y": -6 }, "max": { "x": 141, "y": 11.4 } },
-      "startTick": 714,
+      "startTick": 673,
       "solved": true,
-      "endTick": 868,
-      "ticks": 154,
+      "endTick": 869,
+      "ticks": 196,
       "plan": [
-        { "t": 717, "action": "jump", "hold": 44 },
-        { "t": 762, "action": "rope", "anchor": 5, "offset": 1, "release": 784 },
-        { "t": 831, "action": "rope", "anchor": 6, "offset": 1, "release": 846 }
+        { "t": 710, "action": "jump", "hold": 43 },
+        { "t": 751, "action": "rope", "anchor": 5, "offset": 1, "release": 780 },
+        { "t": 825, "action": "move", "axis": -1 },
+        { "t": 824, "action": "rope", "anchor": 6, "offset": 1, "release": 847 },
+        { "t": 841, "action": "move", "axis": 1 }
       ],
       "windows": [
         {
-          "step": 9,
+          "step": 10,
           "action": "jump",
           "event": "press",
-          "tick": 717,
-          "earliest": -3,
-          "latest": 3,
-          "size": 7,
-          "capped": false,
-          "startClipped": true
-        },
-        {
-          "step": 9,
-          "action": "jump",
-          "event": "release",
-          "tick": 761,
-          "earliest": -23,
-          "latest": 23,
-          "size": 47,
+          "tick": 710,
+          "earliest": -6,
+          "latest": 4,
+          "size": 11,
           "capped": false,
           "startClipped": false
         },
         {
           "step": 10,
-          "action": "rope",
-          "event": "press",
-          "tick": 762,
-          "earliest": -3,
-          "latest": 3,
-          "size": 7,
-          "capped": false,
-          "startClipped": false
-        },
-        {
-          "step": 10,
-          "action": "rope",
+          "action": "jump",
           "event": "release",
-          "tick": 784,
-          "earliest": -7,
-          "latest": 6,
-          "size": 14,
+          "tick": 753,
+          "earliest": -28,
+          "latest": 27,
+          "size": 56,
           "capped": false,
           "startClipped": false
         },
@@ -380,53 +385,97 @@
           "step": 11,
           "action": "rope",
           "event": "press",
-          "tick": 831,
-          "earliest": -8,
+          "tick": 751,
+          "earliest": -23,
+          "latest": 7,
+          "size": 31,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 11,
+          "action": "rope",
+          "event": "release",
+          "tick": 780,
+          "earliest": -6,
           "latest": 8,
+          "size": 15,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 12,
+          "action": "move",
+          "event": "press",
+          "tick": 825,
+          "earliest": -15,
+          "latest": 16,
+          "size": 32,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 13,
+          "action": "rope",
+          "event": "press",
+          "tick": 824,
+          "earliest": -9,
+          "latest": 7,
           "size": 17,
           "capped": false,
           "startClipped": false
         },
         {
-          "step": 11,
+          "step": 13,
           "action": "rope",
           "event": "release",
-          "tick": 846,
-          "earliest": -6,
-          "latest": 5,
-          "size": 12,
+          "tick": 847,
+          "earliest": -9,
+          "latest": 9,
+          "size": 19,
+          "capped": false,
+          "startClipped": false
+        },
+        {
+          "step": 14,
+          "action": "move",
+          "event": "press",
+          "tick": 841,
+          "earliest": -16,
+          "latest": 23,
+          "size": 40,
           "capped": false,
           "startClipped": false
         }
       ],
       "tightestWindow": {
-        "step": 9,
+        "step": 10,
         "action": "jump",
         "event": "press",
-        "tick": 717,
-        "earliest": -3,
-        "latest": 3,
-        "size": 7,
+        "tick": 710,
+        "earliest": -6,
+        "latest": 4,
+        "size": 11,
         "capped": false,
-        "startClipped": true
+        "startClipped": false
       },
-      "search": { "expansions": 5, "simTicks": 2734, "deathsEncountered": 29 }
+      "search": { "expansions": 177, "simTicks": 11772, "deathsEncountered": 1331 }
     },
     {
       "id": "1-1-c7",
       "problem": "Arrive in the wide compartment from its open side.",
       "challengeFamily": "exit",
       "goal": { "kind": "exit" },
-      "startTick": 868,
+      "startTick": 869,
       "solved": true,
-      "endTick": 954,
-      "ticks": 86,
+      "endTick": 965,
+      "ticks": 96,
       "plan": [],
       "windows": [],
       "tightestWindow": null,
-      "search": { "expansions": 2, "simTicks": 949, "deathsEncountered": 1 }
+      "search": { "expansions": 2, "simTicks": 866, "deathsEncountered": 6 }
     }
   ],
   "notes": [],
-  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-1\",\"s\":0,\"n\":954,\"i\":[[0,[\"m\",1]],[52,\"j\"],[94,\"J\"],[163,[\"a\",26.5,2],\"r\"],[214,\"R\"],[258,\"j\"],[282,[\"a\",42.78,1.5],\"r\"],[295,\"J\"],[331,\"R\"],[416,[\"a\",61.72,0],\"r\"],[488,\"R\"],[539,[\"a\",80,1],\"r\"],[583,\"R\"],[600,[\"a\",80.28,1],\"r\"],[620,[\"a\",80.28,1],\"r\"],[632,\"R\"],[652,\"R\"],[717,\"j\"],[761,\"J\"],[762,[\"a\",104.28,1.6],\"r\"],[784,\"R\"],[831,[\"a\",116.28,3.2],\"r\"],[846,\"R\"]]}"
+  "replay": "{\"v\":1,\"b\":\"dev\",\"l\":\"1-1\",\"s\":0,\"n\":965,\"i\":[[0,[\"m\",1]],[52,\"j\"],[94,\"J\"],[163,[\"a\",26.5,2],\"r\"],[214,\"R\"],[258,\"j\"],[282,[\"a\",42.78,1.5],\"r\"],[295,\"J\"],[331,\"R\"],[413,\"j\"],[433,\"J\"],[458,[\"a\",62,0],\"r\"],[495,\"R\"],[557,[\"a\",80,1],\"r\"],[588,\"R\"],[606,[\"a\",80.28,1],\"r\"],[626,[\"a\",80,1],\"r\"],[638,\"R\"],[658,\"R\"],[710,\"j\"],[751,[\"a\",104.28,1.6],\"r\"],[753,\"J\"],[780,\"R\"],[824,[\"a\",116.28,3.2],\"r\"],[825,[\"m\",-1]],[841,[\"m\",1]],[847,\"R\"]]}"
 }
