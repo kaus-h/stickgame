@@ -27,6 +27,16 @@ _Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The visio
 - **Preview:** `preview-main` in `.claude/launch.json` serves a detached main worktree at `D:/tmp/wt/preview-main`, port 5191. Update it with `git -C D:/tmp/wt/preview-main checkout --detach origin/main` after a fetch.
 - **Stash:** `stash@{0}` holds another session's dark-lamp WIP (PageLamp class missing). The owner's 2026-10-14 answer superseded it; drop it once the owner confirms.
 
+## In flight (GPT-6.1 sol, headless, started 2026-10-14)
+
+- **GMR-118** Targeting v2 (high effort): brief `D:/tmp/codex/briefs/gmr-118-targeting-v2.md`.
+- **GMR-119** swing-impact targets (high): brief `gmr-119-impact-targets.md`.
+- **GMR-120** world-style plumbing (medium, bypass sandbox): brief `gmr-120-world-style.md`; it must be pixel-identical.
+- Each run opens its own PR. Read only the PR and `D:/tmp/codex/<branch-slug>.result.md`. Review the diff yourself.
+- **Merge order:** 120 → 119 → 118. Schema conflicts are expected to be additive; for a fix round, rerun the script on the same branch.
+- 118's re-solve has a STOP rule: it never edits level geometry. If a lesson flips, the level design falls to Opus.
+- **Earlier Codex work:** the GIF/film capture tool (GMR-115) merged in #80. The Level Factory (GMR-116/117) was never started.
+
 ## Next
 
 0. **Targeting v2 (CONFIRMED by the owner 2026-10-14; memory `rope-targeting-brainstorm`):**
