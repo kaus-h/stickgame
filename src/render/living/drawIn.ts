@@ -1,8 +1,8 @@
 import type * as Phaser from 'phaser';
-import { ensurePaperTexture, PAPER_KEY, TILE } from '../page/NotebookPage';
+import { ensurePaperTexture, paperTextureKey, TILE } from '../page/NotebookPage';
 import { hash, strokeInk } from '../ink';
 
-const INK = 0x16161a;
+import { NOTEBOOK_STYLE, type WorldStyle } from '../world/WorldStyle';
 /** The level inks itself onto the page over this long when it first appears (s). */
 export const DRAW_IN_SECONDS = 0.6;
 
@@ -27,10 +27,11 @@ export class DrawIn {
   constructor(
     private readonly scene: Phaser.Scene,
     skip: boolean,
+    private readonly style: WorldStyle = NOTEBOOK_STYLE,
   ) {
     // Headless test scenes have no texture manager.
     if ((scene.textures as Phaser.Scene['textures'] | undefined) !== undefined)
-      ensurePaperTexture(scene);
+      ensurePaperTexture(scene, style);
     this.pen = scene.add.graphics().setDepth(61);
     if (skip) this.finish();
   }
@@ -61,7 +62,10 @@ export class DrawIn {
       for (let gx = gx0; gx < view.x + view.width + pad; gx += TILE) {
         const tile =
           this.tiles[n] ??
-          (this.tiles[n] = this.scene.add.image(0, 0, PAPER_KEY).setOrigin(0, 0).setDepth(60));
+          (this.tiles[n] = this.scene.add
+            .image(0, 0, paperTextureKey(this.style))
+            .setOrigin(0, 0)
+            .setDepth(60));
         n++;
         const cut = Math.max(0, Math.floor(front) - gx);
         tile
@@ -86,7 +90,7 @@ export class DrawIn {
           { x: front + 2, y: yy - 3 },
         ],
         1.2,
-        INK,
+        this.style.ink,
         0.35 + 0.45 * hash(r * 2.3),
         r,
       );

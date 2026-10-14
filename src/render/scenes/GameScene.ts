@@ -40,11 +40,9 @@ import { kitHazardKind, LevelKit } from '../kit/LevelKit';
 import { Kit17Background } from '../kit/Kit17Background';
 import { resolveKitVersion } from '../kit/Kit17Terrain';
 import { getLevelTheme } from '../../content';
+import { resolveWorldStyle } from '../world/WorldStyle';
 
 /** Paper-and-ink palette (doc 07 §1). Black ink is primary; colour is rare and meaningful. */
-const PAPER = 0xf3efe6;
-const INK = 0x16161a;
-const PENCIL = 0x8a8a8a;
 /** High contrast (GMR-50): pencil marks darken toward ink but stay distinguishable from it. */
 const PENCIL_HC = 0x4a4a52;
 /** Larger aim reticle (GMR-50): the reticle and impact cross scale by this. */
@@ -151,8 +149,11 @@ export class GameScene extends Phaser.Scene {
   private reducedMotion = false;
   private highContrast = false;
   private reticleScale = 1;
-  /** PENCIL, or PENCIL_HC under high contrast. */
-  private pencil = PENCIL;
+  /** World pencil, or PENCIL_HC under high contrast. */
+  private pencil: number = 0x8a8a8a;
+  private get style() {
+    return resolveWorldStyle(this.opts.level);
+  }
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
   private camCenter: Vec2 = vec2(0, 0);
@@ -289,12 +290,12 @@ export class GameScene extends Phaser.Scene {
       (typeof window !== 'undefined' &&
         window.matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.highContrast = this.opts.accessibility?.().highContrast ?? false;
-    this.pencil = this.highContrast ? PENCIL_HC : PENCIL;
+    this.pencil = this.highContrast ? PENCIL_HC : this.style.pencil;
     this.pageTurn = new PageTurn(this, this.reducedMotion, this.highContrast);
     this.drawStaticPage();
     // Paper camera first in the render list; the world camera above it is transparent and boils.
     this.paperCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
-    this.paperCamera.setBackgroundColor(PAPER);
+    this.paperCamera.setBackgroundColor(this.style.paper.base);
     const list = (this.cameras as unknown as { cameras: Phaser.Cameras.Scene2D.Camera[] }).cameras;
     placeCamera(list, this.paperCamera, 0);
     this.boil = new LineBoil(this, this.cameras.main);
@@ -332,7 +333,7 @@ export class GameScene extends Phaser.Scene {
     this.anchorFx = this.add.graphics().setDepth(1.5);
     this.head = new HeroHead(this, 2);
     // The level inks itself in on first appearance (never after a death: retry stays instant).
-    this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true);
+    this.drawIn = new DrawIn(this, this.reducedMotion || this.opts.overview === true, this.style);
     if (this.head.object) this.crispObjects.add(this.head.object);
     this.causeLabel = this.add
       .text(0, 0, '', { fontFamily: HAND_FONT, fontSize: '30px', color: '#8a8a8a' })
@@ -347,8 +348,8 @@ export class GameScene extends Phaser.Scene {
       this.highContrast ||
       (typeof window !== 'undefined' &&
         new URLSearchParams(window.location.search).get('lamp') === '0');
-    this.vignette = flat ? null : addPageVignette(this, 85);
-    this.motes = new DustMotes(this, 84, this.reducedMotion);
+    this.vignette = flat ? null : addPageVignette(this, 85, this.style);
+    this.motes = this.style.motes ? new DustMotes(this, 84, this.reducedMotion) : null;
     // Written onto the page as the level opens; the scene persists across deaths, so never on retry.
     if (LevelTitleCard.shouldShow(this.opts.level.id) && this.opts.overview !== true)
       this.titleCard = new LevelTitleCard(
@@ -358,7 +359,7 @@ export class GameScene extends Phaser.Scene {
         86,
         this.reducedMotion,
       );
-    drawFrame(this.frameG, this.scale.height);
+    drawFrame(this.frameG, this.scale.height, this.style);
     this.hud = this.add.graphics().setScrollFactor(0);
     // A paper halo keeps the HUD legible where it crosses hatched terrain (c6's ceiling bar).
     const hand = {
@@ -456,7 +457,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     this.uiCamera = this.cameras.add(0, 0, this.scale.width, this.scale.height);
     this.routeCameras();
     const resize = (): void => {
-      drawFrame(this.frameG, this.scale.height);
+      drawFrame(this.frameG, this.scale.height, this.style);
       this.uiCamera.setSize(this.scale.width, this.scale.height);
       this.fitCamera();
       if (this.eraserCamera && !this.reducedMotion) this.fitEraserCamera();
@@ -617,16 +618,17 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
   private drawStaticPage(): void {
     const { anchors } = this.opts.level;
     // Paper and ruling: one world-locked tiled quad (render/page/NotebookPage.ts).
-    this.paper = addPaper(this, this.opts.level);
+    this.paper = addPaper(this, this.opts.level, 30, this.style);
     this.kit17Background =
       !this.highContrast &&
+      this.style.backgroundKey === 'kit17' &&
       typeof window !== 'undefined' &&
-      resolveKitVersion(window.location.search) === '0017'
+      resolveKitVersion(window.location.search, this.style.terrainKitKey) === '0017'
         ? new Kit17Background(this)
         : null;
     const g = this.add.graphics();
-    if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level);
-    this.kit = new LevelKit(this, this.opts.level);
+    if (getLevelTheme(this.opts.level) === 'scenery') drawDoodles(g, this.opts.level, this.style);
+    this.kit = new LevelKit(this, this.opts.level, this.style);
     this.framed = framedAnchors(this.opts.level.anchors);
 
     // Moving-anchor tracks: faint pencil dots telegraph the motion.
@@ -656,7 +658,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
             { x: m(e.x + uy * bar), y: m(e.y - ux * bar) },
           ],
           2.2,
-          INK,
+          this.style.ink,
           0.9,
           k + 11,
         );
@@ -730,11 +732,11 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     );
     // Mouth bracket: ink dots at the band ends, joined across the band below (GMR-56). Dots, not
     // ticks: in the blind test, ticks parallel to the arrow were read as speed marks.
-    g.fillStyle(INK, 0.9);
+    g.fillStyle(this.style.ink, 0.9);
     for (const mark of marks ?? []) g.fillCircle(m(mark.x), m(mark.y), m(0.08));
     const start = vec2(midpoint.x - normal.x * 0.65, midpoint.y - normal.y * 0.65);
     const tip = vec2(midpoint.x + normal.x * 0.45, midpoint.y + normal.y * 0.45);
-    g.lineStyle(2.5, INK, 0.9).lineBetween(m(start.x), m(start.y), m(tip.x), m(tip.y));
+    g.lineStyle(2.5, this.style.ink, 0.9).lineBetween(m(start.x), m(start.y), m(tip.x), m(tip.y));
     for (const sign of [-1, 1])
       g.lineBetween(
         m(tip.x),
@@ -750,7 +752,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
           { x: m(marks[1].x), y: m(marks[1].y) },
         ],
         2,
-        INK,
+        this.style.ink,
         0.8,
         107,
       );
@@ -775,7 +777,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
             { x: m(from.x - normal.x * len), y: m(from.y - normal.y * len) },
           ],
           2,
-          INK,
+          this.style.ink,
           0.85,
           111 + k,
         );
@@ -855,7 +857,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       const age = current.tick - stomp.tick;
       if (age < 0) continue;
       const radius = m(0.2 + age * 0.025);
-      g.lineStyle(2, INK, 1 - age / 24);
+      g.lineStyle(2, this.style.ink, 1 - age / 24);
       for (let i = 0; i < 8; i++) {
         const angle = (i * Math.PI) / 4;
         g.lineBetween(
@@ -935,7 +937,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
         drawn >= 1
           ? anchor
           : { x: hand.x + (anchor.x - hand.x) * drawn, y: hand.y + (anchor.y - hand.y) * drawn };
-      dashedInk(g, tip, hand, m(0.2), m(0.13), this.highContrast ? 3.4 : 2.6, INK);
+      dashedInk(g, tip, hand, m(0.2), m(0.13), this.highContrast ? 3.4 : 2.6, this.style.ink);
     }
 
     this.juice.update(dt, current, this.reducedMotion);
@@ -974,7 +976,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     if (visibleMiss) {
       const at = { x: m(miss.at.x), y: m(miss.at.y) };
       const fade = Math.min(1, (90 - missAge) / 30);
-      g.lineStyle(2.5, INK, fade);
+      g.lineStyle(2.5, this.style.ink, fade);
       const r = m(0.16);
       g.lineBetween(at.x - r, at.y - r, at.x + r, at.y + r);
       g.lineBetween(at.x - r, at.y + r, at.x + r, at.y - r);
@@ -991,7 +993,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     if (target?.impact) {
       const ip = { x: m(target.impact.x), y: m(target.impact.y) };
       const c = m(0.1) * this.reticleScale;
-      g.lineStyle(2 * this.reticleScale, target.valid ? INK : this.pencil, 0.95);
+      g.lineStyle(2 * this.reticleScale, target.valid ? this.style.ink : this.pencil, 0.95);
       g.lineBetween(ip.x - c, ip.y - c, ip.x + c, ip.y + c);
       g.lineBetween(ip.x - c, ip.y + c, ip.x + c, ip.y - c);
     }
@@ -1001,12 +1003,12 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       const from = { x: m(current.aim.x), y: m(current.aim.y) };
       const to = { x: m(target.impact.x), y: m(target.impact.y) };
       g.lineStyle(m(0.16), HIGHLIGHTER, 0.5).lineBetween(from.x, from.y, to.x, to.y);
-      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? INK : this.pencil);
+      dashedInk(g, from, to, m(0.1), m(0.08), 1.6, target.valid ? this.style.ink : this.pencil);
     }
     if (current.aim) {
       const a = { x: m(current.aim.x), y: m(current.aim.y) };
       const r = m(0.18) * this.reticleScale;
-      const tone = target?.valid ? INK : this.pencil;
+      const tone = target?.valid ? this.style.ink : this.pencil;
       g.lineStyle(1.6 * this.reticleScale, tone, 0.9);
       g.strokeCircle(a.x, a.y, r);
       g.lineBetween(a.x - r * 1.6, a.y, a.x - r * 0.6, a.y);
@@ -1022,7 +1024,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     for (const sp of this.splats) {
       const t = sp.age / life;
       const grow = this.reducedMotion ? 1 : Math.min(1, t * 3);
-      g.lineStyle(2.2 * this.lineScale(), INK, 0.85 * (1 - t));
+      g.lineStyle(2.2 * this.lineScale(), this.style.ink, 0.85 * (1 - t));
       g.beginPath();
       const r = m(0.45) * grow;
       for (let k = 0; k <= 14; k++) {
@@ -1047,13 +1049,14 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       const reached = i <= active;
       const base = { x: m(cp.position.x), y: m(cp.position.y + 0.35) };
       const top = { x: base.x, y: base.y - m(1.1) };
-      const tone = reached ? INK : this.pencil;
+      const tone = reached ? this.style.ink : this.pencil;
       g.lineStyle(2.2 * this.lineScale(), tone, reached ? 1 : 0.7);
       g.lineBetween(base.x, base.y, top.x, top.y);
       const p0 = { x: top.x, y: top.y };
       const p1 = { x: top.x + m(0.5), y: top.y + m(0.16) };
       const p2 = { x: top.x, y: top.y + m(0.34) };
-      if (reached) g.fillStyle(INK, 0.9).fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
+      if (reached)
+        g.fillStyle(this.style.ink, 0.9).fillTriangle(p0.x, p0.y, p1.x, p1.y, p2.x, p2.y);
       else strokeInk(g, [p0, p1, p2, p0], 1.8 * this.lineScale(), this.pencil, 0.8, i);
     });
   }
@@ -1185,7 +1188,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
           g.strokePath();
         }
       }
-      fx.lineStyle(r * 0.5, PAPER, 1);
+      fx.lineStyle(r * 0.5, this.style.paper.base, 1);
       for (let k = 0; k < erased; k++) {
         const a0 = -Math.PI / 2 + (k / segments) * Math.PI * 2;
         fx.beginPath();
@@ -1193,7 +1196,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
         fx.strokePath();
       }
       // Hairline gaps between the 8 segments: the ring reads as a clock even when full.
-      fx.lineStyle(Math.max(1.5, r * 0.07), PAPER, 1);
+      fx.lineStyle(Math.max(1.5, r * 0.07), this.style.paper.base, 1);
       for (let k = 0; k < segments; k++) {
         const a = -Math.PI / 2 + (k / segments) * Math.PI * 2;
         fx.lineBetween(
@@ -1215,7 +1218,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
         state.spent ? g : fx,
         crack,
         state.spent ? 1.2 : 2.2,
-        state.spent ? this.pencil : INK,
+        state.spent ? this.pencil : this.style.ink,
         state.spent ? 0.35 : 0.95,
         seed + 211,
       );
@@ -1240,7 +1243,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     const len = m(0.15 + 0.06 * speed);
     const tip = { x: start.x + ux * len, y: start.y + uy * len };
     const head = m(0.14);
-    g.lineStyle(2.2, INK, 0.85);
+    g.lineStyle(2.2, this.style.ink, 0.85);
     g.lineBetween(start.x, start.y, tip.x, tip.y);
     for (const side of [-1, 1]) {
       g.lineBetween(
@@ -1343,7 +1346,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
 
     // Death count as tally marks in the margin.
     const deaths = current.deaths;
-    g.lineStyle(2.4, INK, 0.9);
+    g.lineStyle(2.4, this.style.ink, 0.9);
     for (let i = 0; i < deaths && i < 60; i++) {
       const group = Math.floor(i / 5);
       const k = i % 5;

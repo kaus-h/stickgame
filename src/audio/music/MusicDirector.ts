@@ -18,7 +18,7 @@ export interface MusicTargets {
   readonly tension: number;
   /** A death dip is in progress: the tension drop is applied at once (not on the next bar). */
   readonly dipping: boolean;
-  /** Section bank id (switched at the next bar line by the engine). */
+  /** Presentation bank id (switched at the next bar line by the engine). */
   readonly bank: string;
 }
 
@@ -39,11 +39,13 @@ export class MusicDirector {
   constructor(
     private readonly sink: MusicSink,
     private level: LevelDef,
+    private musicBankId?: string,
   ) {}
 
   /** A new level: its chambers and section bank; reached chambers start over. */
-  setLevel(level: LevelDef): void {
+  setLevel(level: LevelDef, musicBankId?: string): void {
     this.level = level;
+    this.musicBankId = musicBankId;
     this.restartRun();
   }
 
@@ -94,7 +96,7 @@ export class MusicDirector {
       pulse: 0.15 + 0.85 * this.energy,
       tension,
       dipping: this.dip > 0,
-      bank: this.level.section === 'section-2' ? 'section-2' : 'section-1',
+      bank: this.musicBankId ?? (this.level.section === 'section-2' ? 'section-2' : 'section-1'),
     });
   }
 

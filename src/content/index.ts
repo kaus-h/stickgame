@@ -3,6 +3,7 @@ export {
   anchorPathPeaks,
   compileLevel,
   getLevelTheme,
+  getLevelWorld,
   LEVEL_SCHEMA_VERSION,
   LevelError,
   MAX_ANCHOR_ACCEL,
@@ -11,6 +12,6 @@ export {
   parseLevel,
   validateLevelSchema,
 } from './level';
-export type { AuthoringLevelV2, LevelTheme } from './level';
+export type { AuthoringLevelV2, LevelTheme, LevelWorld } from './level';
 export { DEFAULT_ASSIST_TUNING, parseRuntimeTuning, TuningError } from './tuning';
 export type { AssistTuning, RuntimeTuning } from './tuning';

@@ -12,3 +12,5 @@ export type { DeltaTone } from './race';
 
 export { loadLevelKit } from './kit/LevelKit';
 export { loadHeroHeads } from './hero/heads';
+
+export { resolveWorldStyle } from './world/WorldStyle';
