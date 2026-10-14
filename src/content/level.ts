@@ -21,8 +21,21 @@ export const MAX_ANCHOR_ACCEL = 12;
 /** Renderer-only background selection authored with a level. */
 export type LevelTheme = 'paper' | 'scenery';
 
+/** Presentation-only world identifiers; renderer support is resolved independently. */
+export interface LevelWorld {
+  readonly family: string;
+  readonly subTheme?: string;
+}
+
 // Presentation metadata stays outside LevelDef so it cannot affect simulation or replay hashes.
 const levelThemes = new WeakMap<LevelDef, LevelTheme>();
+const levelWorlds = new WeakMap<LevelDef, LevelWorld>();
+const DEFAULT_LEVEL_WORLD: LevelWorld = Object.freeze({ family: 'notebook' });
+
+/** Resolve authored world metadata, including the legacy notebook default. */
+export function getLevelWorld(level: LevelDef): LevelWorld {
+  return levelWorlds.get(level) ?? DEFAULT_LEVEL_WORLD;
+}
 
 /** Resolve the authored presentation theme without making it simulation state. */
 export function getLevelTheme(level: LevelDef): LevelTheme {
@@ -255,6 +268,17 @@ export function compileLevel(source: unknown): LevelDef {
   if (level.exit && 'id' in level.exit && ids.has(level.exit.id))
     fail('level.exit.id', `duplicate id "${level.exit.id}"`);
   if (json.theme !== undefined) levelThemes.set(level, json.theme as LevelTheme);
+  if (isRecord(json.world)) {
+    levelWorlds.set(
+      level,
+      Object.freeze({
+        family: str(json.world.family, 'level.world.family'),
+        ...(json.world.subTheme === undefined
+          ? {}
+          : { subTheme: str(json.world.subTheme, 'level.world.subTheme') }),
+      }),
+    );
+  }
   return level;
 }
 

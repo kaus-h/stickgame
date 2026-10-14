@@ -14,6 +14,7 @@ import { paintExitDoor } from './exitDoor';
 import { loadKit17Background } from './Kit17Background';
 import { paintInkPool } from '../living/inkPool';
 import { paintPencilShadows } from '../living/pencilShadow';
+import { NOTEBOOK_STYLE, worldColorCss, type WorldStyle } from '../world/WorldStyle';
 
 const urls = {
   ledge: ledgeUrl,
@@ -108,11 +109,9 @@ export function loadLevelKit(): Promise<void> {
     c.fillStyle = fade;
     c.fillRect(0, 0, skirt.width, skirt.height);
   });
-  const kitId = resolveKitVersion(typeof window === 'undefined' ? '' : window.location.search);
-  kit17Pending ??=
-    kitId === '0017'
-      ? Promise.all([loadKit17(), loadKit17Background()]).then(() => undefined)
-      : Promise.resolve();
+  // Level changes are synchronous. Decode both supported kits at boot so a world can
+  // select either one without adding a loading pause during a scene replacement.
+  kit17Pending ??= Promise.all([loadKit17(), loadKit17Background()]).then(() => undefined);
   return Promise.all([pending, kit17Pending]).then(() => undefined);
 }
 
@@ -176,10 +175,14 @@ export class LevelKit {
   constructor(
     private readonly scene: Phaser.Scene,
     private readonly level: LevelDef,
+    private readonly style: WorldStyle = NOTEBOOK_STYLE,
   ) {
     if (!this.art) throw new Error('Level kit must be decoded before scene creation');
-    this.kitId = resolveKitVersion(typeof window === 'undefined' ? '' : window.location.search);
-    this.border = new BorderMass(scene, level);
+    this.kitId = resolveKitVersion(
+      typeof window === 'undefined' ? '' : window.location.search,
+      style.terrainKitKey,
+    );
+    this.border = new BorderMass(scene, level, style);
     const updateBorder = (): void => {
       this.border.update();
     };
@@ -313,6 +316,7 @@ export class LevelKit {
               this.usedParts,
               this.edges.get(solid),
               this.allExposedEdges,
+              this.style,
             );
             if (this.slab(solid)) this.paintSlabUnderside(c, solid);
             this.paintCeilingDrips(c, solid, this.edges.get(solid) ?? []);
@@ -413,10 +417,10 @@ export class LevelKit {
     outline(c, solid);
     c.clip();
     const shade = c.createLinearGradient(0, bottom - band, 0, bottom);
-    shade.addColorStop(0, 'rgba(22, 22, 26, 0)');
-    shade.addColorStop(1, 'rgba(22, 22, 26, 0.62)');
+    shade.addColorStop(0, worldColorCss(this.style.ink, 0));
+    shade.addColorStop(1, worldColorCss(this.style.ink, 0.62));
     c.strokeStyle = shade;
-    for (let x = left; x < right; x += 3.2) {
+    for (let x = left; x < right; x += 3.2 / this.style.hatchDensity) {
       c.lineWidth = 0.55 + (Math.sin(x * 0.37) + 1) * 0.18;
       c.beginPath();
       c.moveTo(x, bottom - band);
@@ -442,7 +446,7 @@ export class LevelKit {
       c.closePath();
     }
     c.clip();
-    c.strokeStyle = '#16161a';
+    c.strokeStyle = worldColorCss(this.style.ink);
     c.lineWidth = 0.85;
     const left = Math.floor(tile.x / 12) * 12 - 12;
     const right = tile.x + tile.w + 12;
@@ -450,7 +454,7 @@ export class LevelKit {
     const bottom = tile.y + tile.h + 12;
     for (let pass = 0; pass < 2; pass++) {
       const slope = pass === 0 ? -1.55 : 0.68;
-      const spacing = pass === 0 ? 8 : 22;
+      const spacing = (pass === 0 ? 8 : 22) / this.style.hatchDensity;
       c.globalAlpha = alpha * (pass === 0 ? 0.78 : 0.46);
       const offsets = [
         top - slope * left,
@@ -508,7 +512,7 @@ export class LevelKit {
       // Thin doubled ink follows only the exposed boundary. Contact intervals are omitted,
       // including partial T joins, so outer and inner corners belong to a single mass.
       for (let pass = 0; pass < 2; pass++) {
-        c.strokeStyle = '#16161a';
+        c.strokeStyle = worldColorCss(this.style.ink);
         c.lineWidth = pass === 0 && top ? 1.8 : pass === 0 ? 1.3 : 0.7;
         for (let t = 0; t < length; t += 8) {
           const end = Math.min(t + 8, length);
@@ -548,7 +552,7 @@ export class LevelKit {
       return v - Math.floor(v);
     };
     c.save();
-    c.fillStyle = '#16161a';
+    c.fillStyle = worldColorCss(this.style.ink);
     for (const edge of edges) {
       if (edge.contact !== 'exposed' || edge.side !== 'bottom') continue;
       const ax = m(edge.a.x),
@@ -623,7 +627,7 @@ export class LevelKit {
       c.closePath();
     }
     c.clip();
-    c.strokeStyle = '#16161a';
+    c.strokeStyle = worldColorCss(this.style.ink);
     for (const { vertex, edges } of this.corners) {
       const directions = edges.map((edge) => {
         const dx = edge.b.x - edge.a.x,
