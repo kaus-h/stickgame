@@ -2,54 +2,52 @@
 
 The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-13, after the camera framing, c6 slab and C6 climax PRs. **Owner direction: beauty first, optimization deferred. Opus builds visual, feel and level work hands-on.**_
+_Last updated: 2026-10-13, after the owner's second checkpoint and the 1-1 level pass (#92, #93). **Owner direction: beauty first; later levels lean on puzzles and timing, not mechanical skill.**_
 
 ## State
 
-- **Camera (#89, owner-approved: less empty sky, no zoom, `minViewWidth` stays 23 m):**
-  - `verticalBias` −1 → +1, so the hero sits nearer the middle of the frame;
-  - lifted anchors clear the HUD band (`HUD_BAND_PX`);
-  - the attention gate measures from the camera target;
-  - `ATTENTION_EARLY` 4 m.
-  - Fairness: every roped anchor is visible ≥ 34 ticks before the press (30 required).
-  - c1/c2 keep their sky. The camera is pinned at the level's bottom bound there, so only level layout or sky content can change that.
-- **c6 ceiling (#90):** not a rope surface (ropes attach only to anchors), and m6's skip runs above it. Wide floating slabs now get the ground's hatch mass and the ground top edge, a shaded underside, and irregular ink-bead drips. Evenly spaced ticks read as a ruler.
-- **C6 climax (#91, this PR):**
-  - the c6 pool rose from y 9 to y 8; a6b moved to (116, 3.2);
-  - C6 measures 7 ticks on the a6a press (was 17), the tightest chamber, and ends in a short whip;
-  - the camera no longer frames static anchors hidden behind terrain for the next 0.5 s (m6 was pulling the pool out of frame);
-  - doc: `docs/levels/1-1-first-rope.md`.
+- **Owner checkpoint answers (in memory, `owner-answers-2026-10-13`):** music is liked; the camera and C6 are approved; the spider and Mansalva are in; "keep expanding aesthetics".
+- **#92, acting on those answers:**
+  - The section-clear sting is now a chord-aware chime arpeggio over a pad bloom. Contour and rhythm vary per chamber and bar, the register climbs through the level, and the exit resolves to the tonic.
+  - The lamp is a touch darker at the edges, with the centre unchanged.
+- **#93, the level pass:**
+  - **C4:** the pool rose from 8.3 to 7.8, so ground-connected ropes now die (the lesson never bit before).
+  - **C5:** the taught single long rope is measured and pinned.
+  - **Tests:** both lessons, and the mistakes they correct, are in `tests/unit/level11.test.ts`.
+  - **m6 removed:** it was physically unreachable.
+  - **C6:** its region starts on the ledge (x 92).
+  - **Camera:** look-ahead points behind terrain no longer frame hidden anchors.
+  - **Spider:** it waits above the title card.
+  - Measurements and decisions are in `docs/levels/1-1-first-rope.md`.
 
 ## Open PRs and tasks
 
-- **#91 (C6 climax and this handoff):** merge when every rollup conclusion is green.
+- None after #93 merges. No Codex or inbox work is in flight. Old worktrees remain (`.claude/worktrees/*`, `D:/tmp/codex/*`, `D:/tmp/wt/atmos`); clean them up only if the owner asks.
 
-## Next (GMR-114 golden 1-1, then the Level Factory)
+## Next
 
-1. **Owner checkpoint (batched, asked 2026-10-13).** Their answers go into memory.
-   - Ear: re-voiced jump, invalid and taut cues, room tone, and the music arc.
-   - Look: lamp strength, title card, spider, Mansalva.
-   - New: the camera framing, the c6 slab, and whether C6 feels hard but fair.
-2. **Level pass, remaining:**
-   - c1/c2 sky (camera-pinned; consider sky content or layout);
-   - C4 measures 13 ticks (target standard);
-   - C5's solver uses a re-grab, not the intended single long rope;
-   - check the m6 mastery skip still works by hand (no solver route covers it).
-3. **Owner sign-off** on 1-1. Then the Level Factory: GMR-116 (authoring format) and GMR-117 (mechanic catalog). Then levels in batches.
+1. **Owner checkpoint (batch these):**
+   - Play 1-1 for the new C4: does "connect on the ground → ink" read as a fair lesson?
+   - Does C5's jump-early idea land?
+   - Ear: does the varied sting feel smoother?
+   - Eye: is the lamp right?
+   - 1-1 sign-off.
+2. **Level Factory:** GMR-116 (authoring format) and GMR-117 (mechanic catalog). Design for puzzle and timing reads: a taught route plus a pinned mistake per chamber, as in `level11.test.ts`.
+3. Then levels in batches (1-2 is the quality bar; see the `level-design-feedback` memory).
+4. **Aesthetics backlog (owner: keep expanding):** ink stains and meniscus where pools meet walls (subtle at play scale), more varied terrain silhouettes, and richer sky life in open chambers.
 
 ## Workflow notes
 
-- **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`, for full-res film frames (installed Chrome). Tile them into one sheet and read it at ≤ 1500 px.
-- **Film:** `npm run film -- 1-1 --from <chamber|tick> --ticks N --every K --scale 0.5`.
-- **Route plot:** `npm run levels:plot -- 1-1 --x 88 126`. Rasterize with Playwright `setContent` (`goto file://` times out).
-- **Solver:** `npm run levels:solve -- <id>` rewrites `content/solutions/<id>.json` and prints the tightest window per chamber.
-- **Local e2e:** `E2E_PORT=5186 PW_CHANNEL=chrome npx playwright test <specs> --project=chromium`. Don't film alongside `npm run check`.
-- **Merging:** merge only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL. Re-query the rollup before merging.
-- **CI "Check" includes the bundle budget.** Run `npm run bundle:report` locally after asset changes (1203/1220 KB).
+- **Stills:** `npm run film:still -- <level> <tick[,tick…]> <out.png> [x,y,w,h] [WxH]`. Tile them into one sheet and read it at ≤ 1500 px.
+- **Hand routes:** the solver's `World` + `PlanSource` (from `node_modules/.cache/route-solver/solver.mjs`, built by `levels:solve`). Fork from a committed replay state and run hand plans. This is how C4/C5/m6 were measured.
+- **Solver:** `npm run levels:solve -- <id>`. It proves _a_ route; taught routes need their own tests. A chamber's region must start where its take-off run starts.
+- **Local e2e:** `E2E_PORT=5186 PW_CHANNEL=chrome npx playwright test <specs> --project=chromium`.
+- **Merging:** only when every rollup conclusion is SUCCESS, SKIPPED or NEUTRAL.
+- **CI "Check" includes the bundle budget** (1203/1220 KB). Run `npm run bundle:report` after asset changes.
 
 ## Watch out
 
-- **Slim Phaser:** use canvas overlays and string blend modes, not `Phaser.*` runtime constants, in `src`.
+- **Slim Phaser:** use canvas overlays and string blend modes, not `Phaser.*` runtime constants.
 - **`npm run check | grep … && git commit` masks failures.** Check the exit code.
-- **No sun doodles** (owner, 2026-10-09). Dashes belong to the rope alone.
-- **Windows Python rewrites LF as CRLF** when opening files in text mode. Pass `newline=''`.
+- **No sun doodles.** Dashes belong to the rope alone.
+- **Windows Python:** pass `newline=''` (it rewrites CRLF otherwise), and don't print non-ASCII to a cp1252 console. A failed script piped into `gh pr edit --body-file` blanks the PR body.

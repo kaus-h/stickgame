@@ -122,7 +122,7 @@ describe('anchor attention (GMR-44)', () => {
   });
 
   it('does not frame a static anchor hidden behind terrain for the next half second', () => {
-    // 1-1 c6: the m6 skip anchor sits above the ceiling; from below it cannot be roped.
+    // An anchor above a ceiling slab (1-1 c6's old m6 layout): from below it cannot be roped.
     const ceiling = {
       kind: 'solid',
       points: [vec2(98, -1.6), vec2(122, -1.6), vec2(122, -0.4), vec2(98, -0.4)],
@@ -144,5 +144,20 @@ describe('anchor attention (GMR-44)', () => {
       ceiling,
     ]);
     expect(leaving.y).toBeLessThan(near.y);
+    // Rising fast straight under the slab (1-1 C6 before the a6b shot): the half-second extrapolation pokes
+    // through the ceiling, but the player cannot get there, so the anchor stays unframed.
+    const under = vec2(110.3, 1.6);
+    const rising = attentionTarget(
+      under,
+      vec2(110.3, 0.65),
+      vec2(1, -7),
+      anchors,
+      23,
+      12.9,
+      11,
+      0,
+      [ceiling],
+    );
+    expect(rising).toEqual(under);
   });
 });

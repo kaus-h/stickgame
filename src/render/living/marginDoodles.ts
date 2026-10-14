@@ -32,6 +32,12 @@ const SCARE_RADIUS = 4;
 const SETTLE = 6;
 /** Spider silk length, m: it hangs this far below the point it climbs back to. */
 const SILK = 3.2;
+/**
+ * Spider lift while it waits out of frame: the level title card is written where it would hang
+ * (owner checkpoint 2026-10-13: it sat on the "1-1"), so it starts up its thread and lowers itself
+ * into view once the card has gone. 1 is the top of its normal climb; this is about a metre higher.
+ */
+export const SPIDER_WAIT_LIFT = 1.6;
 
 const KIND_CYCLE: readonly DoodleKind[] = [
   'birds',
@@ -147,7 +153,7 @@ interface DoodleState {
   /** Star spin (radians) and angular speed (rad/s). */
   spin: number;
   spinSpeed: number;
-  /** Spider: 0 hanging at its rest point, 1 climbed up its thread. */
+  /** Spider: 0 hanging at its rest point, 1 climbed up its thread, more while waiting. */
   lift: number;
 }
 
@@ -175,7 +181,12 @@ export class MarginDoodles {
     hidden: boolean,
   ) {
     this.doodles = hidden ? [] : placeDoodles(level, spawn);
-    this.state = this.doodles.map(() => ({ flight: null, spin: 0, spinSpeed: 0, lift: 0 }));
+    this.state = this.doodles.map((d) => ({
+      flight: null,
+      spin: 0,
+      spinSpeed: 0,
+      lift: d.kind === 'spider' ? SPIDER_WAIT_LIFT : 0,
+    }));
   }
 
   /** Doodles placed, and how many bird clusters are in the air (debug overlay). */
@@ -186,8 +197,22 @@ export class MarginDoodles {
     };
   }
 
-  update(dt: number, hero: Hero, calm: boolean): void {
-    if (calm) return;
+  /** Spider lift, for tests and the debug overlay (null if the level has no spider). */
+  spiderLift(): number | null {
+    const i = this.doodles.findIndex((d) => d.kind === 'spider');
+    return i < 0 ? null : (this.state[i]?.lift ?? null);
+  }
+
+  /** `waiting`: the level title card is up, so the spider stays out of frame above it. */
+  update(dt: number, hero: Hero, calm: boolean, waiting = false): void {
+    if (calm) {
+      // Reduced motion: no descent to watch, just be where it ends up.
+      this.doodles.forEach((d, i) => {
+        const s = this.state[i];
+        if (s && d.kind === 'spider') s.lift = waiting ? SPIDER_WAIT_LIFT : 0;
+      });
+      return;
+    }
     this.clock += dt;
     const speed = Math.hypot(hero.vx, hero.vy);
     this.doodles.forEach((d, i) => {
@@ -206,7 +231,14 @@ export class MarginDoodles {
       } else if (d.kind === 'spider') {
         // Climbs fast when the hero comes near, lowers itself slowly once they have gone.
         const scared = Math.abs(dx) < 3.2 && Math.abs(dy) < 6;
-        const want = scared ? 1 : Math.abs(dx) > 6 ? 0 : s.lift;
+        // Never lowers toward a hero who is close; waits above the title card while it is up.
+        const want = waiting
+          ? SPIDER_WAIT_LIFT
+          : scared
+            ? Math.max(1, s.lift)
+            : Math.abs(dx) > 6
+              ? 0
+              : s.lift;
         s.lift += (want - s.lift) * (1 - Math.exp(-dt * (want > s.lift ? 7 : 0.9)));
       } else if (d.kind === 'star') {
         if (Math.hypot(dx, dy) < 3.5 && speed > 6) s.spinSpeed = Math.max(s.spinSpeed, 14);
@@ -245,12 +277,13 @@ export class MarginDoodles {
   }
 
   private spider(d: Doodle, s: DoodleState, hero: Hero, t: number, calm: boolean): void {
-    const top = m(d.y - SILK);
     // A slow pendulum sway while it hangs; still while it climbs.
-    const sway = calm ? 0 : Math.sin(t * 1.4 + d.seed) * m(0.07) * (1 - s.lift);
+    const sway = calm ? 0 : Math.sin(t * 1.4 + d.seed) * m(0.07) * Math.max(0, 1 - s.lift);
     const cx = m(d.x) + sway;
     const cy = m(d.y) - s.lift * m(SILK - 0.7);
     const r = m(0.2);
+    // The thread always runs on above the spider, also while it waits higher than its climb.
+    const top = Math.min(m(d.y - SILK), cy - r - m(0.6));
     // Silk: one fine, unbroken pencil line (dashes belong to the rope alone).
     this.line(
       [

@@ -177,6 +177,7 @@ export function attentionTarget(
     x: player.x + velocity.x * ATTENTION_SIGHT_LEAD,
     y: player.y + velocity.y * ATTENTION_SIGHT_LEAD,
   };
+  const aheadBlocked = sightBlocked(player, ahead, solids);
   for (const a of anchors) {
     // Off screen horizontally: measured from the target, which leads a running player.
     const sx = target.x < a.minX ? a.minX - target.x : target.x > a.maxX ? target.x - a.maxX : 0;
@@ -186,9 +187,15 @@ export function attentionTarget(
     const dy = player.y < a.top ? a.top - player.y : player.y > a.bottom ? player.y - a.bottom : 0;
     // Start framing a little before the anchor is in reach, so the camera has settled by the shot.
     if (Math.hypot(dx, dy) > reach + ATTENTION_EARLY) continue;
-    // An anchor behind terrain that stays hidden for the next half second (1-1's m6 above the
-    // c6 ceiling) cannot be roped, and framing it would pull the hazards below out of view.
-    if (a.center && sightBlocked(player, a.center, solids) && sightBlocked(ahead, a.center, solids))
+    // An anchor behind terrain that stays hidden for the next half second (say, above a ceiling
+    // slab) cannot be roped, and framing it would pull the hazards below out of view. The
+    // look-ahead point only counts if the player can get there: rising under a ceiling, the
+    // straight-line extrapolation pokes through the slab and would see the anchor from above.
+    if (
+      a.center &&
+      sightBlocked(player, a.center, solids) &&
+      (aheadBlocked || sightBlocked(ahead, a.center, solids))
+    )
       continue;
     need = Math.min(need, a.top - ATTENTION_MARGIN - topInset);
     floor = Math.max(floor, a.bottom + ATTENTION_MARGIN);
