@@ -27,6 +27,38 @@ const stats: RuntimeStats = {
 };
 
 describe('debug overlay formatting', () => {
+  it('reports target hp and last closing speed against each threshold', () => {
+    const sim = new Simulation(
+      parseRuntimeTuning(runtimeJson).sim,
+      new KinematicPhysicsAdapter(),
+      parseLevel(lab01),
+    );
+    const target = {
+      id: 'weak-point',
+      position: vec2(3, 4),
+      radius: 0.6,
+      hp: 2,
+      minSpeed: 9,
+      lastImpactSpeed: 8.5,
+    };
+    const text = formatOverlay(
+      { ...sim.snapshot(), targets: [target, { ...target, id: 'broken', hp: 0 }] },
+      stats,
+    ).join('\n');
+    expect(text).toContain(
+      'impact target weak-point hp 2 at 3.00, 4.00 last impact 8.50 m/s / threshold 9.00 m/s',
+    );
+    expect(text).toContain('impact target broken hp 0 broken');
+    expect(
+      formatEvent({ type: 'targetHit', tick: 1, id: target.id, speed: 12, hpLeft: 1 }),
+    ).toContain('target hit weak-point 12.00 m/s hp 1');
+    expect(formatEvent({ type: 'targetBlocked', tick: 2, id: target.id, speed: 8.5 })).toContain(
+      'target blocked weak-point 8.50 m/s',
+    );
+    expect(formatEvent({ type: 'targetBroken', tick: 3, id: target.id })).toContain(
+      'target broken weak-point',
+    );
+  });
   it('reports stomp impact and incoming momentum with the rebound', () => {
     const line = formatEvent({
       type: 'stomp',

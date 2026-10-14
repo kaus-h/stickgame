@@ -24,6 +24,7 @@ import { TouchControlsView, type TouchControlsViewState } from '../TouchControls
 import { entryMarks, exitMissMessage, exitSpec, speedStreaks } from '../exit';
 import { anchorInReach, easeAlpha, OUT_OF_REACH_ALPHA, OUT_OF_REACH_ALPHA_HC } from '../reach';
 import { drawPatroller, goonSeed } from '../enemy';
+import { drawImpactTarget, ImpactTargetFeedback } from '../impactTarget';
 import { DrawIn } from '../living/drawIn';
 import { HAND_FONT } from '../typeface';
 import { PageTurn } from '../living/pageTurn';
@@ -137,6 +138,7 @@ export class GameScene extends Phaser.Scene {
   private exitResult!: Phaser.GameObjects.Text;
   private exitMiss!: Phaser.GameObjects.Text;
   private stomps: { readonly tick: number; readonly at: Vec2 }[] = [];
+  private readonly targetFeedback = new ImpactTargetFeedback();
   private overlay: DebugOverlay | null = null;
   private touchView: TouchControlsView | null = null;
   private frameG!: Phaser.GameObjects.Graphics;
@@ -284,6 +286,7 @@ export class GameScene extends Phaser.Scene {
     this.juice = new InkJuice();
     this.splats = [];
     this.stomps = [];
+    this.targetFeedback.clear();
     this.lastTime = 0;
     this.reducedMotion =
       this.opts.reducedMotion?.() ??
@@ -441,6 +444,7 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
       this.overlay?.onEvents(events);
       this.feedback.onEvents(events);
       this.juice.onEvents(events);
+      this.targetFeedback.onEvents(events);
       for (const e of events) {
         if (e.type === 'reset') {
           this.stomps = [];
@@ -841,6 +845,17 @@ doodles ${String(this.doodles?.stats().count ?? 0)} | birds flying ${String(this
     g.clear();
     this.anchorFx.clear();
     const t = this.blend(previous, current, alpha);
+
+    for (const target of current.targets) {
+      const visual = this.targetFeedback.visual(target, current.tick + t, this.reducedMotion);
+      if (!visual) continue;
+      const before = previous.targets.find((item) => item.id === target.id) ?? target;
+      const position = vec2(
+        lerp(before.position.x, target.position.x, t),
+        lerp(before.position.y, target.position.y, t),
+      );
+      drawImpactTarget(g, target, position, visual);
+    }
 
     for (const enemy of current.enemies) {
       if (!enemy.alive) continue;

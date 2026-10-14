@@ -46,6 +46,7 @@ export interface AnchorPathDef {
 }
 
 export interface LevelDef {
+  readonly targets?: readonly TargetDef[];
   readonly enemies?: readonly PatrollerDef[];
   readonly id: string;
   readonly name: string;
@@ -79,6 +80,18 @@ export interface LevelDef {
   readonly tunnels?: readonly { readonly id: string; readonly region: LevelRegion }[];
   /** Typed compartments use swept entry rules; bare regions preserve legacy lab behavior. */
   readonly exit?: ExitDef | LevelRegion;
+}
+
+/** Momentum-only impact surface; never a rope anchor. */
+export interface TargetDef {
+  readonly id: string;
+  readonly position: Vec2;
+  readonly radius: number;
+  readonly hp: number;
+  readonly minSpeed?: number;
+  /** Hero velocity direction, degrees: 0 = right, 90 = down. Wrapped windows are allowed. */
+  readonly approach?: { readonly min: number; readonly max: number };
+  readonly path?: AnchorPathDef;
 }
 
 export interface PatrollerDef {

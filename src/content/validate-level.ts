@@ -171,6 +171,23 @@ export function validateLevelAuthoring(json: unknown): LevelValidationIssue[] {
   if (level.spawn.y + RADIUS >= level.killY)
     issue('level.killY', 'kill plane intersects spawn', false, true);
 
+  for (const [index, target] of (level.targets ?? []).entries()) {
+    const path = `level.targets[${String(index)}]`;
+    const to = target.path?.to ?? target.position;
+    const min = {
+      x: Math.min(target.position.x, to.x) - target.radius,
+      y: Math.min(target.position.y, to.y) - target.radius,
+    };
+    const max = {
+      x: Math.max(target.position.x, to.x) + target.radius,
+      y: Math.max(target.position.y, to.y) + target.radius,
+    };
+    if (!inBounds(min, level) || !inBounds(max, level))
+      issue(`${path}.path`, 'entire target body and path must remain inside bounds', false, true);
+    if (max.y >= level.killY)
+      issue(path, 'target body and path must remain above the kill plane', false, true);
+  }
+
   for (const [index, enemy] of (level.enemies ?? []).entries()) {
     const path = `level.enemies[${String(index)}]`;
     const to = enemy.path?.to ?? enemy.position;

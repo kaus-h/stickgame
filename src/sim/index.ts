@@ -12,6 +12,7 @@ export type {
   AnchorTimerDef,
   LevelDef,
   SolidDef,
+  TargetDef,
   ExitDef,
   ExitFamily,
   ExitSide,
@@ -20,6 +21,7 @@ export type {
 export { evaluateExitEntry } from './exits';
 export type { ExitAttempt } from './exits';
 export { anchorPathState } from './anchorPath';
+export type { TargetSnapshot } from './impactTargets';
 export type { AnchorPathState } from './anchorPath';
 export { anchorTimerState } from './anchorTimer';
 export type { AnchorTimerState } from './anchorTimer';
@@ -40,4 +42,4 @@ export type {
   SimStats,
   SimulationOptions,
 } from './Simulation';
-export type { PlayerTuning, RopeTuning, SimTuning } from './tuning';
+export type { CombatTuning, PlayerTuning, RopeTuning, SimTuning } from './tuning';

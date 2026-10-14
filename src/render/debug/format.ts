@@ -16,6 +16,12 @@ export function formatEvent(e: SimEvent): string {
       return `${t} jump`;
     case 'stomp':
       return `${t} stomp ${e.enemy} at ${v2(e.at)} incoming ${v2(e.velocity)} rebound ${v2(e.rebound)} m/s`;
+    case 'targetHit':
+      return `${t} target hit ${e.id} ${f2(e.speed)} m/s hp ${String(e.hpLeft)}`;
+    case 'targetBlocked':
+      return `${t} target blocked ${e.id} ${f2(e.speed)} m/s`;
+    case 'targetBroken':
+      return `${t} target broken ${e.id}`;
     case 'land':
       return `${t} land ${e.speed.toFixed(1)} m/s`;
     case 'death':
@@ -60,6 +66,10 @@ export function formatOverlay(s: SimSnapshot, stats: RuntimeStats): string[] {
       ? `target ${t.valid ? 'valid' : t.reason}${t.anchor === null ? '' : ` a${String(t.anchor)}`}${t.impact ? ` impact ${v2(t.impact)}` : ''}${t.distance === null ? '' : ` d ${t.distance.toFixed(3)} m`}${t.snapped ? ' SNAPPED' : ''}  assist ${s.assist}`
       : `target —  assist ${s.assist}`,
     anchorLine(s),
+    ...s.targets.map(
+      (target) =>
+        `impact target ${target.id} hp ${String(target.hp)}${target.hp === 0 ? ' broken' : ''} at ${v2(target.position)} last impact ${target.lastImpactSpeed === null ? 'none' : `${f2(target.lastImpactSpeed)} m/s`} / threshold ${f2(target.minSpeed)} m/s`,
+    ),
     s.enemies.length
       ? `enemies ${s.enemies.map((e) => `${e.id} ${e.alive ? 'alive' : 'defeated'} at ${v2(e.position)} size ${v2(e.size)} v ${v2(e.velocity)} facing ${String(e.facing)}`).join(' | ')}`
       : 'enemies —',
