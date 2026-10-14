@@ -21,6 +21,8 @@ _Last updated: 2026-10-14, after the owner's third checkpoint (#94). **The visio
 - **Deep Research (BrowserGPT, StickGame project), started 2026-10-14:**
   1. art-style worlds and sub-theme worlds for a three-verb rope platformer (precedents, a catalog, a 5-chapter map);
   2. an extremely deep analysis of Animation vs. Animator (qualities → original game design, a do-not-copy list, set-piece concepts).
+     Chat 1: https://chatgpt.com/g/g-p-6ac63b6ae16881918b3dee9a81734dbe-stickgame/c/6acf534b-0758-83e8-b036-3d8f0f98755f
+     Chat 2: https://chatgpt.com/g/g-p-6ac63b6ae16881918b3dee9a81734dbe-stickgame/c/6acf53a6-5ce0-83e8-a5de-3dccd0e776f9
      Read their final reports (with `get_page_text`, in a subagent) before designing.
 - **Preview:** `preview-main` in `.claude/launch.json` serves a detached main worktree at `D:/tmp/wt/preview-main`, port 5191. Update it with `git -C D:/tmp/wt/preview-main checkout --detach origin/main` after a fetch.
 - **Stash:** `stash@{0}` holds another session's dark-lamp WIP (PageLamp class missing). The owner's 2026-10-14 answer superseded it; drop it once the owner confirms.
