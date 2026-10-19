@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { withRects } from './levelRects';
 
 /** Chapter 1 pencil world (PR #102): the invariants the new look must keep. */
 interface PencilHook {
@@ -77,7 +78,10 @@ test('1-1 boots in the pencil world without console errors', async ({ page }) =>
 });
 
 test('1-1: the walkable top line is drawn on the collision line', async ({ page }) => {
-  const level = JSON.parse(await readFile('content/levels/1-1.json', 'utf8')) as LevelJson;
+  const level = JSON.parse(
+    await readFile('content/levels/1-1.json', 'utf8'),
+    withRects,
+  ) as LevelJson;
   const x = (level.spawn[0] ?? 0) + 1.5;
   const floor = level.solids.find(
     (s) =>
@@ -127,7 +131,10 @@ test('1-1: the walkable top line is drawn on the collision line', async ({ page 
 test('1-1: the red floor reads fully red along its top, above the foreground strip', async ({
   page,
 }) => {
-  const level = JSON.parse(await readFile('content/levels/1-1.json', 'utf8')) as LevelJson;
+  const level = JSON.parse(
+    await readFile('content/levels/1-1.json', 'utf8'),
+    withRects,
+  ) as LevelJson;
   const red = level.solids.find((s) => s.id === 'red-ink')?.rect;
   if (!red) throw new Error('Missing red-ink floor');
   await boot(page, '1-1');

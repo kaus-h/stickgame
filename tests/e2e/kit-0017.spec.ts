@@ -1,5 +1,6 @@
 import { expect, test, type Page } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { withRects } from './levelRects';
 
 interface KitHook {
   snapshot(): { tick: number };
@@ -38,7 +39,7 @@ async function boot(page: Page, level: string, extra = ''): Promise<void> {
 
 for (const id of ['1-1', '1-2', '1-3']) {
   test(`${id}: 0017 contact datum and fallback preserve collision`, async ({ page }, info) => {
-    const level = JSON.parse(await readFile(`content/levels/${id}.json`, 'utf8')) as {
+    const level = JSON.parse(await readFile(`content/levels/${id}.json`, 'utf8'), withRects) as {
       spawn: number[];
       solids: { kind?: string; rect?: { x: number; y: number; w: number; h: number } }[];
     };

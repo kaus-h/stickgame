@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { readFile, unlink, writeFile } from 'node:fs/promises';
 import { setTimeout as delay } from 'node:timers/promises';
 import { expect, test, type Page, type TestInfo } from '@playwright/test';
+import { withRects } from './levelRects';
 
 const LEVEL_IDS = ['1-1', '1-2', '1-3'] as const;
 
@@ -150,6 +151,7 @@ const share = (stats: PixelStats, key: 'dark' | 'ink' | 'paper' | 'red'): number
 async function checkLevelKitLevel(page: Page, info: TestInfo, levelId: (typeof LEVEL_IDS)[number]) {
   const source = JSON.parse(
     await readFile(new URL(`../../content/levels/${levelId}.json`, import.meta.url), 'utf8'),
+    withRects,
   ) as LevelJson;
   const sampleX = source.spawn[0] + 3;
   const floorY = source.spawn[1] + 0.35;
