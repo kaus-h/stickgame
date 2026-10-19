@@ -79,17 +79,19 @@ test.setTimeout(60_000);
 /**
  * Scripted player, run inside the page on every animation frame with synthetic touch
  * PointerEvents (finger 1 holds move right, finger 2 taps jump whenever grounded past x = 4 to hop
- * up the start steps, finger 3 touches-and-holds the first anchor (13.5, 2) once airborne over the
- * ledge). No test-runner round trip sits between seeing the state and touching; an invalid press
- * is released and retried, as a player would.
+ * up the start steps; once airborne over the ledge, finger 4 taps the first anchor (13.5, 2) to
+ * highlight it and finger 3 holds the Rope button: the default `button` scheme, Targeting v2).
+ * No test-runner round trip sits between seeing the state and touching; an invalid press is
+ * released and retried, as a player would.
  */
 function scriptedTouchRun(
   page: Page,
   right: Control,
   jump: Control,
+  rope: Control,
 ): Promise<{ attached: boolean; roles: string[]; presses: number }> {
   return page.evaluate(
-    ([rx, ry, jx, jy]) =>
+    ([rx, ry, jx, jy, px, py]) =>
       new Promise((resolve) => {
         const g = (window as unknown as Hook).__stickgame;
         const canvas = document.querySelector('canvas') as HTMLCanvasElement;
@@ -137,7 +139,9 @@ function scriptedTouchRun(
           }
           if (ropeCheckAt < 0 && mode === 'air' && position.x > 8 && position.x < 11) {
             const a = g.worldToScreen(13.5, 2);
-            send('pointerdown', 3, a.x, a.y);
+            send('pointerdown', 4, a.x, a.y);
+            send('pointerup', 4);
+            send('pointerdown', 3, px, py);
             presses++;
             ropeCheckAt = now + 60;
           }
@@ -149,7 +153,7 @@ function scriptedTouchRun(
         };
         requestAnimationFrame(step);
       }),
-    [right.x, right.y, jump.x, jump.y] as const,
+    [right.x, right.y, jump.x, jump.y, rope.x, rope.y] as const,
   );
 }
 
@@ -170,7 +174,7 @@ for (const viewport of [
       const s = await touchState(page);
       expect(s.active).toBe(true);
       expect(s.controls.map((c) => c.id).sort()).toEqual(
-        ['jump', 'left', 'pause', 'respawn', 'restart', 'right'].sort(),
+        ['jump', 'left', 'pause', 'respawn', 'restart', 'right', 'rope'].sort(),
       );
       for (const c of s.controls) {
         expect(c.x - c.r).toBeGreaterThanOrEqual(0);
@@ -191,7 +195,7 @@ for (const viewport of [
       const right = control(s0, 'right');
       const jump = control(s0, 'jump');
 
-      const run = await scriptedTouchRun(page, right, jump);
+      const run = await scriptedTouchRun(page, right, jump, control(s0, 'rope'));
       expect(run.attached).toBe(true);
       // Move and rope fingers held at once (jump may still be mid-tap).
       expect(run.roles).toEqual(expect.arrayContaining(['move', 'rope']));
@@ -237,7 +241,8 @@ test.describe('real touch input (CDP)', () => {
       if (points.size > 0) await send('touchStart');
     };
 
-    await page.goto('/?level=lab-01&renderer=canvas');
+    // The legacy direct-touch scheme: its play-area rope finger also exercises the per-tick aim.
+    await page.goto('/?level=lab-01&renderer=canvas&scheme=direct-touch');
     await page.waitForFunction(() => '__stickgame' in window);
     await page.waitForTimeout(400);
     expect((await touchState(page)).active).toBe(false);
