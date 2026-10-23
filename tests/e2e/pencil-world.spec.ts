@@ -30,10 +30,8 @@ const hook = (page: Page) =>
     (window as unknown as { __stickgame: PencilHook }).__stickgame.kitPresentation(),
   );
 
-// Chapter 1 ships on the notebook since 2026-10-23; the pencil world stays reachable by override.
 async function boot(page: Page, level: string, extra = ''): Promise<void> {
-  const world = extra.includes('world=') ? '' : '&world=pencil';
-  await page.goto(`/?level=${level}&renderer=canvas${world}${extra}`);
+  await page.goto(`/?level=${level}&renderer=canvas${extra}`);
   await page.waitForFunction(() => {
     try {
       const h = (window as unknown as { __stickgame: PencilHook }).__stickgame;

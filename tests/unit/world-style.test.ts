@@ -4,7 +4,6 @@ vi.mock('phaser', () => ({}));
 import {
   getWorldStyle,
   NOTEBOOK_STYLE,
-  NOTEBOOK_WILDS_STYLE,
   PENCIL_STYLE,
   resolveWorldStyle,
   WORLD_STYLES,
@@ -57,7 +56,7 @@ describe('world style registry', () => {
     expect(NOTEBOOK_STYLE.backgroundKey).toBe('kit17');
     expect(NOTEBOOK_STYLE.motes).toBe(true);
     expect(NOTEBOOK_STYLE.musicBankId).toBeUndefined();
-    expect(Object.keys(WORLD_STYLES)).toEqual(['notebook', 'notebook/margin-wilds', 'pencil']);
+    expect(Object.keys(WORLD_STYLES)).toEqual(['notebook', 'pencil']);
     expect(NOTEBOOK_STYLE.page).toBeUndefined();
     expect(NOTEBOOK_STYLE.terrainPainter).toBeUndefined();
   });
@@ -105,7 +104,7 @@ describe('world style registry', () => {
 });
 
 describe('pencil world (chapter 1)', () => {
-  it('is an unruled sketchbook with no margin line or binding, graphite terrain and shafts', () => {
+  it('is a ruled sketchbook with no margin line or binding, graphite terrain and shafts', () => {
     expect(PENCIL_STYLE.page).toEqual({ kind: 'sketchbook', margin: false, binding: false });
     expect(PENCIL_STYLE.terrainPainter).toBe('graphite');
     expect(PENCIL_STYLE.light).toBe('graphite-shafts');
@@ -133,13 +132,11 @@ describe('pencil world (chapter 1)', () => {
     }
   });
 
-  it('chapter 1 is the notebook with its doodled vista; pencil sub-themes and ?world= still resolve', () => {
+  it('resolves both chapter 1 sub-themes to pencil, and the ?world= override wins', () => {
     expect(getWorldStyle({ family: 'pencil', subTheme: 'margin-wilds' })).toBe(PENCIL_STYLE);
     expect(getWorldStyle({ family: 'pencil', subTheme: 'construction-lines' })).toBe(PENCIL_STYLE);
     const level = compileLevel(firstRope);
-    expect(resolveWorldStyle(level, '')).toBe(NOTEBOOK_WILDS_STYLE);
-    expect(NOTEBOOK_WILDS_STYLE).toEqual({ ...NOTEBOOK_STYLE, backgroundKey: 'notebook-vista' });
-    expect(resolveWorldStyle(level, '?world=pencil')).toBe(PENCIL_STYLE);
+    expect(resolveWorldStyle(level, '')).toBe(PENCIL_STYLE);
     expect(resolveWorldStyle(level, '?level=1-1&world=notebook')).toBe(NOTEBOOK_STYLE);
     expect(resolveWorldStyle(compileLevel(movingPivots), '?world=pencil')).toBe(PENCIL_STYLE);
     expect(worldOverride('?world=unknown')).toBeNull();

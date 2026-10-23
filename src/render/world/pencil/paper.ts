@@ -2,7 +2,7 @@ import { worldColorCss, type WorldStyle } from '../WorldStyle';
 import { rng } from './rng';
 
 /**
- * Toothy cool sketchbook paper (chapter 1): no ruling, no margin. Per-pixel tooth (seamless by
+ * Toothy cool sketchbook paper (chapter 1) with notebook ruling (owner 2026-10-23), no margin. Per-pixel tooth (seamless by
  * construction), faint wrapped tonal blotches and short fibres. The large-scale tone and the
  * graphite smudges live in the parallax vista, so a 256 px repeat never reads as a pattern.
  */
@@ -32,6 +32,14 @@ export function paintSketchbookPaper(
         c.fillRect(x + ox - rad, y + oy - rad, rad * 2, rad * 2);
       }
     }
+  }
+  // Notebook ruling every 0.5 m (32 px, so the 256 px tile repeats seamlessly), drawn before the
+  // tooth so the grain breaks the lines up like ink on real paper.
+  for (let y = 16; y < size; y += 32) {
+    c.fillStyle = worldColorCss(style.paper.rule, 0.5);
+    c.fillRect(0, y, size, 1);
+    c.fillStyle = worldColorCss(style.paper.rule, 0.18);
+    c.fillRect(0, y + 1, size, 1);
   }
   // Tooth: cold-press grain, slightly clumped so it reads as paper rather than noise.
   const img = c.getImageData(0, 0, size, size);
