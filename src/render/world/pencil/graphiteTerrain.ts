@@ -125,9 +125,10 @@ export function paintGraphiteTerrain(
     c.fillStyle = g;
     band(c, f, depth, m(0.4));
   }
-  // 2. Directional hatching with a lighter crossing pass, lifted strokes and cracks.
-  hatchField(c, tile, -1.45, 10 / hatchDensity, 'rgba(14,15,19,0.13)', 0.7, 1);
-  hatchPatches(c, tile, hatchDensity);
+  // 2. Directional hatching: a faint long field, then hand patches whose density follows the
+  // light, so value comes from how hard the pencil worked, not from a uniform texture.
+  hatchField(c, tile, -1.45, 10 / hatchDensity, 'rgba(14,15,19,0.08)', 0.7, 1);
+  hatchPatches(c, tile, hatchDensity, toneField(frames));
   cracks(c, tile);
   // Graphite gathers a little toward the pit, capped so a deep mass never goes black.
   const sink = c.createLinearGradient(0, floorY - m(5), 0, floorY);
@@ -141,7 +142,7 @@ export function paintGraphiteTerrain(
     const litSide = !isTop(f) && !isBottom(f) && f.nx < -0.5;
     if (!isTop(f) && !litSide) continue;
     const depth = isTop(f) ? m(1.8) : m(0.8);
-    const lit = isTop(f) ? 0.55 : 0.32;
+    const lit = isTop(f) ? 0.42 : 0.32;
     const mx = (f.a.x + f.b.x) / 2,
       my = (f.a.y + f.b.y) / 2;
     const g = c.createLinearGradient(mx, my, mx + f.nx * depth, my + f.ny * depth);
@@ -233,29 +234,112 @@ function hatchField(
   }
 }
 
+/** Smooth value noise in 0..1 over a world-locked lattice (x, y in lattice cells). */
+function noise2(x: number, y: number, seed: number): number {
+  const ix = Math.floor(x),
+    iy = Math.floor(y);
+  const sx = x - ix,
+    sy = y - iy;
+  const fx = sx * sx * (3 - 2 * sx),
+    fy = sy * sy * (3 - 2 * sy);
+  const at = (i: number, j: number): number => lattice(i * 7919 + j * 104729, seed);
+  const top = at(ix, iy) * (1 - fx) + at(ix + 1, iy) * fx;
+  const bottom = at(ix, iy + 1) * (1 - fx) + at(ix + 1, iy + 1) * fx;
+  return top * (1 - fy) + bottom * fy;
+}
+
+const smooth01 = (v: number): number => {
+  const s = Math.min(1, Math.max(0, v));
+  return s * s * (3 - 2 * s);
+};
+
+/** Where an edge crosses world x (null if it doesn't span x or is too steep to be a top). */
+const edgeYAt = (f: EdgeFrame, x: number): number | null =>
+  Math.abs(f.ux) < 0.3 || x < Math.min(f.a.x, f.b.x) || x > Math.max(f.a.x, f.b.x)
+    ? null
+    : f.a.y + ((x - f.a.x) * f.uy) / f.ux;
+
+/** Where an edge crosses world y (null if it doesn't span y or is too flat to be a face). */
+const edgeXAt = (f: EdgeFrame, y: number): number | null =>
+  Math.abs(f.uy) < 0.3 || y < Math.min(f.a.y, f.b.y) || y > Math.max(f.a.y, f.b.y)
+    ? null
+    : f.a.x + ((y - f.a.y) * f.ux) / f.uy;
+
 /**
- * Hand cross-hatching: world cells each hold a patch of short parallel strokes at the cell's own
- * angle (a few favoured directions), a second darker patch crossing it in some cells, and lifted
- * pale strokes where the paper shows through. Reads as drawn by hand, not as ruled rain.
+ * How much shade the pencil puts at a point inside the mass: 0 is lit (just under the walkable top
+ * or by a face turned to the upper-right light), 1 is deep shade (low in the mass, by a shadow
+ * face, under a lip). World-locked broad noise breaks it up so no two masses shade alike.
  */
-function hatchPatches(c: CanvasRenderingContext2D, tile: GraphiteTile, density: number): void {
+function toneField(frames: readonly EdgeFrame[]): (x: number, y: number) => number {
+  const tops = frames.filter(isTop),
+    bottoms = frames.filter(isBottom);
+  const faces = frames.filter((f) => !isTop(f) && !isBottom(f));
+  const shadowFaces = faces.filter((f) => f.nx > 0.5),
+    litFaces = faces.filter((f) => f.nx < -0.5);
+  return (x, y) => {
+    let below = m(6);
+    for (const f of tops) {
+      const ty = edgeYAt(f, x);
+      if (ty !== null && ty <= y + 2) below = Math.min(below, y - ty);
+    }
+    let above = m(9);
+    for (const f of bottoms) {
+      const by = edgeYAt(f, x);
+      if (by !== null && by >= y - 2) above = Math.min(above, by - y);
+    }
+    let fromShadow = m(9);
+    for (const f of shadowFaces) {
+      const fx = edgeXAt(f, y);
+      if (fx !== null && fx <= x + 2) fromShadow = Math.min(fromShadow, x - fx);
+    }
+    let fromLit = m(9);
+    for (const f of litFaces) {
+      const fx = edgeXAt(f, y);
+      if (fx !== null && fx >= x - 2) fromLit = Math.min(fromLit, fx - x);
+    }
+    let t = 0.12 + 0.52 * smooth01(below / m(5));
+    t += 0.34 * (1 - smooth01(fromShadow / m(2.4)));
+    t += 0.3 * (1 - smooth01(above / m(1.4)));
+    t -= 0.2 * (1 - smooth01(fromLit / m(1.6)));
+    t += (noise2(x / m(3.2), y / m(3.2), 41) - 0.5) * 0.42;
+    return Math.min(1, Math.max(0, t));
+  };
+}
+
+/**
+ * Hand cross-hatching that follows the light: world cells each hold a patch of short parallel
+ * strokes. In the light the patches are sparse, long and pale, with gaps where the paper breathes;
+ * in shade they tighten and cross in two or three layers. The stroke direction flows in broad
+ * zones (one hand, one angle at a time), not per cell, so the mass never reads as a woven carpet.
+ */
+function hatchPatches(
+  c: CanvasRenderingContext2D,
+  tile: GraphiteTile,
+  density: number,
+  tone: (x: number, y: number) => number,
+): void {
   const cell = 34;
-  const angles = [-1.05, -0.95, -1.15, -1.25, 0.55, -0.85];
+  const angles = [-1.05, -1.22, -0.9, -1.12];
   c.lineCap = 'round';
   for (let gy = Math.floor(tile.y / cell) - 1; gy <= (tile.y + tile.h) / cell + 1; gy++) {
     for (let gx = Math.floor(tile.x / cell) - 1; gx <= (tile.x + tile.w) / cell + 1; gx++) {
       const r = rng(gx * 73856093 + gy * 19349663 + 11);
-      const layers = r() < 0.35 ? 2 : 1;
+      const t = tone(gx * cell + cell / 2, gy * cell + cell / 2);
+      const zone = noise2((gx * cell) / m(4.5), (gy * cell) / m(4.5), 23);
+      const base = (angles[Math.floor(zone * angles.length)] ?? -1.05) + (r() - 0.5) * 0.18;
+      // Light areas skip patches outright now and then: the paper breathes through.
+      const skip = t < 0.4 && r() < 0.5 - t;
+      const layers = skip ? 0 : t > 0.74 ? 3 : t > 0.46 ? 2 : 1;
       for (let layer = 0; layer < layers; layer++) {
-        const ang = (angles[Math.floor(r() * angles.length)] ?? -1) + (r() - 0.5) * 0.25;
+        const ang = base + (layer === 0 ? 0 : layer === 1 ? 1.25 + r() * 0.35 : 0.5 + r() * 0.2);
         const ux = Math.cos(ang),
           uy = Math.sin(ang);
         const cx = gx * cell + cell / 2 + (r() - 0.5) * cell * 0.6,
           cy = gy * cell + cell / 2 + (r() - 0.5) * cell * 0.6;
-        const strokes = Math.round((6 + r() * 7) * density * 0.7);
-        const gap = 3 + r() * 2.2;
-        const len = 18 + r() * 26;
-        const dark = layer === 0 ? 0.38 + r() * 0.22 : 0.42 + r() * 0.2;
+        const strokes = Math.round((4 + r() * 5 + t * 9) * density * 0.7);
+        const gap = 4.4 - t * 1.8 + r() * 1.6;
+        const len = 32 - t * 14 + r() * 20;
+        const dark = (0.16 + t * 0.5) * (layer === 0 ? 1 : 0.9) + r() * 0.12;
         for (let k = 0; k < strokes; k++) {
           const o = (k - strokes / 2) * gap;
           const l = len * (0.6 + r() * 0.5);
@@ -269,8 +353,8 @@ function hatchPatches(c: CanvasRenderingContext2D, tile: GraphiteTile, density: 
           c.stroke();
         }
       }
-      // Lifted pale strokes: paper tooth catching the light.
-      if (r() < 0.5) {
+      // Lifted pale strokes: paper tooth catching the light, mostly where the light falls.
+      if (r() < 0.2 + (1 - t) * 0.5) {
         const ang = -1.1 + (r() - 0.5) * 0.4;
         const n = 2 + Math.floor(r() * 4);
         const cx = gx * cell + r() * cell,

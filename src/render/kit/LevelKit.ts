@@ -712,7 +712,11 @@ export class LevelKit {
   private paintHazard(c: CanvasRenderingContext2D, solid: SolidDef): void {
     if (kitHazardKind(solid.id) === 'pool') {
       // Living Notebook: drawn red ballpoint; the live surface is drawn by the scene.
-      paintInkPool(c, solid);
+      paintInkPool(
+        c,
+        solid,
+        this.level.solids.filter((s) => s.kind === 'hazard' && kitHazardKind(s.id) === 'pool'),
+      );
       return;
     }
     const box = bounds(solid),

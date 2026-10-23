@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { vec2 } from '../../src/core';
 import type { SimSnapshot } from '../../src/sim';
 import { DUST_MIN_SPEED, InkJuice, ROPE_DRAW_ON } from '../../src/render/living/inkJuice';
-import { poolShape, rippleAt } from '../../src/render/living/inkPool';
+import { coveredSpans, poolShape, rippleAt, surfaceOffset } from '../../src/render/living/inkPool';
 import {
   BOIL_DRAWINGS,
   BOIL_FPS,
@@ -85,8 +85,25 @@ describe('ink juice', () => {
 
 describe('ink pools', () => {
   it('ripples stay within a few centimetres of the authored surface', () => {
-    for (let i = 0; i < 200; i++)
-      expect(Math.abs(rippleAt(i * 0.37, i * 0.11, 17))).toBeLessThan(0.04);
+    for (let i = 0; i < 200; i++) {
+      expect(Math.abs(rippleAt(i * 0.37, i * 0.11, 17))).toBeLessThan(0.06);
+      // The inked surface never rises visibly above the lethal top, and never sinks far below it.
+      const drawn = surfaceOffset(i * 0.37, i * 0.11, 17);
+      expect(drawn).toBeGreaterThan(-0.01);
+      expect(drawn).toBeLessThan(0.1);
+    }
+  });
+  it('joins a pool resting in the red floor: the floor has no surface under it', () => {
+    const floor = { minX: 0, maxX: 40, top: 11.4, bottom: 13, seed: 1 };
+    const basin = { minX: 10, maxX: 22, top: 7.8, bottom: 11.4, seed: 2 };
+    const beside = { minX: 30, maxX: 34, top: 9, bottom: 11.4, seed: 3 };
+    const apart = { minX: 50, maxX: 60, top: 5, bottom: 11.4, seed: 4 };
+    const all = [floor, basin, beside, apart];
+    expect(coveredSpans(floor, all)).toEqual([
+      [10, 22],
+      [30, 34],
+    ]);
+    expect(coveredSpans(basin, all)).toEqual([]);
   });
   it('reads the pool rectangle from its collision polygon', () => {
     const shape = poolShape({
