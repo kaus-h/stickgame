@@ -58,15 +58,45 @@ export function cameraScale(viewportW: number, viewportH: number, p: CameraParam
   return Math.min(viewportH / p.viewHeight, viewportW / p.minViewWidth);
 }
 
-/** Where the camera wants to be centered for this player state. */
-export function cameraTarget(position: Vec2, velocity: Vec2, p: CameraParams): Vec2 {
+/** Meters the hero may rise above the held floor height before the view follows upward. */
+export const HOLD_ABOVE = 3;
+/** Meters the hero may drop below the held floor height before the view follows downward. */
+export const HOLD_BELOW = 1.5;
+
+/**
+ * Vertical hold (owner 2026-10-23: the view must not bob on jumps). Like Mario or Celeste, the
+ * camera keeps the height of the floor the hero last stood on; a jump inside the window
+ * [held - HOLD_ABOVE, held + HOLD_BELOW] moves nothing vertically. Landing on a new floor re-holds
+ * (the camera eases there), and leaving the window drags the hold along with the hero. Meters,
+ * y down. `null` (first frame, reset) holds the current height.
+ */
+export function holdVertical(held: number | null, y: number, grounded: boolean): number {
+  if (held === null || grounded) return y;
+  if (y < held - HOLD_ABOVE) return y + HOLD_ABOVE;
+  if (y > held + HOLD_BELOW) return y - HOLD_BELOW;
+  return held;
+}
+
+/**
+ * Where the camera wants to be centered for this player state. With `heldY` (see holdVertical)
+ * the vertical target is the held height; vertical lookahead only applies once a fall has carried
+ * the hero out of the bottom of the hold window.
+ */
+export function cameraTarget(
+  position: Vec2,
+  velocity: Vec2,
+  p: CameraParams,
+  heldY?: number,
+): Vec2 {
   const clamp = (v: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, v));
+  const look = clamp(velocity.y * p.verticalLookaheadTime, p.verticalMin, p.verticalMax);
+  const y =
+    heldY === undefined
+      ? position.y + look
+      : heldY + (position.y >= heldY + HOLD_BELOW - 1e-6 && velocity.y > 0 ? look : 0);
   return {
     x: position.x + clamp(velocity.x * p.lookaheadTime, -p.lookaheadMax, p.lookaheadMax),
-    y:
-      position.y +
-      clamp(velocity.y * p.verticalLookaheadTime, p.verticalMin, p.verticalMax) +
-      p.verticalBias,
+    y: y + p.verticalBias,
   };
 }
 

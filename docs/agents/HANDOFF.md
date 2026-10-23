@@ -2,59 +2,42 @@
 
 The orchestrator (Opus) rewrites this at the end of every milestone, or when the context window reaches about 400k tokens, before giving the owner a paste-ready prompt for a new chat ([workflow.md](workflow.md)). Keep it under about 60 lines. Durable rules belong in AGENTS.md, canon docs or memory, not here.
 
-_Last updated: 2026-10-14 (second session of the day), at the 400k context handoff._
+_Last updated: 2026-10-23, at the context handoff._
 
 ## State
 
-- **Landed today:**
-  - GMR-120: world-style plumbing (#96)
-  - GMR-119: swing-impact targets and `lab-impact` (#99)
-  - Music remix toward "cyberpunk future whimsy", unheard by Opus (#98)
-  - Bundle total budget raised to 1350 KB (#101)
-  - World bible draft `docs/art/worlds.md` and round-2 concept frames `assets/concepts/0018-worlds/` (#100)
-  - `scripts/agents/safe-merge.sh` (#100). **Always merge with it.** A hand gate once merged #99 before CI ran.
-- **Canon:** Linear docs 03, 04, 05, 08 and 12 cover Targeting v2 and combat = swing impacts + stomps (no attack button, ever).
-- **Owner said "you decide":**
-  - **Chapter order:** The Mark (pencil) → The Cut (paper) → The Wash (paint) → The Signal (neon) → The Upload (inside the machine).
-  - **Concept picks:** chapter 1 = `pencil.jpg`, chapter 5 = `digital-b.jpg`.
-  - `digital.jpg` is rejected: desktop windows and a cursor are on the AvA do-not-copy list.
-  - The owner has not yet seen the pencil build or heard the remix.
-- **Stash:** the dark-lamp WIP was dropped (owner OK).
+- **Landed since 10-14:**
+  - #104: touch e2e fixed for the default Rope-button scheme (main went red after #97).
+  - #105: 1-1 terrain masses are organic polygons (tops and a 0.9 m lip exact; flanks only cut inward).
+  - #106 → reverted by #107: a notebook-vista experiment; the owner prefers the pencil 1-1.
+  - #107: pencil 1-1 kept; sketchbook paper now has 0.5 m notebook ruling; hero head WebPs re-cut with real alpha (the white box around the head).
+  - This branch (`opus/1-1-steady-camera-polish`): vertical camera hold (`holdVertical`, used by GameScene and the solver's camera-fair), vista layers 1:1 horizontally and screen-fixed vertically, light shafts removed, top-band fix.
+- **Owner rulings 2026-10-23** (also in memory `owner-answers-2026-10-23`):
+  - Chapter 1 stays pencil, with notebook lines behind it.
+  - Backdrop: no parallax, no vertical motion at all; it just scrolls by with horizontal progress.
+  - No spotlight/light shafts.
+  - The camera must not bob on jumps (Mario/Celeste hold).
+  - "Polish this game, it's so ugly right now": the bar is high; polish is the priority.
+- The owner's dev window is about 4:3 (1142×850). At 4:3 the whole level height fits, so check every visual change at 4:3 as well as 16:9.
 
 ## In flight (check first)
 
-- **#102, chapter 1 pencil world** (`opus/pencil-world-ch1`, worktree `D:/tmp/wt/pencil`):
-  - 1-1, 1-2, 1-3 and 2-1 are set to `world: pencil`. `?world=notebook` gives A/B.
-  - Notebook e2e specs are pinned to `?world=notebook`; `tests/e2e/pencil-world.spec.ts` is new.
-  - Merge with `safe-merge.sh 102` once CI is green.
-  - Known shortfalls: terrain silhouettes are still blocky because the level geometry is rectangles (a redesign task), hatching is a bit uniform, cloud streaks run horizontal.
-  - Unverified: phone memory (estimated 9–11 MB per level), high contrast.
-- **#97, GMR-118 Targeting v2:**
-  - Finished by a Sonnet agent after sol hit its usage limit. Main was merged in and `npm run check` passes.
-  - The route solver now vetoes camera-unfair presses (`camera-fair.ts`). Every fixture is re-solved, the level13 proofs re-derived by inputs, and the device-lab golden hashes updated.
-  - Lessons hold: in 1-1 C5 the run-off still dies and the early jump survives (inputs re-timed, no geometry change).
-  - Merge after #102 (re-merge main if it conflicts), then `safe-merge.sh 97`.
-  - Then run a hands-on feel check of the highlight on mouse and pad. Mobile tap vs. Rope button is still PROTOTYPE REQUIRED.
+- The branch above: if not merged, run `npm run check`, related e2e (`pencil-world`, `kit-0017`, `level-kit`, `terrain-connections`), then `safe-merge.sh`.
 
 ## Next
 
-1. Merge #102, then #97. Update the owner's checkout (`git pull` in `D:/StickGame`) and the preview (`git -C D:/tmp/wt/preview-main checkout --detach origin/main`, port 5191).
-2. **Owner checkpoint (batch):**
-   - play the pencil chapter 1 (A/B with `?world=notebook`);
-   - listen to the music remix;
-   - try Targeting v2;
-   - answer the 4 open questions in `docs/art/worlds.md`, mainly: may a phased anchor pre-pulse its appearance?
-3. **1-1 terrain redesign in the pencil style:** organic silhouettes in level geometry (overhangs, ledges with lips, rock spires), keeping every lesson pinned (`level11.test.ts`). This is Opus's own level work.
-4. **Level Factory:** GMR-116 (authoring format; the world field now exists) and GMR-117 (mechanic catalog).
-5. Once the owner confirms the bible, fold it into 07A, doc 14 and the `world-look-decision` memory.
-6. A first boss prototype on GMR-119 impact targets (three hits, three arena states).
+1. **Polish pass on 1-1 (Opus hands-on, use an Opus subagent for still loops):** backdrop composition at 4:3 and 16:9 (the far landmarks are busy, and the mist is flat grey); terrain hatching too uniform; red ink edge; HUD legibility. Show the owner a 4:3 contact sheet before merging big look changes.
+2. Owner checkpoint: play 1-1 and confirm the camera hold and the static backdrop.
+3. Then the 1-2 and 1-3 look in the same style, and Level Factory (GMR-116/117).
+4. The worlds.md open questions are still unanswered (order, phased-anchor pre-pulse, The Correction).
 
 ## Workflow notes
 
-- **sol (Codex CLI):** always `CODEX_SANDBOX=bypass`. Judge runs by the branch commit, not the result file. The quota ran out 2026-10-14; fall back to Sonnet subagents for mechanical work.
-- **Stills:** `npm run film:still -- <level> <ticks> <out.png>`. Make contact sheets of at most 1500 px. Never Read a full-resolution PNG in the main thread.
-- **Local e2e:** `E2E_PORT=5197 PW_CHANNEL=chrome npx playwright test <spec>`. Never use :5173.
-- **Combined PRs can bust budgets** even when each passed alone. Re-check main CI after merging several.
+- **Stills:** `npm run film:still -- <level> <ticks> <out.png> "" <WxH> [query]`. Contact sheets ≤1500 px. The browser pane's viewport emulation renders the game wrongly; use film stills for sizes.
+- The browser pane's save had High contrast on, which hides the vista; it is off now.
+- `tests/unit/kit17-assets.test.ts` times out (5 s) under full-suite load on this machine; it passes alone and in CI.
+- sol quota ran out 10-14; use Sonnet/Opus subagents.
+- Always merge with `scripts/agents/safe-merge.sh <PR>`.
 
 ## Watch out
 

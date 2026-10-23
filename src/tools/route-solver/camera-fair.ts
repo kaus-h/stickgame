@@ -9,6 +9,7 @@ import {
   framedAnchors,
   HUD_BAND_PX,
   stepCamera,
+  holdVertical,
 } from '../../render/camera';
 import type { LevelDef } from '../../sim';
 import { PlanSource, type PlanStep } from './plan';
@@ -51,6 +52,7 @@ export function makeCameraFair(level: LevelDef, tuning: RuntimeTuning): CameraFa
     const world = World.create(level, tuning);
     const source = new PlanSource(steps, level);
     const eased: (Vec2 | null)[] = views.map(() => null);
+    let held: number | null = null;
     const seen = views.map(() => new Map<number, number>());
     let resets = -1;
     let attemptStart = 0;
@@ -62,12 +64,13 @@ export function makeCameraFair(level: LevelDef, tuning: RuntimeTuning): CameraFa
         resets = s.resets;
         attemptStart = world.tick;
       }
+      held = holdVertical(reset ? null : held, s.player.position.y, s.player.mode === 'grounded');
       for (let v = 0; v < views.length; v++) {
         const view = views[v] as (typeof views)[number];
         const seenV = seen[v] as Map<number, number>;
         if (reset) seenV.clear();
         const target = attentionTarget(
-          cameraTarget(s.player.position, s.player.velocity, DEFAULT_CAMERA),
+          cameraTarget(s.player.position, s.player.velocity, DEFAULT_CAMERA, held),
           s.player.position,
           s.player.velocity,
           framed,
