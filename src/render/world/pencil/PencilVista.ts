@@ -11,6 +11,13 @@ import {
   paintSky,
   type LayerCanvas,
 } from './vista';
+import {
+  paintNotebookClouds,
+  paintNotebookFar,
+  paintNotebookForeground,
+  paintNotebookMid,
+  paintNotebookNear,
+} from './notebookVista';
 
 /**
  * Chapter 1 depth (pencil world): parallax layers baked once per level into canvas textures, then
@@ -32,12 +39,59 @@ interface LayerSpec {
   readonly paint: (lc: LayerCanvas, r: () => number) => void;
 }
 
+/** Which layers a world bakes, plus its optional light shafts and its foreground strip. */
+export interface VistaRecipe {
+  readonly id: string;
+  readonly layers: readonly LayerSpec[];
+  readonly shafts:
+    ((c: CanvasRenderingContext2D, w: number, h: number, r: () => number) => void) | null;
+  readonly foreground: (c: CanvasRenderingContext2D, w: number, h: number, r: () => number) => void;
+}
+
 const LAYERS: readonly LayerSpec[] = [
   { id: 'sky', f: 0.03, fy: 0.02, depth: -99.6, scale: 0.3, band: 1, paint: paintSky },
   { id: 'far', f: 0.08, fy: 0.04, depth: -99.4, scale: 0.45, band: 1, paint: paintFar },
   { id: 'midfar', f: 0.18, fy: 0.08, depth: -98.6, scale: 0.5, band: 0.8, paint: paintMidFar },
   { id: 'mid', f: 0.32, fy: 0.14, depth: -98.2, scale: 0.55, band: 0.72, paint: paintMid },
 ];
+export const PENCIL_RECIPE: VistaRecipe = {
+  id: 'pencil',
+  layers: LAYERS,
+  shafts: paintShafts,
+  foreground: paintForeground,
+};
+
+/**
+ * The ruled-notebook backdrop (owner 2026-10-23): doodles on the page itself, transparent so the
+ * ruling shows through, at clearly different rates so the world scrolls past like a side-scroller.
+ */
+export const NOTEBOOK_RECIPE: VistaRecipe = {
+  id: 'notebook',
+  layers: [
+    {
+      id: 'clouds',
+      f: 0.14,
+      fy: 0.05,
+      depth: -99.6,
+      scale: 0.4,
+      band: 1,
+      paint: paintNotebookClouds,
+    },
+    { id: 'far', f: 0.3, fy: 0.1, depth: -99.4, scale: 0.5, band: 0.75, paint: paintNotebookFar },
+    { id: 'mid', f: 0.52, fy: 0.18, depth: -98.6, scale: 0.6, band: 0.55, paint: paintNotebookMid },
+    {
+      id: 'near',
+      f: 0.74,
+      fy: 0.3,
+      depth: -98.2,
+      scale: 0.6,
+      band: 0.35,
+      paint: paintNotebookNear,
+    },
+  ],
+  shafts: null,
+  foreground: paintNotebookForeground,
+};
 const SHAFT_DEPTH = -99;
 const SHAFT_W = 512;
 const SHAFT_H = 288;
@@ -77,8 +131,9 @@ export class PencilVista {
     private readonly scene: Phaser.Scene,
     private readonly level: LevelDef,
     private readonly onObject: (obj: Phaser.GameObjects.GameObject) => void,
+    private readonly recipe: VistaRecipe = PENCIL_RECIPE,
   ) {
-    this.seed = seedOf(`pencil:${level.id}`);
+    this.seed = seedOf(`${recipe.id === 'pencil' ? 'pencil' : recipe.id}:${level.id}`);
     scene.events.once('shutdown', () => {
       this.destroy();
     });
@@ -157,7 +212,7 @@ export class PencilVista {
     const b = this.level.bounds;
     const travelX = m(b.maxX - b.minX);
     const travelY = Math.max(0, m(b.maxY - b.minY) - viewH);
-    LAYERS.forEach((spec, index) => {
+    this.recipe.layers.forEach((spec, index) => {
       const worldW = bw + spec.f * travelX;
       const worldH = bh + spec.fy * travelY;
       const cropH = Math.min(worldH, bh * spec.band + spec.fy * travelY + 8);
@@ -175,7 +230,7 @@ export class PencilVista {
       const images: Phaser.GameObjects.Image[] = [];
       for (let cx = 0, k = 0; cx < w; cx += CHUNK, k++) {
         const cw = Math.min(CHUNK, w - cx);
-        const key = `pencil-vista-${this.level.id}-${String(gen)}-${spec.id}-${String(k)}`;
+        const key = `${this.recipe.id}-vista-${this.level.id}-${String(gen)}-${spec.id}-${String(k)}`;
         const tex = this.scene.textures.createCanvas(key, cw, h);
         if (!tex) continue;
         this.keys.push(key);
@@ -201,11 +256,14 @@ export class PencilVista {
       });
     });
     // Light shafts: screen-sized, between the landmark and the nearer cliffs.
-    const shaftKey = `pencil-shafts-${String(gen)}`;
-    const shaftTex = this.scene.textures.createCanvas(shaftKey, SHAFT_W, SHAFT_H);
-    if (shaftTex) {
+    const shaftKey = `${this.recipe.id}-shafts-${String(gen)}`;
+    const paintLight = this.recipe.shafts;
+    const shaftTex = paintLight
+      ? this.scene.textures.createCanvas(shaftKey, SHAFT_W, SHAFT_H)
+      : null;
+    if (paintLight && shaftTex) {
       this.keys.push(shaftKey);
-      paintShafts(shaftTex.getContext(), SHAFT_W, SHAFT_H, rng(this.seed + 31337));
+      paintLight(shaftTex.getContext(), SHAFT_W, SHAFT_H, rng(this.seed + 31337));
       shaftTex.refresh();
       this.shafts = this.scene.add
         .image(0, 0, shaftKey)
@@ -215,18 +273,18 @@ export class PencilVista {
       this.onObject(this.shafts);
     }
     // Near foreground: dark silhouettes along the bottom edge, on the screen-space camera.
-    const fgKey = `pencil-foreground-${String(gen)}`;
+    const fgKey = `${this.recipe.id}-foreground-${String(gen)}`;
     const fgTex = this.scene.textures.createCanvas(fgKey, FG_W, FG_H);
     if (fgTex) {
       this.keys.push(fgKey);
-      paintForeground(fgTex.getContext(), FG_W, FG_H, rng(this.seed + 4242));
+      this.recipe.foreground(fgTex.getContext(), FG_W, FG_H, rng(this.seed + 4242));
       fgTex.refresh();
       this.foreground = this.scene.add
         .tileSprite(0, 0, 1, FG_H, fgKey)
         .setOrigin(0, 0)
         .setScrollFactor(0)
         .setDepth(FOREGROUND_DEPTH)
-        .setName('pencil-foreground');
+        .setName(`${this.recipe.id}-foreground`);
       this.fgDisplayKey =
         (this.foreground as unknown as { displayTexture: Phaser.Textures.Texture | null })
           .displayTexture?.key ?? null;
