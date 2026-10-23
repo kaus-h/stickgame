@@ -657,13 +657,24 @@ vista ${vista ? `${String(vista.layers)} layers | ${String(vista.textures)} text
       resolveKitVersion(window.location.search, this.style.terrainKitKey) === '0017'
         ? new Kit17Background(this)
         : null;
-    const pencil = this.style.backgroundKey === 'pencil-vista' ? pencilWorld() : null;
+    const vistaKey = this.style.backgroundKey;
+    const pencil =
+      vistaKey === 'pencil-vista' || vistaKey === 'notebook-vista' ? pencilWorld() : null;
     this.vista =
       pencil && !this.highContrast && typeof document !== 'undefined'
-        ? new pencil.PencilVista(this, this.opts.level, (obj) => this.crispObjects.add(obj))
+        ? new pencil.PencilVista(
+            this,
+            this.opts.level,
+            (obj) => this.crispObjects.add(obj),
+            vistaKey === 'notebook-vista' ? pencil.NOTEBOOK_RECIPE : undefined,
+          )
         : null;
     const g = this.add.graphics();
-    if (getLevelTheme(this.opts.level) === 'scenery' && this.style.doodles !== false)
+    if (
+      getLevelTheme(this.opts.level) === 'scenery' &&
+      this.style.doodles !== false &&
+      this.vista === null
+    )
       drawDoodles(g, this.opts.level, this.style);
     this.kit = new LevelKit(this, this.opts.level, this.style);
     this.framed = framedAnchors(this.opts.level.anchors);

@@ -126,9 +126,22 @@ export const PENCIL_STYLE: WorldStyle = {
   doodles: false,
 };
 
+/**
+ * Chapter 1 on the ruled notebook (owner 2026-10-23, replacing the pencil sketchbook for 1-1): the
+ * approved notebook page, margin and binding, with a doodled parallax landscape behind the play
+ * space (ballpoint hills and castles, pencil trees, cottages and fences) instead of the faint
+ * horizon doodles, so the world scrolls past at several depths. Same id as the notebook so the
+ * paper, hatch and vignette textures are shared.
+ */
+export const NOTEBOOK_WILDS_STYLE: WorldStyle = {
+  ...NOTEBOOK_STYLE,
+  backgroundKey: 'notebook-vista',
+};
+
 /** Registered families. Sub-themes use the key `family/subTheme` and fall back to the family. */
 export const WORLD_STYLES: Readonly<Record<string, WorldStyle>> = {
   notebook: NOTEBOOK_STYLE,
+  'notebook/margin-wilds': NOTEBOOK_WILDS_STYLE,
   pencil: PENCIL_STYLE,
 };
 
