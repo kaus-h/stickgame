@@ -1,3 +1,5 @@
+import { fbm1 } from './rng';
+
 /**
  * Graphite drawing primitives for baked chapter 1 canvases (vista layers, foreground, terrain).
  * Every mark is seeded: the same inputs always bake the same drawing, and nothing animates.
@@ -311,4 +313,119 @@ export function rubbed(
     c.fillRect(-wdt * 1.6, -wdt * 1.6, wdt * 3.2, wdt * 3.2);
     c.restore();
   }
+}
+
+/**
+ * A backdrop mass tone at green level `v` (the paper is 199), cool like the sheet. Backdrop masses
+ * cover what lies behind them with this instead of stacking translucent marks into mud.
+ */
+export const tone = (v: number, a: number): string =>
+  `rgba(${(v - 4).toFixed(0)},${v.toFixed(0)},${(v + 5).toFixed(0)},${a.toFixed(3)})`;
+
+/** Luminous mist: lighter than the paper, like graphite lifted back to the white of the sheet. */
+export const haze = (a: number): string => `rgba(238,240,243,${a.toFixed(3)})`;
+
+/** An uneven edge offset in about -1..1 along x; `scale` texture pixels per billow. */
+function edgeAt(x: number, scale: number, seed: number): number {
+  return fbm1(x / scale, seed) * 0.75 + fbm1(x / (scale * 0.3), seed + 31) * 0.3;
+}
+
+/** A shape from an uneven top edge down to `bottom`, filled with `fill`. */
+function underEdge(
+  c: CanvasRenderingContext2D,
+  w: number,
+  y: (x: number) => number,
+  bottom: number,
+  step: number,
+  fill: CanvasGradient | string,
+): void {
+  c.beginPath();
+  c.moveTo(-2, bottom);
+  for (let x = -2; x < w + step; x += step) c.lineTo(x, y(x));
+  c.lineTo(w + 2, bottom);
+  c.closePath();
+  c.fillStyle = fill;
+  c.fill();
+}
+
+/**
+ * Luminous mist pooled in a band: clear above `top`, reaching `alpha` by `full` and holding to
+ * `bottom`. Soft passes with billowing, offset top edges feather it without a blur filter, and
+ * rubbed horizontal streaks keep it from reading as a flat veil.
+ */
+export function mistBank(
+  c: CanvasRenderingContext2D,
+  r: Rand,
+  w: number,
+  top: number,
+  full: number,
+  bottom: number,
+  alpha: number,
+  billow: number,
+  streaks = 1,
+): void {
+  const seed = Math.floor(r() * 1e6);
+  const passes = 4;
+  const each = 1 - (1 - alpha) ** (1 / passes);
+  const rise = Math.max(1, full - top);
+  for (let p = 0; p < passes; p++) {
+    const y0 = top + rise * (p / passes) * 0.75;
+    const g = c.createLinearGradient(0, y0 - billow, 0, y0 + rise * 0.55);
+    g.addColorStop(0, haze(0));
+    g.addColorStop(1, haze(each));
+    underEdge(
+      c,
+      w,
+      (x) => y0 + billow * edgeAt(x, billow * 7, seed + p * 101),
+      bottom,
+      Math.max(2, billow * 0.3),
+      g,
+    );
+  }
+  // Rubbed streaks: lifted horizontal strokes through the body and a few above its edge.
+  const n = Math.ceil((w / (billow * 5)) * streaks);
+  for (let i = 0; i < n; i++) {
+    const len = billow * (4 + r() * 12);
+    const x = r() * w - len / 2;
+    const y = top + rise * (-0.25 + r() * 1.25);
+    const thick = billow * (0.08 + r() * 0.22);
+    rubbed(
+      c,
+      x,
+      y,
+      len,
+      thick,
+      (r() - 0.5) * 0.03,
+      (r() - 0.5) * 0.2,
+      r,
+      haze,
+      alpha * (0.4 + r() * 0.5),
+    );
+  }
+}
+
+/**
+ * Erase this canvas's marks below an uneven line: clear by `bottom`, untouched above `top`. Masses
+ * dissolve downward into whatever mist is laid over them, instead of standing on a hard base.
+ */
+export function fadeBelow(
+  c: CanvasRenderingContext2D,
+  r: Rand,
+  w: number,
+  top: number,
+  bottom: number,
+  billow: number,
+): void {
+  const seed = Math.floor(r() * 1e6);
+  const end = c.canvas.height + 2;
+  c.save();
+  c.globalCompositeOperation = 'destination-out';
+  for (let p = 0; p < 3; p++) {
+    const y0 = top + (bottom - top) * p * 0.25;
+    const g = c.createLinearGradient(0, y0 - billow, 0, bottom);
+    g.addColorStop(0, 'rgba(0,0,0,0)');
+    g.addColorStop(1, 'rgba(0,0,0,1)');
+    underEdge(c, w, (x) => y0 + billow * edgeAt(x, billow * 6, seed + p * 57), end, 3, g);
+  }
+  c.restore();
 }

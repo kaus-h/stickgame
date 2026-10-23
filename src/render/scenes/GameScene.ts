@@ -389,38 +389,40 @@ export class GameScene extends Phaser.Scene {
       );
     drawFrame(this.frameG, this.scale.height, this.style);
     this.hud = this.add.graphics().setScrollFactor(0);
-    // A paper halo keeps the HUD legible where it crosses hatched terrain (c6's ceiling bar).
+    // A paper halo keeps the HUD legible where it crosses hatched terrain (c6's ceiling bar) and
+    // rubbed sky: a thin stroke in the page's own paper tone (cool on the pencil sketchbook), then
+    // a soft lifted glow around it, like graphite erased back to paper behind the writing.
+    const halo = this.style.page?.kind === 'sketchbook' ? '#eef0f3' : '#f3efe6';
     const hand = {
       fontFamily: HAND_FONT,
       color: '#16161a',
-      stroke: '#f3efe6',
-      strokeThickness: 5,
+      stroke: halo,
+      strokeThickness: 3,
     };
-    this.timer = this.add
-      .text(0, 14, '', { ...hand, fontSize: '34px' })
+    const lift = (text: Phaser.GameObjects.Text): Phaser.GameObjects.Text =>
+      text.setShadow(0, 0, halo, 7, true, true);
+    this.timer = lift(this.add.text(0, 14, '', { ...hand, fontSize: '34px' }))
       .setScrollFactor(0)
       .setOrigin(1, 0)
       .setName('run-timer');
     // GMR-103: the life timer sits small under the run timer; splits flash under the title.
-    this.lifeTimer = this.add
-      .text(0, 50, '', { ...hand, fontSize: '22px', color: '#5a5a5a' })
+    this.lifeTimer = lift(this.add.text(0, 50, '', { ...hand, fontSize: '22px', color: '#3d4047' }))
       .setScrollFactor(0)
       .setOrigin(1, 0)
       .setName('life-timer');
-    this.splitTime = this.add
-      .text(0, 44, '', { ...hand, fontSize: '26px' })
+    this.splitTime = lift(this.add.text(0, 44, '', { ...hand, fontSize: '26px' }))
       .setScrollFactor(0)
       .setOrigin(0.5, 0)
       .setName('split-time')
       .setVisible(false);
-    this.splitDelta = this.add
-      .text(0, 72, '', { ...hand, fontSize: '30px' })
+    this.splitDelta = lift(this.add.text(0, 72, '', { ...hand, fontSize: '30px' }))
       .setScrollFactor(0)
       .setOrigin(0.5, 0)
       .setName('split-delta')
       .setVisible(false);
-    this.title = this.add
-      .text(0, 16, this.opts.level.name, { ...hand, fontSize: '22px', color: '#5a5a5a' })
+    this.title = lift(
+      this.add.text(0, 16, this.opts.level.name, { ...hand, fontSize: '24px', color: '#2f3238' }),
+    )
       .setScrollFactor(0)
       .setOrigin(0.5, 0);
     this.exitResult = this.add
