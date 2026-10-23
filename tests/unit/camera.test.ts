@@ -14,6 +14,9 @@ import {
   framedAnchors,
   stepCamera,
   sightBlocked,
+  holdVertical,
+  HOLD_ABOVE,
+  HOLD_BELOW,
 } from '../../src/render/camera';
 
 const rope = parseRuntimeTuning(runtimeJson).sim.rope;
@@ -159,5 +162,26 @@ describe('anchor attention (GMR-44)', () => {
       [ceiling],
     );
     expect(rising).toEqual(under);
+  });
+});
+
+describe('vertical hold (owner 2026-10-23: no bob on jumps)', () => {
+  it('holds the floor height through a normal jump and re-holds on landing', () => {
+    let held = holdVertical(null, 7.65, true);
+    // A full jump rises about 2.6 m: inside the window, nothing moves.
+    for (const y of [7.2, 6.0, 5.07, 6.0, 7.2]) {
+      held = holdVertical(held, y, false);
+      expect(held).toBe(7.65);
+      expect(cameraTarget(vec2(0, y), vec2(0, -8), DEFAULT_CAMERA, held).y).toBe(
+        7.65 + DEFAULT_CAMERA.verticalBias,
+      );
+    }
+    // Landing on a higher ledge re-holds there.
+    expect(holdVertical(held, 5.65, true)).toBe(5.65);
+  });
+
+  it('follows once the hero leaves the window, above or below', () => {
+    expect(holdVertical(7.65, 7.65 - HOLD_ABOVE - 1, false)).toBeCloseTo(7.65 - 1);
+    expect(holdVertical(7.65, 7.65 + HOLD_BELOW + 2, false)).toBeCloseTo(7.65 + 2);
   });
 });

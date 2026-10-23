@@ -11,6 +11,7 @@ import {
   DEFAULT_CAMERA,
   framedAnchors,
   stepCamera,
+  holdVertical,
   type FramedAnchor,
 } from '../camera';
 import { DebugOverlay } from '../debug/DebugOverlay';
@@ -164,6 +165,8 @@ export class GameScene extends Phaser.Scene {
   private unsubscribe: (() => void) | null = null;
   /** Camera center in world meters (render/camera.ts). */
   private camCenter: Vec2 = vec2(0, 0);
+  /** Held floor height for the vertical camera hold (holdVertical), meters. */
+  private heldY: number | null = null;
   private lastTime = 0;
   private bodies!: BodiesLayer;
   private kit!: LevelKit;
@@ -619,11 +622,18 @@ vista ${vista ? `${String(vista.layers)} layers | ${String(vista.textures)} text
     const position = vec2(p.x + (c.x - p.x) * t, p.y + (c.y - p.y) * t);
     // Anchor attention (GMR-44): lift to show reachable anchors above a height-bound view.
     const screen = cameraScale(this.scale.width, this.scale.height, DEFAULT_CAMERA);
+    const fresh = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
+    this.heldY = holdVertical(
+      fresh ? null : this.heldY,
+      position.y,
+      current.player.mode === 'grounded',
+    );
     const target = attentionTarget(
       cameraTarget(
         position,
         current.player.velocity,
         this.reducedMotion ? CALM_CAMERA : DEFAULT_CAMERA,
+        this.heldY,
       ),
       position,
       current.player.velocity,
@@ -634,8 +644,7 @@ vista ${vista ? `${String(vista.layers)} layers | ${String(vista.textures)} text
       HUD_BAND_PX / screen,
       this.opts.level.solids,
     );
-    const snap = current.attemptTick < previous.attemptTick || current.attemptTick <= 1;
-    this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, snap);
+    this.camCenter = stepCamera(this.camCenter, target, dt, DEFAULT_CAMERA, fresh);
     this.cameras.main.centerOn(m(this.camCenter.x), m(this.camCenter.y));
   }
 

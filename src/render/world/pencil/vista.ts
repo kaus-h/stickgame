@@ -14,8 +14,9 @@ import {
 
 /**
  * Chapter 1 vista painters (concept 0018-worlds/pencil.jpg, qualities only). Each paints one
- * parallax layer into a canvas `w` wide and `h` tall, in texture pixels, where `u` is the visible
- * view height. Content is laid out from the layer bottom, which is what the camera shows in play.
+ * backdrop layer into a canvas `w` wide and `h` tall, in texture pixels, where `u` is the visible
+ * view height. Content is laid out from the layer bottom, which hangs just below the view bottom;
+ * the canvas runs on above the view top (`vt`), so anything taller simply continues off screen.
  * Light comes from the upper right, so shaded faces are on the left.
  */
 export interface LayerCanvas {
@@ -25,6 +26,8 @@ export interface LayerCanvas {
   readonly u: number;
   /** Visible view width, texture pixels. */
   readonly vw: number;
+  /** Canvas row of the view's top edge (rows above it are headroom), texture pixels. */
+  readonly vt: number;
 }
 
 type Pt = { x: number; y: number };
@@ -66,15 +69,17 @@ function clustered(
 // --- sky ------------------------------------------------------------------------------------------
 
 /** Rubbed graphite clouds and a far mountain range, all very low contrast. */
-export function paintSky({ c, w, h, u }: LayerCanvas, r: Rand): void {
+export function paintSky({ c, w, h, u, vt }: LayerCanvas, r: Rand): void {
   const top = h - u; // top of the view when the camera is at its lowest
-  // A darker rubbed sky toward the top; lighter where the light enters (upper right).
-  const sky = c.createLinearGradient(0, 0, 0, h - u * 0.35);
+  // A darker rubbed sky toward the top; lighter where the light enters (upper right). The
+  // gradient starts at the view's top edge and holds its darkest tone through the headroom above.
+  const end = h - u * 0.35;
+  const sky = c.createLinearGradient(0, vt, 0, end);
   sky.addColorStop(0, graphite(0.34));
-  sky.addColorStop(Math.max(0, (top - 0) / (h - u * 0.35)) * 0.6 + 0.15, graphite(0.16));
+  sky.addColorStop(Math.max(0, (top - vt) / (end - vt)) * 0.6 + 0.15, graphite(0.16));
   sky.addColorStop(1, graphite(0));
   c.fillStyle = sky;
-  c.fillRect(0, 0, w, h - u * 0.35);
+  c.fillRect(0, 0, w, end);
   // Cloud banks as rubbed graphite: long soft finger-smudged strokes with lifted (erased) light
   // edges on top and a few streaks dragged through them. Never round blobs.
   const banks = Math.ceil(w / (u * 0.45));
