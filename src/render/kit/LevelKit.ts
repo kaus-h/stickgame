@@ -372,20 +372,6 @@ export class LevelKit {
     // Living Notebook depth: a soft pencil shadow under every block, drawn first and cut
     // out of the blocks so only the offset rim shows below and to the right.
     paintPencilShadows(c, solids);
-    // With a doodled landscape behind (notebook vista), masses need an opaque paper body so the
-    // scenery passes behind the rock instead of showing through its hatching.
-    if (this.style.backgroundKey === 'notebook-vista') {
-      c.fillStyle = worldColorCss(this.style.paper.base);
-      for (const solid of solids) {
-        c.beginPath();
-        solid.points.forEach((p, i) => {
-          if (i === 0) c.moveTo(m(p.x), m(p.y));
-          else c.lineTo(m(p.x), m(p.y));
-        });
-        c.closePath();
-        c.fill();
-      }
-    }
     // Connected rock mass and its world-locked hatch remain the base layer in both kits.
     // Kit 0017 stamps add the calibrated surface language over it; they do not replace it.
     this.paintMass(
